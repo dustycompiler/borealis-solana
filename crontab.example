@@ -1,0 +1,3 @@
+# Refresh Borealis hourly. Install with: crontab crontab.example
+# Adjust the path. Uses python3 from PATH. No API keys required.
+17 * * * * cd /path/to/canada-dashboard && python3 generate.py >> /tmp/borealis.log 2>&1
