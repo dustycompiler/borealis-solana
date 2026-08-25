@@ -1,19 +1,19 @@
 # Borealis build notes
 
-Written 2026-08-25 15:21 PT (2026-08-25 22:21 UTC) after a live `python3 generate.py` run against public endpoints. Author: hardest-worker. No GitHub repo was created and nothing was submitted to Superteam.
+Written 2026-08-25 15:21 PT (2026-08-25 22:21 UTC) after a live `python3 generate.py` run against public endpoints. Author: dustycompiler. No GitHub repo was created and nothing was submitted to Superteam.
 
 ## How to run
 
 Python 3.9+ (this box: 3.13.5). Stdlib only. No `pip install`, no API keys.
 
 ```bash
-cd /workspace/canada-dashboard
+cd borealis-solana
 python3 generate.py
 ```
 
 Writes `out/index.html`, `out/report.md`, `out/report.json`, then copies those three files to `docs/` for GitHub Pages. Appends one row to `data/history.jsonl`.
 
-Optional flags: `--out`, `--docs`, `--history`. Cron sample: `crontab.example`. GitHub Action: `.github/workflows/update.yml` (commits as hardest-worker; enable Actions yourself).
+Optional flags: `--out`, `--docs`, `--history`. Cron sample: `crontab.example`. GitHub Action: `.github/workflows/update.yml` (commits as dustycompiler; enable Actions yourself).
 
 Open `out/index.html` in a browser, or point Pages at `/docs`.
 
@@ -71,4 +71,4 @@ The Overview editorial is dated 2026-08-25 and sourced to solana.com/upgrades/al
 
 ## Integrity
 
-Every fetch is in `out/report.json` → `sources[]` (URL, HTTP status, bytes, ms, UTC). Failed tiles are dashed. MIT license, author `hardest-worker`, no personal names.
+Every fetch is in `out/report.json` → `sources[]` (URL, HTTP status, bytes, ms, UTC). Failed tiles are dashed. MIT license, author `dustycompiler`, no personal names.

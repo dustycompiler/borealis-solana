@@ -119,6 +119,24 @@ def epoch_ring(pct_v) -> str:
     )
 
 
+def score_ring(pct_v) -> str:
+    if pct_v is None:
+        pct_v = 0
+    pct_v = max(0.0, min(100.0, float(pct_v)))
+    r = 42
+    c = 2 * 3.141592653589793 * r
+    dash = c * pct_v / 100.0
+    label = f"{pct_v:.0f}"
+    return (
+        '<svg class="ring" viewBox="0 0 100 100" width="72" height="72">'
+        f'<circle cx="50" cy="50" r="{r}" fill="none" stroke="#1c2430" stroke-width="8"/>'
+        f'<circle cx="50" cy="50" r="{r}" fill="none" stroke="#3ee0b0" stroke-width="8" '
+        f'stroke-linecap="round" stroke-dasharray="{dash:.2f} {c:.2f}" transform="rotate(-90 50 50)"/>'
+        f'<text x="50" y="54" text-anchor="middle" fill="#e8eef7" font-size="22" font-weight="600">{label}</text>'
+        "</svg>"
+    )
+
+
 def stake_bars(top, total) -> str:
     if not top or not total:
         return '<p class="muted">Stake distribution unavailable.</p>'
@@ -155,6 +173,59 @@ CSS = '\n:root {\n  --bg: #07090d; --bg2: #0c1017; --card: #10151e; --card2: #14
 JS = '\n(function(){\n  var el = document.getElementById("snapshot");\n  var snap = JSON.parse(el.textContent);\n  function $$(s, root){ return Array.prototype.slice.call((root||document).querySelectorAll(s)); }\n  function $(s, root){ return (root||document).querySelector(s); }\n  $$(".tabs button").forEach(function(btn){\n    btn.addEventListener("click", function(){\n      $$(".tabs button").forEach(function(b){ b.classList.remove("on"); });\n      btn.classList.add("on");\n      var id = btn.getAttribute("data-tab");\n      $$("[data-panel]").forEach(function(p){\n        if (p.getAttribute("data-panel") === id) p.classList.remove("hidden");\n        else p.classList.add("hidden");\n      });\n    });\n  });\n  var q = $("#q");\n  var rows = $$("#vtable tbody tr");\n  if (q) q.addEventListener("input", function(){\n    var s = q.value.toLowerCase();\n    rows.forEach(function(r){ r.style.display = r.textContent.toLowerCase().indexOf(s) >= 0 ? "" : "none"; });\n  });\n  $$("#vtable th[data-k]").forEach(function(th){\n    th.addEventListener("click", function(){\n      var k = th.getAttribute("data-k");\n      var tbody = $("#vtable tbody");\n      var rs = $$("#vtable tbody tr");\n      var dir = th.getAttribute("data-dir") === "asc" ? "desc" : "asc";\n      $$("#vtable th").forEach(function(x){ x.removeAttribute("data-dir"); });\n      th.setAttribute("data-dir", dir);\n      rs.sort(function(a,b){\n        var av = a.getAttribute("data-"+k) || "";\n        var bv = b.getAttribute("data-"+k) || "";\n        var an = parseFloat(av), bn = parseFloat(bv);\n        var cmp = (!isNaN(an) && !isNaN(bn)) ? (an-bn) : av.localeCompare(bv);\n        return dir === "asc" ? cmp : -cmp;\n      }).forEach(function(r){ tbody.appendChild(r); });\n    });\n  });\n  var cj = document.getElementById("copyjson");\n  if (cj) cj.addEventListener("click", function(){\n    var txt = JSON.stringify(snap, null, 2);\n    if (navigator.clipboard && navigator.clipboard.writeText) {\n      navigator.clipboard.writeText(txt).then(function(){ cj.textContent = "Copied snapshot"; });\n    }\n  });\n})();\n'
 
 
+CSS += """
+.score-hero { display:flex; gap:12px; align-items:center; padding:8px 14px; border:1px solid var(--line2);
+  border-radius:14px; background:linear-gradient(180deg,#121a14,#10151e); min-width:210px; }
+.score-hero .val { font-size:28px; color:var(--teal); line-height:1; }
+.score-parts { font-size:11px; color:var(--muted); line-height:1.4; }
+.formula { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:10px; color:var(--faint);
+  margin-top:6px; max-width:420px; }
+.live-sol { display:none; margin-top:6px; font-size:11.5px; color:var(--muted); }
+.live-sol.on { display:block; }
+.tagchip { display:inline-block; margin:0 4px 0 0; padding:0 6px; border-radius:999px; font-size:10px;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--amber); border:1px solid #3a3220; }
+.watching { color:var(--muted); font-size:13px; padding:6px 0 2px; }
+.age { color:var(--teal); }
+.score-hero .ring { width:64px; height:64px; }
+"""
+
+
+JS = JS.replace("})();", "")
+JS += """
+  var ageEl = document.getElementById("age");
+  var gen = (snap.meta && snap.meta.generated_at_utc) || "";
+  function fmtAge(ms){
+    var s = Math.floor(ms/1000);
+    if (s < 60) return s + "s ago";
+    if (s < 3600) return Math.floor(s/60) + "m ago";
+    return Math.floor(s/3600) + "h " + Math.floor((s%3600)/60) + "m ago";
+  }
+  function tickAge(){
+    if (!ageEl || !gen) return;
+    var t0 = Date.parse(gen);
+    if (isNaN(t0)) return;
+    ageEl.textContent = fmtAge(Math.max(0, Date.now() - t0));
+  }
+  tickAge();
+  setInterval(tickAge, 15000);
+  var live = document.getElementById("live-sol");
+  if (live) {
+    fetch("https://api.exchange.coinbase.com/products/SOL-USD/stats", {headers:{Accept:"application/json"}})
+      .then(function(r){ if(!r.ok) throw new Error("http"); return r.json(); })
+      .then(function(d){
+        var last = parseFloat(d.last), openp = parseFloat(d.open);
+        if (!isFinite(last) || !isFinite(openp) || !openp) return;
+        var ch = (last-openp)/openp*100;
+        var sign = ch>0?"+":"";
+        var cls = ch>=0?"up":"down";
+        live.innerHTML = "Live $" + last.toFixed(2) + " <span class=\\"chip " + cls + "\\">" + sign + ch.toFixed(2) + "%</span> · Coinbase · browser live vs snapshot";
+        live.className = "live-sol on";
+      })
+      .catch(function(){ if (live.parentNode) live.parentNode.removeChild(live); });
+  }
+})();
+"""
+
 MARK = """<svg class="mark" viewBox="0 0 36 36" aria-hidden="true">
   <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0" stop-color="#3ee0b0"/><stop offset="1" stop-color="#7aa2ff"/>
@@ -187,6 +258,9 @@ def render_html(snap: dict) -> str:
     om = snap.get("omissions") or []
     status = news.get("status") or {}
     scom = snap.get("solana_com_data") or {}
+    hs = snap.get("health_score") or {}
+    eco = snap.get("economics") or {}
+    hist = snap.get("history") or []
 
     health = c.get("health")
     health_ok = health == "ok"
@@ -231,10 +305,12 @@ def render_html(snap: dict) -> str:
         tile("Slot time", (nfmt((c.get("slot_time_sec") or 0)*1000, 1) + " ms") if c.get("slot_time_sec") else "—",
              f"median {nfmt((c.get('slot_time_median') or 0)*1000, 1)} ms · max {nfmt((c.get('slot_time_max') or 0)*1000, 1)}",
              spark=st_spark),
-        tile("Slot / height", f"{nfmt(c.get('slot'))}", f"height {nfmt(c.get('block_height'))}"),
         tile("SOL", usd(px.get("usd"), 2) if not px_ghost else "—",
-             (px.get("source") or "CoinGecko") if not px_ghost else "CoinGecko 429 / omitted",
+             (px.get("usd_24h_change_source") or px.get("source") or "price") if not px_ghost else "price omitted",
              chip=px.get("usd_24h_change"), ghost=px_ghost),
+        tile("REV proxy", usd(eco.get("rev_proxy_usd")) if eco.get("rev_proxy_usd") is not None else "—",
+             eco.get("rev_label") or "DeFiLlama Solana fees 24h (REV proxy)",
+             chip=eco.get("rev_change_1d_pct"), ghost=eco.get("rev_proxy_usd") is None),
         tile("TVL", usd(d.get("tvl_usd")) if not tvl_ghost else "—",
              "DeFiLlama chain TVL", chip=d.get("tvl_change_1d_pct"), ghost=tvl_ghost, spark=tvl_spark),
         tile("DEX 24h", usd((d.get("dex") or {}).get("total_24h_usd")),
@@ -252,7 +328,11 @@ def render_html(snap: dict) -> str:
              f"50% {nfmt(v.get('nakamoto_50'))} · 67% {nfmt(v.get('supermajority_67'))}"),
     ])
 
-    flag_html = '<p class="muted">No rolling-baseline flags this run. Thresholds live in README.</p>'
+    n_samples = len(c.get("tps_samples") or [])
+    empty_copy = (snap.get("baseline") or {}).get("empty_copy") or (
+        f"No flags vs rolling baseline ({n_samples} samples / llama 7d). Watching."
+    )
+    flag_html = f'<p class="watching">{e(empty_copy)}</p>'
     if flags:
         bits = []
         for f in flags:
@@ -319,11 +399,18 @@ def render_html(snap: dict) -> str:
         for p in (rwa.get("top") or [])[:8]
     ) or '<li class="omit">RWA list unavailable this run.</li>'
 
-    news_lis = "".join(
-        f'<li><div class="src">{e(n.get("source"))} · {e(n.get("published"))}</div>'
-        f'<a href="{e(n.get("url"))}" rel="noopener">{e(n.get("title"))}</a></li>'
-        for n in (news.get("items") or [])[:12]
-    ) or '<li class="omit">No RSS items parsed.</li>'
+    def news_li(n):
+        tags = "".join(f'<span class="tagchip">{e(x)}</span>' for x in (n.get("tags") or []))
+        return (
+            f'<li><div class="src">{e(n.get("source"))} · {e(n.get("published"))} {tags}</div>'
+            f'<a href="{e(n.get("url"))}" rel="noopener">{e(n.get("title"))}</a></li>'
+        )
+    tw_lis = "".join(news_li(n) for n in (news.get("twitter") or [])[:10]) or (
+        '<li class="omit">No public X/Nitter-style RSS this run (403/gated skipped).</li>'
+    )
+    news_lis = "".join(news_li(n) for n in (news.get("official") or news.get("items") or [])[:12]) or (
+        '<li class="omit">No RSS items parsed.</li>'
+    )
 
     comps = "".join(
         f'<span class="{"ok" if (x.get("status")=="operational") else ""}">{e(x.get("name"))}: {e(x.get("status"))}</span>'
@@ -358,11 +445,37 @@ def render_html(snap: dict) -> str:
     ed_src = "".join(f'<li><a href="{e(u)}">{e(u)}</a></li>' for u in (ed.get("sources") or []))
 
     daa_note = e(daa.get("note") or "")
+    hist_spark_tps = sparkline(
+        [x.get("tps") for x in hist if isinstance(x.get("tps"), (int, float))],
+        w=280, h=42, color="#3ee0b0",
+    )
+    hist_spark_px = sparkline(
+        [x.get("sol_usd") for x in hist if isinstance(x.get("sol_usd"), (int, float))],
+        w=280, h=42, color="#f0b429",
+    )
+    parts = hs.get("parts") or []
+    parts_txt = " · ".join(
+        f"{p.get('id')} {p.get('points')}/{p.get('max')}" for p in parts
+    )
+    score_n = hs.get("score")
+    score_cls = "" if isinstance(score_n, (int, float)) and score_n >= 80 else "warn"
+    if isinstance(score_n, (int, float)) and score_n < 55:
+        score_cls = "alert"
+    score_hero = (
+        f'<div class="score-hero">{score_ring(score_n if score_n is not None else 0)}'
+        f'<div><div class="tiny muted">HEALTH SCORE</div>'
+        f'<div class="val">{e(score_n if score_n is not None else "—")}</div>'
+        f'<div class="score-parts">{e(parts_txt)}</div>'
+        f'<p class="formula">{e(hs.get("formula") or "")}</p></div></div>'
+    )
     payload = json.dumps({
         "meta": m,
         "anomalies": flags,
         "validators_top": v.get("top") or [],
         "omissions": om,
+        "health_score": hs,
+        "market": {"usd": px.get("usd"), "usd_24h_change": px.get("usd_24h_change"),
+                   "source": px.get("source")},
     }, default=str).replace("<", "\\u003c")
 
     title = f"Borealis — Solana {m.get('generated_at_utc') or ''}"
@@ -372,7 +485,15 @@ def render_html(snap: dict) -> str:
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="color-scheme" content="dark"/>
+<meta name="description" content="Borealis — live Solana cluster and ecosystem report. No API keys. Updates every 15 minutes."/>
+<meta property="og:title" content="Borealis — live Solana cluster report"/>
+<meta property="og:description" content="Public RPC, DeFiLlama, Coinbase 24h, solana.com/data, and Nitter-style X RSS. Health score, anomalies, no API keys."/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://dustycompiler.github.io/borealis-solana/"/>
+<meta property="og:image" content="https://dustycompiler.github.io/borealis-solana/favicon.svg"/>
+<meta name="twitter:card" content="summary"/>
 <title>{e(title)}</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>{CSS}</style>
@@ -386,10 +507,15 @@ def render_html(snap: dict) -> str:
         <p class="tag">Live Solana cluster &amp; ecosystem report · Superteam Canada bounty build · no API keys</p>
       </div>
     </div>
-    <div class="health-pill"><span class="dot {dot}"></span>{e(health_label)}</div>
+    {score_hero}
     <div class="meta-clock">
       <b>{e(m.get("generated_at_utc"))}</b>
-      {e(m.get("generated_at_pt"))}<br/>run {e(m.get("run_id"))} · v{e(m.get("version"))}
+      {e(m.get("generated_at_pt"))}<br/>
+      snapshot <span id="age" class="age">just now</span>
+      · updates every 15 min via GitHub Action<br/>
+      <span class="tiny">{e(health_label)}</span>
+      · run {e(m.get("run_id"))} · v{e(m.get("version"))}
+      <div id="live-sol" class="live-sol"></div>
     </div>
   </header>
 
@@ -408,6 +534,11 @@ def render_html(snap: dict) -> str:
       <div class="panel">
         <h2>Anomaly strip</h2>
         {flag_html}
+        <p class="tiny muted">History TPS</p>
+        {hist_spark_tps}
+        <p class="tiny muted">History SOL</p>
+        {hist_spark_px}
+        <p class="tiny muted">data/history.jsonl n={len(hist)} · last-sample 2.5σ · llama 1d/7d · multi-source correlation</p>
       </div>
       <div class="panel">
         <h2>Epoch</h2>
@@ -489,7 +620,8 @@ def render_html(snap: dict) -> str:
         <h2>RWA (DeFiLlama category rollup)</h2>
         <p>Protocol TVL tagged RWA / RWA Lending with a Solana chain split: <b>{usd(rwa.get("tvl_usd"))}</b></p>
         <ul>{rwa_lis}</ul>
-        <p class="tiny muted">Not a full RWA market-cap census. Llama /rwa/* routes are Pro-only.</p>
+        <p class="tiny muted">Labeled RWA protocol TVL — not a tokenized-equities market cap. Llama /rwa/* routes are Pro-only.</p>
+        <p class="tiny muted">Median tx fee is not published on these public feeds. REV shown is DeFiLlama Solana fees 24h (REV proxy): {usd(eco.get("rev_proxy_usd"))}. Network fees {nfmt(eco.get("network_fees_sol_24h"),1)} SOL ({e(eco.get("network_fees_source") or "—")}).</p>
       </div>
       <div class="panel">
         <h2>Daily active addresses</h2>
@@ -508,9 +640,18 @@ def render_html(snap: dict) -> str:
     <div class="panel">
       <h2>status.solana.com · {e(status.get("description") or "—")}</h2>
       <div class="status-row">{comps}</div>
-      <h2 style="margin-top:16px">RSS / Atom</h2>
-      <ul class="news">{news_lis}</ul>
-      <p class="tiny muted">Feeds: status.solana.com/history.atom · solana.com/news/rss.xml · medium.com/feed/anza-xyz. No Twitter API.</p>
+    </div>
+    <div class="grid2" style="margin-top:10px">
+      <div class="panel">
+        <h2>X announcements (public Nitter-style RSS)</h2>
+        <ul class="news">{tw_lis}</ul>
+        <p class="tiny muted">{e(news.get("twitter_note") or "Not the official Twitter API. 403/gated routes skipped.")}</p>
+      </div>
+      <div class="panel">
+        <h2>Foundation / Anza RSS</h2>
+        <ul class="news">{news_lis}</ul>
+        <p class="tiny muted">status.solana.com/history.atom · solana.com/news/rss.xml · medium.com/feed/anza-xyz</p>
+      </div>
     </div>
   </section>
 
@@ -518,7 +659,9 @@ def render_html(snap: dict) -> str:
     <div class="panel">
       <h2>Rolling baseline flags</h2>
       {flag_html}
-      <p class="tiny muted">In-run baseline: 60 performance samples. Cross-run baseline: data/history.jsonl (n={e((snap.get("baseline") or {}).get("history_points"))}). TVL uses DeFiLlama daily series. Price uses CoinGecko 24h change.</p>
+      <p class="tiny muted">Last-sample vs 60-window 2.5σ · slot &gt;500ms · llama TVL/DEX/fees |1d|&gt;8% or |7d|&gt;20% · 30d median from solana.com/data · correlation: congestion / risk-off / validator stress. history.jsonl n={e((snap.get("baseline") or {}).get("history_points"))}.</p>
+      <p class="tiny muted">Health formula: {e(hs.get("formula") or "")}</p>
+      {hist_spark_tps}{hist_spark_px}
     </div>
   </section>
 
@@ -536,7 +679,9 @@ def render_html(snap: dict) -> str:
 
   <footer class="footer">
     Borealis is read-only public telemetry. Numbers are never invented: a failed fetch becomes a dashed tile and an omissions row.
-    MIT · author hardest-worker · <a href="report.md">report.md</a> · <a href="report.json">report.json</a>
+    MIT · author dustycompiler · updates every 15 min via GitHub Action ·
+    <a href="https://github.com/dustycompiler/borealis-solana">repo</a> ·
+    <a href="report.md">report.md</a> · <a href="report.json">report.json</a>
   </footer>
 </div>
 <script id="snapshot" type="application/json">{payload}</script>
