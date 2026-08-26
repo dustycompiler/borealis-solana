@@ -464,6 +464,11 @@ def render_html(snap: dict) -> str:
              f"priced {nfmt(xs.get('count_priced'))} of {nfmt(xs.get('count_solana'))} Solana listings · lower bound",
              ghost=xs.get("market_cap_usd") is None,
              source="xStocks public API · quote × circulating × multiplier (not a 715 census)", conf=xs_conf, extra=age),
+        tile("xStocks protocol TVL",
+             usd(xs.get("llama_solana_tvl_usd")) if xs.get("llama_solana_tvl_usd") is not None else "—",
+             "DeFiLlama protocol/xstocks · liquidity, not mcap",
+             ghost=xs.get("llama_solana_tvl_usd") is None,
+             source="api.llama.fi/protocol/xstocks (not priced-subset mcap, not 24h volume)", conf="MED", extra=age),
         tile("Active addrs", nfmt(daa.get("headline_value")) if not daa_ghost else "—",
              daa_sub, ghost=daa_ghost,
              source="solana.com/data Active Addresses", conf="MED", extra=age),
@@ -714,10 +719,12 @@ def render_html(snap: dict) -> str:
     )
     xs_box = (
         f'<div class="panel"><h2>Tokenized equities · xStocks</h2>'
-        f'<p>24h volume {usd(xs.get("volume_24h_usd"))} · priced-subset mcap {usd(xs.get("market_cap_usd"))}</p>'
+        f'<p>24h volume {usd(xs.get("volume_24h_usd"))} · priced-subset mcap {usd(xs.get("market_cap_usd"))}'
+        f' · DeFiLlama protocol TVL {usd(xs.get("llama_solana_tvl_usd"))} (liquidity, not mcap)</p>'
         f'<p class="tiny muted">{e(xs.get("count_meaning") or "")} Priced {nfmt(xs.get("count_priced"))} of '
         f'{nfmt(xs.get("count_solana"))} Solana listings ({nfmt(xs.get("count_unique_underlying"))} unique underlyings). '
-        f'{e(xs.get("volume_coverage") or xs.get("mcap_note") or "")}</p>'
+        f'{e(xs.get("volume_coverage") or xs.get("mcap_note") or "")} '
+        f'DeFiLlama protocol/xstocks Solana TVL is a liquidity census, not the priced-subset mcap and not 24h volume.</p>'
         f'<table><thead><tr><th>Sym</th><th>Name</th><th class="right">Quote</th>'
         f'<th class="right">Circ</th><th class="right">Mult</th><th class="right">Mcap</th></tr></thead>'
         f'<tbody>{xs_rows or "<tr><td colspan=6 class=omit>No priced xStocks this run.</td></tr>"}</tbody></table></div>'
@@ -726,10 +733,19 @@ def render_html(snap: dict) -> str:
         f'<li><b>{e(x.get("id"))}</b> — {e(x.get("error") or x.get("status"))}</li>'
         for x in (dh.get("failures") or [])[:8]
     )
+    dh_notes = "".join(f"<li>{e(n)}</li>" for n in (dh.get("notes") or []) if n)
+    unexpected_n = len(dh.get("unexpected_failures") or dh.get("failures") or [])
+    expected_n = dh.get("expected_unavailable") or 0
+    if dh_fail:
+        fail_block = dh_fail
+    elif expected_n:
+        fail_block = f"<li>No unexpected fetch failures. {expected_n} expected unavailable (not counted in required OK).</li>"
+    else:
+        fail_block = "<li>No fetch failures this run.</li>"
     dh_html = (
         f'<div class="panel" style="margin-top:10px"><h2>Data health</h2>'
-        f'<p>{e(dh.get("headline") or ("sources " + str(dh.get("ok")) + "/" + str(dh.get("total"))))} · headline confidence {e(dh.get("headline_confidence"))}</p>'
-        f'<ul>{dh_fail or "<li>No fetch failures this run.</li>"}</ul></div>'
+        f'<p>{e(dh.get("headline") or ("required sources " + str(dh.get("ok")) + "/" + str(dh.get("total"))))} · headline confidence {e(dh.get("headline_confidence"))}</p>'
+        f'<ul>{dh_notes}{fail_block}</ul></div>'
     )
 
 

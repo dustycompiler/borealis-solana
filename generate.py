@@ -3467,7 +3467,7 @@ def build_data_health(sources: list[dict[str, Any]], market, cluster) -> dict[st
     notes = [
         "CoinGecko 429 — Coinbase 24h used" if gecko_fail else None,
         f"{len(fallbacks)} RPC fallbacks" if fallbacks else None,
-        f"{len(expected)} expected misses (xStocks multiplier 404s, gated RSS, CoinGecko 429)" if expected else None,
+        f"{len(expected)} expected misses (xStocks multiplier 400/404, gated RSS, CoinGecko 429)" if expected else None,
     ]
     return {
         "ok": required_ok,
@@ -3731,7 +3731,8 @@ Solana circulating pegged-USD: **{fmt_usd(st.get('circulating_usd'))}**
 ## Tokenized equities (xStocks)
 
 {xs.get('mcap_note') or xs.get('error') or ''}
-Listed {fmt_num(xs.get('count_listed'))} · Solana deployments {fmt_num(xs.get('count_solana'))} · priced mcap {fmt_usd(xs.get('market_cap_usd'))}.
+Listed {fmt_num(xs.get('count_listed'))} · Solana deployments {fmt_num(xs.get('count_solana'))} · priced-subset mcap {fmt_usd(xs.get('market_cap_usd'))} (lower bound, not a 715 census).
+DeFiLlama protocol/xstocks Solana TVL {fmt_usd(xs.get('llama_solana_tvl_usd'))} — liquidity census, not mcap, not 24h volume.
 Formula: `{xs.get('mcap_formula') or 'quote * circulating * multiplier'}`. {xs.get('solana_share_label') or ''}
 
 ## Real-world assets
@@ -4099,7 +4100,8 @@ def main() -> int:
     print(f"wrote {args.out}/report.json")
     print(f"copied snapshot -> {args.docs}/")
     hs = (snap.get("health_score") or {}).get("score")
-    print(f"sources ok {sum(1 for s in snap['sources'] if s.get('ok'))}/{len(snap['sources'])}  "
+    dh = snap.get("data_health") or {}
+    print(f"{dh.get('headline') or 'sources n/a'}  "
           f"anomalies {len(flags)}  omissions {len(snap.get('omissions') or [])}  health {hs}")
     px = snap.get("market") or {}
     print(f"SOL {px.get('usd')}  24h {px.get('usd_24h_change')}  src {px.get('source')} / {px.get('usd_24h_change_source')}")

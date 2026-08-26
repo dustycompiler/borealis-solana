@@ -1,6 +1,7 @@
 # Borealis
 
-Live Solana cluster & ecosystem report. One command, **no API keys**, Python stdlib only (`urllib`).
+**Version 1.4.0.** 
+Live Solana cluster & ecosystem report, **version 1.4.0**. One command, **no API keys**, Python stdlib only (`urllib`).
 
 [![Live demo](https://img.shields.io/badge/live-demo-3ee0b0?style=flat-square)](https://dustycompiler.github.io/borealis-solana/)
 [![Tests](https://github.com/dustycompiler/borealis-solana/actions/workflows/tests.yml/badge.svg)](https://github.com/dustycompiler/borealis-solana/actions/workflows/tests.yml)
@@ -94,7 +95,7 @@ Live JSON-RPC against `https://api.mainnet-beta.solana.com`, falling back to `ht
 - **stablecoins.llama.fi** chain circulating + per-asset Solana supply + 90-day chart
 - **RWA** = sum of `chainTvls.Solana` for protocols whose DeFiLlama category is `RWA` or `RWA Lending`. Labeled protocol TVL, **not** a tokenized-equities census (those Llama routes are Pro-only). Shown separately from xStocks.
 
-**Tokenized equities (xStocks)** — public no-key API (`api.backed.fi` then `api.xstocks.fi`). Per Solana-deployed symbol: name, symbol, unique underlyings, multiplier, circulating-supply. **Market cap formula (labeled):** `quote × circulating × multiplier`, **priced N of M · lower bound — not a 715 census**. **24h volume** from Jupiter `lite-api.jup.ag/tokens/v2/search` `stats24h` buy+sell (no key). DeFiLlama `protocol/xstocks` Solana TVL is shown separately when it answers. Missing quotes are omitted, never invented.
+**Tokenized equities (xStocks)** — public no-key API (`api.backed.fi` then `api.xstocks.fi`). Per Solana-deployed symbol: name, symbol, unique underlyings, multiplier, circulating-supply. **Market cap formula (labeled):** `quote × circulating × multiplier`, **priced N of M · lower bound — not a 715 census**. **24h volume** from Jupiter `lite-api.jup.ag/tokens/v2/search` `stats24h` buy+sell (no key). DeFiLlama `protocol/xstocks` Solana TVL is shown as **labeled coverage** (liquidity census, not the priced-subset mcap, not 24h volume) when it answers. Missing quotes are omitted, never invented.
 
 **Borealis REV 24h (Blockworks/Helius definition):** in-protocol transaction fees (vote + base + priority) **plus** out-of-protocol Jito tips. Measured leg = `solana.com/data` Fees (Allium/Dune/Blockworks) × SOL-USD. Tips leg = ESTIMATED `jito tip_floor p50 × non-vote TPS × 86400` when the public no-key floor answers in <3s. **DeFiLlama `/overview/fees/Solana` protocol/application fees are listed separately and NEVER summed into REV** (that ~$14M print is app fees, not network REV). Sampled `getBlock` run-rate is a cross-check only (would double-count the measured Fees series). The tile shows a dollar number **and** the definition.
 
@@ -239,7 +240,7 @@ Stdlib unittest. No pip, no network.
 
     python3 -m unittest
 
-Covers health-score formula, 24h percent (last-open)/open, anomaly flags on synthetic series, RSS recency (ISO + RFC2822; 2022 incidents not current), fee percentiles + `window_seconds`, xStocks mcap formula, REV (llama protocol fees excluded; Jito estimate added), SIMD-525 editorial token, and DEX surge → HEALTHY + SURGE not WATCH.
+Covers health-score formula, 24h percent (last-open)/open, anomaly flags on synthetic series, RSS recency (ISO + RFC2822; 2022 incidents not current), fee percentiles + `window_seconds`, xStocks mcap formula + priced-subset label, REV (llama protocol fees excluded; Jito estimate added), SIMD-525 editorial token, DEX surge → HEALTHY + SURGE not WATCH, RPC 429 → publicnode fallback, and CoinGecko 429 → Coinbase (expected unavailable, not a raw 108/132 headline).
 
 ---
 

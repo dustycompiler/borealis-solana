@@ -2,6 +2,7 @@
 """Stdlib tests for Borealis generate.py helpers. No network."""
 from __future__ import annotations
 
+import json
 import os
 import statistics
 import sys
@@ -13,7 +14,12 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
 from generate import (  # noqa: E402
+    FALLBACK_RPC,
+    PRIMARY_RPC,
+    Http,
+    assemble_market,
     build_brief,
+    build_data_health,
     build_economics,
     build_insights,
     classify_ecosystem_activity,
@@ -424,6 +430,116 @@ class Simd525Tests(unittest.TestCase):
 def json_blob(obj) -> str:
     import json
     return json.dumps(obj)
+
+
+
+
+class ScriptedHttp(Http):
+    """No-network Http: first matching url substring wins."""
+
+    def __init__(self, script):
+        super().__init__()
+        self.script = script  # list of (substr, status, body_bytes_or_none)
+
+    def request(self, url, *, source_id, data=None, **kw):
+        for substr, status, body in self.script:
+            if substr in url:
+                ok = status == 200 and body is not None
+                rec = self._record(
+                    id=source_id, url=url, ok=ok, status=status,
+                    bytes=len(body or b""), ms=1, attempt=1,
+                    fetched_at="t", error=None if ok else f"HTTP {status}",
+                )
+                return (body if ok else None), rec
+        rec = self._record(
+            id=source_id, url=url, ok=False, status=599, bytes=0, ms=1,
+            attempt=1, fetched_at="t", error="unscripted",
+        )
+        return None, rec
+
+
+class FailureFixtureTests(unittest.TestCase):
+    def test_rpc_429_falls_back_to_publicnode(self):
+        ok_body = json.dumps({"jsonrpc": "2.0", "id": 1, "result": "ok"}).encode()
+        http = ScriptedHttp([
+            ("api.mainnet-beta.solana.com", 429, None),
+            ("solana-rpc.publicnode.com", 200, ok_body),
+        ])
+        result, rec = http.rpc("getHealth")
+        self.assertEqual(result, "ok")
+        self.assertTrue(rec.get("ok"))
+        self.assertIn("fallback", rec.get("id") or "")
+        self.assertTrue(any(r.get("status") == 429 for r in http.log))
+        self.assertEqual(PRIMARY_RPC, "https://api.mainnet-beta.solana.com")
+        self.assertEqual(FALLBACK_RPC, "https://solana-rpc.publicnode.com")
+
+    def test_coingecko_429_uses_coinbase_and_is_expected(self):
+        cb = json.dumps({"last": "100", "open": "90", "volume": "10",
+                         "high": "110", "low": "80"}).encode()
+        http = ScriptedHttp([
+            ("api.coingecko.com", 429, None),
+            ("api.exchange.coinbase.com", 200, cb),
+        ])
+        market = assemble_market(http)
+        self.assertTrue(market.get("ok"))
+        self.assertAlmostEqual(market.get("usd"), 100.0)
+        self.assertIn("coinbase", (market.get("source") or "").lower())
+        self.assertTrue(any(
+            s.get("id") == "coingecko.simple_price" and s.get("status") == 429
+            for s in http.log
+        ))
+        dh = build_data_health(http.log, market, {"tps_total": 4000})
+        self.assertGreaterEqual(dh["expected_unavailable"], 1)
+        self.assertIn("required sources", dh["headline"])
+        self.assertIn("expected unavailable", dh["headline"])
+        self.assertNotIn("108/132", dh["headline"])
+        # raw 0/1 would be misleading; gecko 429 is not a required miss
+        self.assertEqual(dh["ok"], dh["total"])
+
+    def test_xstocks_mcap_labeled_priced_subset_not_llama_tvl(self):
+        html = render_html({
+            "meta": {"version": "1.4.0", "generated_at_utc": "2026-08-26T00:00:00Z",
+                     "generated_at_pt": "2026-08-25 17:00:00 PT"},
+            "cluster": {"health": "ok", "slot_time_sec": 0.365, "tps_total": 4000},
+            "brief": {"network_health": "HEALTHY", "ecosystem_activity": "SURGE",
+                      "verdict": "HEALTHY", "biggest_positive": "DEX",
+                      "biggest_risk": "None — no isolated adverse network or market print this run.",
+                      "score": 100, "what_changed": "x", "why_it_matters": "y"},
+            "health_score": {"score": 100, "formula": "25x"},
+            "economics": {"rev_24h_usd": 1_000_000,
+                          "rev_kind": "MEASURED in-protocol + ESTIMATED Jito tips",
+                          "protocol_fees_usd": 14_000_000},
+            "xstocks": {
+                "market_cap_usd": 276_000_000,
+                "count_priced": 24, "count_solana": 715,
+                "count_unique_underlying": 40,
+                "volume_24h_usd": 23_000_000,
+                "llama_solana_tvl_usd": 430_000_000,
+                "mcap_note": "Priced-subset lower bound over 24 of 715",
+                "volume_coverage": "priced-subset / search hits, not all 715",
+            },
+            "data_health": {
+                "headline": "required sources 10/10 OK · 3 expected unavailable",
+                "headline_confidence": "HIGH",
+                "expected_unavailable": 3,
+                "notes": ["3 expected misses (xStocks multiplier 400/404, gated RSS, CoinGecko 429)"],
+                "failures": [],
+            },
+        })
+        self.assertIn('<div class="verdict HEALTHY">', html)
+        self.assertIn("priced 24 of 715", html)
+        self.assertIn("lower bound", html)
+        self.assertIn("priced-subset", html)
+        self.assertIn("$276.00M", html)
+        self.assertIn("$430.00M", html)
+        self.assertIn("liquidity, not mcap", html)
+        self.assertIn("required sources 10/10 OK", html)
+        self.assertIn("expected unavailable", html)
+        self.assertNotIn("108/132", html)
+        # protocol fees stay excluded from the REV tile value
+        self.assertIn("$1.00M", html)
+        self.assertNotIn("$14.00M", html.split("Borealis REV 24h")[1].split("Protocol fees")[0]
+                         if "Borealis REV 24h" in html else html)
 
 
 if __name__ == "__main__":
