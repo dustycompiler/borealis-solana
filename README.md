@@ -101,7 +101,7 @@ Live JSON-RPC against `https://api.mainnet-beta.solana.com`, falling back to `ht
 
 **Burned SOL** is `getBalance` of the Solana Foundation burn address `1nc1nerator11111111111111111111111111111111` (solana.com news, footnote 4). Native SOL in an inaccessible account, not an SPL mint-supply burn.
 
-**Public Dune embed** (Sources tab) iframes cryptoonchain/solana-explorer. Labeled public Dune embed, not our query. No Dune API key.
+**Public Dune embed (External Reference)** (Sources tab) iframes cryptoonchain/solana-explorer. Labeled External Reference — public Dune embed, not our query, not a core number. No Dune API key. Do not copy Orbit Dune queries or cache.
 
 ### solana.com/data
 
@@ -145,7 +145,7 @@ Shown in the hero. Not a mystery number.
 
 Covered by `tests/test_generate.py`.
 
-**Network Health vs Ecosystem Activity.** The exec verdict is **network** health only: RPC, slot cadence, TPS vs baseline, delinquency, status.solana.com. Labels: `HEALTHY` / `WATCH` / `DEGRADED` / `CRITICAL`. DEX/TVL/DAA moves are **Ecosystem Activity** (`QUIET` / `NORMAL` / `ELEVATED` / `SURGE` / `CONTRACTION`) and cannot paint the network WATCH. A DEX +103% print is SURGE + HEALTHY when slots and delinquency are quiet. Biggest risk is blank (`None — …`) unless an item is actually adverse.
+**Network Health vs Ecosystem Activity.** The exec verdict is **network** health only: RPC, slot cadence, TPS vs baseline, delinquency, status.solana.com. Labels: `HEALTHY` / `WATCH` / `DEGRADED` / `CRITICAL`. DEX/TVL/DAA moves are **Ecosystem Activity** (`QUIET` / `NORMAL` / `ELEVATED` / `SURGE` / `CONTRACTION`) and cannot paint the network WATCH. A DEX surge is SURGE + HEALTHY when slots and delinquency are quiet. If Network Health is not HEALTHY, Biggest risk is the classifier's dominant factor (delinquency, slot, RPC) — never "None" under WATCH.
 
 ---
 
@@ -212,7 +212,7 @@ See `crontab.example` (`*/15 * * * *`).
 | DAA / 30d TPS / 30d SOL | solana.com/data | no | vendors not averaged |
 | Burned SOL | incinerator getBalance | no | Foundation burn address |
 | X RSS | xcancel / nitter / rsshub | no | not Twitter API |
-| Dune panel | public dashboard iframe | no | public Dune embed, not our query |
+| Dune panel | public dashboard iframe (External Reference) | no | public Dune embed, not our query; not core |
 
 ## Integrity rules
 

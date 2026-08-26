@@ -1,54 +1,29 @@
-# Borealis 1.4.1 — skeptical self-score
+# Borealis 1.5.0 — official Superteam rubric
 
-Scored 2026-08-25 **18:15 PT** (2026-08-26T01:15:11Z) against the generated snapshot
-that this commit ships (`generated_at_utc` **2026-08-26T01:15:11Z**,
-`generated_at_pt` **2026-08-25 18:15:11 PT**, version **1.4.1**). Live URL
-https://dustycompiler.github.io/borealis-solana/ is verified after push.
-Not a judge ranking. Do not inflate.
+Scored 2026-08-25 **19:15 PT** against live https://dustycompiler.github.io/borealis-solana/
+(`meta.version` **1.5.0**, `generated_at_utc` **2026-08-26T02:13:17Z**, commit **e97fc69** plus
+the Action refresh that kept 1.5.0 semantics). Not a judge ranking. Do not inflate.
 
-Scale: 0 missing · 3 present but misleading or thin · 4 honest and usable · 5 would survive a hostile grep.
+Official listing criteria only (earn.superteam.fun, listing token SIMD-525). Scale 0.0–5.0.
+If uncertain, score lower. A 5.0 would survive a hostile grep with no remaining P0/P1.
 
-| # | Rubric | Score | Evidence |
-|---|---|---:|---|
-| 1 | Live cluster TPS / slot / RPC | 4.8 | Live TPS ~4.2k, slot ~366 ms, getHealth path + publicnode fallback unit-tested. This run health **82** because delinquent stake ~1.45% (formula, not a freeze). Not 5.0: this run did not exercise the 429 fallback on the wire. |
-| 2 | SOL 24h honesty | 4.6 | `(last − open) / open` from Coinbase this run (Gecko 429). Formula tested. Not 5.0: CoinGecko still 429s from shared IPs; headline confidence MED. |
-| 3 | Health score 0–100 | 4.7 | Published 25/30/25/20 formula on page + tests. Live 82 matches delinquency ≥1% (slot still ~366 ms). |
-| 4 | Exec view (network ≠ ecosystem) | 5.0 | This run: network **WATCH** (delinquency) + ecosystem **SURGE** (DEX +60%). DEX does not paint WATCH; WATCH is from an actual network flag. Test `test_dex_surge_is_healthy_plus_surge_not_watch` still holds on the quiet-slot fixture. |
-| 5 | Anomalies on run 1 | 4.5 | Llama 1d/7d + 30d medians + z-scores. This run: protocol-fees 7d ALERT, high delinquency WARN, DEX 7d INFO, SOL vs 30d, TPS vs 30d, risk-off. Empty-strip copy exists. |
-| 6 | Median tx fee | 4.6 | Live p50 0.000005 SOL, `window_seconds=9961` (~2.8h), `not_24h_census=true`, n_tx=2240 (≤160 txs/slot × 14 slots: 2 spot + 12 stratified). Tile subline **NOT a 24h census**. Not 5.0: still a stratified sample, not a 24h ledger (would need archive RPC). |
-| 7 | Borealis REV | 4.6 | Live **$991.18K** = MEASURED in-protocol + ESTIMATED Jito tips. Llama protocol fees EXCLUDED. One-line sensitivity: p50 floor → ~$103K tips; p95 floor → ~$19.9M tips; headline uses p50. Tests assert llama is not summed and p95 is not the headline. **Gap:** no public no-key Jito 24h ledger — the p95 spread is the point. |
-| 8 | Tokenized equities / RWA | 4.5 | Live RWA TVL **$2.06B**. Priced-subset mcap **$276.71M** (**80 of 715**, not 24). Public `/multiplier` **never fetched** (0 `xstocks.mult.*` rows). Jupiter 24h vol subset; **7d omitted** because Jupiter lite-api has no 7d stats and Llama `protocol/xstocks` has no volume series. Llama xStocks TVL **$430.26M** labeled liquidity, not mcap. **Gap:** 80/715 is still a lower bound (HTTP budget, extra names add almost no mcap); 7d equity volume is an external API hole. |
-| 9 | SIMD-525 tracker | 4.6 | Primary source: solana.com/news “Lowering Slot Time and Validators Economic”. Heading uses listing token SIMD-525. Observed ~366 ms is **INFERRED corroboration**, not a feature-gate RPC. One short SIMD-025 correction, tiny, not a headline. **Gap:** no feature-gate / activation-slot RPC (by design this cycle). |
-| 10 | Intelligence brief | 4.6 | 3–6 evidence-linked lines, no LLM. DEX-without-stress + priced-subset mcap called out. This run biggest risk is SOL/TVL, not DEX +60%. |
-| 11 | Charts 24h/7d/30d/90d | 4.5 | SVG + range buttons; TVL 90d from Llama; TPS/SOL public feeds 30d. Tape n is still short. |
-| 12 | Source · age · data-health | 4.7 | Live: `required sources 245/245 OK · 1 expected unavailable` (CoinGecko 429). **Zero** `xstocks.mult.*` rows — that route is not requested. Not 5.0: Gecko 429 from shared IPs is an external blocker. |
-| 13 | Tests | 4.7 | **36** stdlib unittests, no network. Added multiplier-route skip, fee `window_seconds` + `not_24h_census` tile, Jito p50-vs-p95 sensitivity. DEX surge HEALTHY+SURGE still covered. Does not replay a full generate.py. |
-| 14 | 15-min Action + live freshness | 4.8 | Cadence 15 min. Live Pages verified after this push for a new `generated_at`. |
-| 15 | Stdlib, no keys | 5.0 | urllib + stdlib ThreadPoolExecutor. No Superteam submit this cycle. |
+| Criterion | Score / 5 | Why | What prevents 5.0 |
+|---|---:|---|---|
+| Comprehensiveness | 4.7 | Live page covers TPS, slot, height, epoch, active/delinquent validators, stake, commissions, delinquency alerts, news + public X/Nitter RSS, SOL 24h, stables, DEX (24h and 7d totals with correct Llama semantics), **measured** in-protocol fees, median tx fee (stratified getBlock, labeled not a census), tokenized-equity **volume** (Jupiter xStocks subset), DAA (Allium via solana.com/data), Alpenglow SIMD-0326, SIMD-525, anomalies, HTML+MD+JSON, 15-min Action, live demo. | Full REV is **honestly incomplete** (no zero-key 24h Jito tape). xStocks mcap is 80 of 715 names. 7d equity volume does not exist on no-key Jupiter/Llama. Dune is an external embed, not a Borealis query. |
+| Automation & Maintainability | 4.8 | `python3 generate.py`, stdlib-only, no secrets. GitHub Actions every 15 minutes (tests.yml then update). Pages tracks main. Failure of CoinGecko 429 is expected-unavailable, not a crash. | GitHub cron drifts; do not claim hard realtime. CoinGecko 429 from shared IPs is a standing external. Screenshot step is best-effort Chrome. |
+| Clarity & Presentation | 4.7 | 30-second hero: Network Health separate from Ecosystem Activity. This live run: **HEALTHY** + **SURGE**. DEX line is `24h $2.95B · 1d −2% · vs-7d-ago +60%` (Llama `change_7d` is 24h vs 24h from 7d ago, not 7d-total). Full REV reads **incomplete**. Multipliers are live `?network=Solana`. | JSON version lives under `meta`, not the top-level key a judge might grep first. Charts still mix a short local tape with upstream 30d/90d — labeled, but easy to misread. |
+| Innovation | 4.6 | Network-vs-ecosystem classifier; biggest-risk bound to the same model; evidence-linked insights; source provenance; live xStocks currentMultiplier (capital-S `network=Solana`); refusing a fake REV product when the tape does not exist. | Intelligence is rule-based, not a deep multi-source causal model. No original Dune query (API is 401 without a key). |
+| Technical Implementation | 4.7 | 41 stdlib unittests (REV product forbidden, WATCH+delinquency is the risk, multiplier route fetched, DEX labels). RPC 429→publicnode. Escaping of feed text. `write_outputs` is the HTML/MD/JSON sink. | Full generate.py is still network-bound; e2e is fixture-backed via `write_outputs`, not a recorded RPC cassette of every source. JSON schema_version is not a separate product field. |
+| Originality | 4.8 | First-party generator, not a restyle of Orbit/Pulse/Heliostat. Pulse still labels Llama app fees as REV — Borealis does not. Dune iframe is labeled public embed, not our query. README states the SolPulse *idea* inspiration. | Third-party Dune dashboard is still on the Sources tab; must stay External Reference. |
 
-## Totals
+Mean: **4.72 / 5**. Categories below 4.5: **none**.
 
-- Categories: **15**
-- Sum: **70.2**
-- Mean: **4.68 / 5**
-- Categories below 4.5: **none**. Thinnest is **8 Tokenized (4.5)** — coverage, not labeling.
+## External blockers (not laziness)
 
-## Remaining gaps (external blockers, not laziness)
+1. **24h Jito tip tape** — Blockworks REV = in-protocol fees + actual Jito tips. Public `tip_floor` is a landed *bundle* percentile. Scanning eight tip accounts on public RPC is not a reliable 24h census. Headline stays incomplete.
+2. **xStocks HTTP budget** — 715 unique catalog names with a Solana mint; pricing 80 is a labeled lower bound.
+3. **Dune API** — results/CSV 401 without a key. Core architecture stays zero-key.
 
-1. **Median fee (4.6)** — ~2.8h stratified sample, loudly labeled. A true 24h fee tape needs an archive RPC or hours of getBlock; public RPC budget cannot census the ledger.
-2. **REV (4.6)** — Jito tips remain ESTIMATED (`tip_floor × non-vote TPS × 86400`). No public no-key Jito 24h ledger. p50 vs p95 sensitivity is the honest range, not a second ledger.
-3. **Tokenized / RWA (4.5)** — priced **80/715** without keys; `/multiplier` skipped. Extra names beyond the top ~24 barely move mcap. **7d tokenized volume** does not exist on Jupiter lite-api (stats5m/1h/6h/24h only) or DeFiLlama `protocol/xstocks` (TVL, not volume). Inventing 7×24h would be a lie.
-4. **SIMD-525 (4.6)** — listing token cited from solana.com/news. Observed slot is corroboration. A feature-gate RPC is still not probed (this cycle treats it as inferred on purpose).
-5. **CoinGecko 429** — shared CI/Pages IPs. Coinbase 24h is the working path. External.
+## This cycle vs 1.4.1
 
-## What this cycle did not claim
-
-- Did not copy Heliostat/Orbit/Pulse code.
-- Did not treat llama protocol fees as REV.
-- Did not treat DEX surge as network WATCH.
-- Did not treat 2022 status.solana.com outages as current.
-- Did not call the xStocks `/multiplier` route.
-- Did not present 80-name (or 24-name) mcap as a 715 census.
-- Did not rename Llama xStocks TVL as mcap.
-- Did not invent a Jito ledger or a 7d tokenized-volume series.
-- Did not submit Superteam.
+Falsified and removed: `tip_floor p50 × non-vote TPS × 86400` as "Borealis REV 24h"; silent multiplier=1.0; WATCH with Biggest risk None; "DEX 7d +60%" as if it were 7d-total vs prior 7d.

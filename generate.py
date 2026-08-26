@@ -3357,8 +3357,8 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None) 
     rev_complete = False
 
     rev_def = (
-        "Borealis REV follows Blockworks/Helius: in-protocol transaction fees "
-        "(vote + base + priority) plus out-of-protocol Jito tips. "
+        "Full network REV (Blockworks/Helius definition) is in-protocol transaction "
+        "fees (vote + base + priority) plus out-of-protocol Jito tips. "
         "This run cannot publish a REV number: there is no 24h Jito tip tape on "
         "zero-key sources. tip_floor p50 × non-vote TPS × 86400 is kept as an "
         "INVALID sensitivity (per-bundle landed percentile, not a tape). "
@@ -4283,6 +4283,12 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
     snap["data_health"] = build_data_health(snap.get("sources") or [], market, cluster)
     append_history(history_path, hist_row)
 
+    write_outputs(snap, out_dir, docs_dir, screenshot=True)
+    return snap
+
+
+def write_outputs(snap: dict[str, Any], out_dir: str, docs_dir: str, *, screenshot: bool = True) -> None:
+    """Write report.json / report.md / index.html and copy to docs/. Used by generate and e2e."""
     os.makedirs(out_dir, exist_ok=True)
     with open(os.path.join(out_dir, "report.json"), "w", encoding="utf-8") as f:
         json.dump(snap, f, indent=2, default=str)
@@ -4300,8 +4306,8 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
     nj = os.path.join(docs_dir, ".nojekyll")
     if not os.path.isfile(nj):
         open(nj, "w").close()
-    maybe_screenshot(os.path.join(docs_dir, "index.html"), os.path.join(docs_dir, "screenshot.png"))
-    return snap
+    if screenshot:
+        maybe_screenshot(os.path.join(docs_dir, "index.html"), os.path.join(docs_dir, "screenshot.png"))
 
 
 def maybe_screenshot(html_path: str, png_path: str, timeout_s: int = 8) -> bool:
