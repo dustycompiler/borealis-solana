@@ -20,6 +20,7 @@ from generate import (  # noqa: E402
     assemble_market,
     build_brief,
     build_data_health,
+    cap_headline_confidence,
     build_economics,
     build_insights,
     classify_ecosystem_activity,
@@ -729,3 +730,27 @@ class FeeCensusLabelTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ConfidenceCapTests(unittest.TestCase):
+    def test_incomplete_rev_and_subset_mcap_are_not_high(self):
+        dh = {"headline_confidence": "HIGH", "notes": [], "ok": 10, "total": 10}
+        out = cap_headline_confidence(
+            dh,
+            {"rev_complete": False, "network_fees_date": "2026-08-24"},
+            {"count_mcap_computable": 80, "count_solana": 715},
+        )
+        self.assertEqual(out["headline_confidence"], "MIXED")
+        blob = " ".join(out["notes"]).lower()
+        self.assertIn("rev incomplete", blob)
+        self.assertIn("priced subset", blob)
+        self.assertNotEqual(out["headline_confidence"], "HIGH")
+
+    def test_complete_census_can_stay_high(self):
+        dh = {"headline_confidence": "HIGH", "notes": []}
+        out = cap_headline_confidence(
+            dh,
+            {"rev_complete": True},
+            {"count_mcap_computable": 10, "count_solana": 10},
+        )
+        self.assertEqual(out["headline_confidence"], "HIGH")

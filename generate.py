@@ -61,7 +61,7 @@ INCINERATOR_DOCS = (
 # Public Dune dashboard (no API key). Embed URL, not a query we authored.
 DUNE_EMBED_URL = "https://dune.com/embeds/dashboard/cryptoonchain/solana-explorer"
 DUNE_DASHBOARD_URL = "https://dune.com/cryptoonchain/solana-explorer"
-DUNE_EMBED_LABEL = "public Dune embed, not our query"
+DUNE_EMBED_LABEL = "External Reference — public third-party Dune dashboard, not a Borealis query"
 
 RSS_MAX_AGE_DAYS = 45
 NEWS_CURRENT_DAYS = 14
@@ -4160,6 +4160,32 @@ def write_favicon(out_dir: str, docs_dir: str) -> None:
             f.write(svg)
 
 
+
+def cap_headline_confidence(dh: dict[str, Any], eco: dict[str, Any] | None = None, xs: dict[str, Any] | None = None) -> dict[str, Any]:
+    """HTTP 200s are not HIGH if headline metrics are incomplete or subsets."""
+    out = dict(dh or {})
+    eco = eco or {}
+    xs = xs or {}
+    reasons = [n for n in (out.get("notes") or []) if n]
+    if not eco.get("rev_complete"):
+        reasons.append("full REV incomplete (no 24h Jito tape on zero-key sources)")
+    priced = xs.get("count_mcap_computable") or xs.get("count_priced") or 0
+    listed = xs.get("count_solana") or 0
+    if listed and priced < listed:
+        reasons.append(f"xStocks mcap is a priced subset ({priced} of {listed}), not a census")
+    fee_date = eco.get("network_fees_date")
+    if fee_date:
+        reasons.append(f"in-protocol fees series date {fee_date} (Allium via solana.com/data, not always same UTC day)")
+    rank = {"HIGH": 3, "MIXED": 2, "MED": 1, "LOW": 0}
+    conf = out.get("headline_confidence") or "MED"
+    if (not eco.get("rev_complete")) or (listed and priced < listed):
+        if rank.get(conf, 1) > rank["MIXED"]:
+            conf = "MIXED"
+    out["headline_confidence"] = conf
+    out["notes"] = reasons
+    return out
+
+
 def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
     generated = utcnow()
     http = Http()
@@ -4280,7 +4306,11 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
         },
     }
     snap["omissions"] = build_omissions(snap)
-    snap["data_health"] = build_data_health(snap.get("sources") or [], market, cluster)
+    snap["data_health"] = cap_headline_confidence(
+        build_data_health(snap.get("sources") or [], market, cluster),
+        snap.get("economics") or {},
+        snap.get("xstocks") or {},
+    )
     append_history(history_path, hist_row)
 
     write_outputs(snap, out_dir, docs_dir, screenshot=True)
