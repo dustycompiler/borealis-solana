@@ -261,6 +261,7 @@ class EquityMcapTests(unittest.TestCase):
         self.assertAlmostEqual(equity_mcap(10, 100, 2), 2000)
         self.assertIsNone(equity_mcap(None, 100, 1))
         self.assertIsNone(equity_mcap(10, None, 1))
+        self.assertIsNone(equity_mcap(10, 100, None))  # never silent 1.0
 
 
 class EconomicsHonestyTests(unittest.TestCase):
@@ -273,10 +274,15 @@ class EconomicsHonestyTests(unittest.TestCase):
                      "n_fees": 12, "n_tx": 12, "slot_lo": 1, "slot_hi": 10, "window_seconds": 3600, "note": "sample"},
             jito={"ok": False, "error": "timeout"},
         )
-        # REV number is in-protocol 9000 SOL * $100 = $900k. Llama $1M is excluded.
-        self.assertAlmostEqual(eco.get("rev_24h_usd"), 900_000)
-        self.assertAlmostEqual(eco.get("total_rev_usd"), 900_000)
+        # Full REV is incomplete (no 24h Jito tape). Llama $1M is excluded.
+        self.assertIsNone(eco.get("rev_24h_usd"))
+        self.assertIsNone(eco.get("total_rev_usd"))
+        self.assertFalse(eco.get("rev_complete"))
+        self.assertIn("INCOMPLETE", eco.get("rev_kind") or "")
+        self.assertAlmostEqual(eco.get("network_fees_usd_24h"), 900_000)
+        self.assertEqual((eco.get("headline_primary") or {}).get("usd"), 900_000)
         self.assertNotEqual(eco.get("rev_24h_usd"), 1e6)
+        self.assertNotEqual(eco.get("network_fees_usd_24h"), 1e6)
         self.assertTrue(eco.get("protocol_fees_excluded_from_rev"))
         self.assertIn("not REV", eco.get("protocol_fees_label") or "")
         self.assertEqual(eco.get("protocol_fees_usd"), 1e6)
@@ -285,7 +291,7 @@ class EconomicsHonestyTests(unittest.TestCase):
         self.assertEqual(eco.get("median_tx_fee_window_seconds"), 3600)
         self.assertTrue(eco.get("jito", {}).get("omitted"))
 
-    def test_jito_estimate_adds_to_rev_not_llama(self):
+    def test_jito_runrate_is_not_rev(self):
         eco = build_economics(
             {"fees": {"total_24h_usd": 14_490_000}},
             {"derived": {"network_fees_sol": 9000}},
@@ -295,9 +301,19 @@ class EconomicsHonestyTests(unittest.TestCase):
             cluster={"tps_nonvote": 2000},
         )
         tips = 1e-5 * 2000 * 86400 * 100  # $172,800
-        self.assertAlmostEqual(eco.get("rev_24h_usd"), 900_000 + tips)
-        self.assertLess(eco.get("rev_24h_usd"), 14_490_000)
-        self.assertEqual(eco.get("jito", {}).get("tips_24h_kind"), "ESTIMATED")
+        self.assertIsNone(eco.get("rev_24h_usd"))
+        self.assertFalse(eco.get("rev_complete"))
+        self.assertAlmostEqual(eco.get("network_fees_usd_24h"), 900_000)
+        self.assertNotEqual(eco.get("rev_24h_usd"), 900_000 + tips)
+        self.assertNotEqual(eco.get("rev_24h_usd"), 900_000)
+        jr = eco.get("jito_runrate_not_rev") or {}
+        self.assertTrue(jr.get("not_a_24h_aggregate"))
+        self.assertFalse(jr.get("included_in_headline"))
+        self.assertAlmostEqual(jr.get("runrate_24h_usd"), tips)
+        self.assertLess(eco.get("network_fees_usd_24h"), 14_490_000)
+        self.assertEqual(eco.get("protocol_fees_usd"), 14_490_000)
+        self.assertNotIn("ESTIMATED", (eco.get("jito", {}).get("tips_24h_kind") or ""))
+        self.assertIn("INVALID", (jr.get("kind") or "").upper())
 
 
 class InsightBriefTests(unittest.TestCase):
@@ -352,6 +368,47 @@ class InsightBriefTests(unittest.TestCase):
         cluster = {"tps_total": 500, "slot_time_sec": 0.85, "health": "ok"}
         brief = build_brief(cluster, {"delinquent_stake_pct": 0.1}, {}, {}, {"score": 40}, [], [])
         self.assertEqual(brief["network_health"], "CRITICAL")
+        self.assertIn("slot", brief["biggest_risk"].lower())
+        self.assertFalse(brief["biggest_risk"].lower().startswith("none"))
+
+    def test_healthy_plus_dex_surge_risk_is_none(self):
+        cluster = {"tps_total": 4000, "tps_nonvote": 1500, "slot_time_sec": 0.365, "health": "ok", "slot": 1}
+        validators = {"delinquent_stake_pct": 0.017, "nakamoto_33": 19}
+        defi = {"dex": {"change_7d_pct": 60, "change_1d_pct": 2, "total_24h_usd": 3e9},
+                "tvl_usd": 5e9, "tvl_change_1d_pct": 0.2}
+        brief = build_brief(cluster, validators, {"usd": 100, "usd_24h_change": 0.5}, defi,
+                            {"score": 100, "tps_baseline": 3500}, [], [])
+        self.assertEqual(brief["network_health"], "HEALTHY")
+        self.assertTrue(brief["biggest_risk"].startswith("None"))
+        self.assertIn("vs-7d-ago", brief["what_changed"])
+        self.assertNotIn("DEX 7d +", brief["what_changed"])
+
+    def test_delinquency_watch_is_the_biggest_risk(self):
+        cluster = {"tps_total": 4000, "slot_time_sec": 0.40, "health": "ok", "slot": 1}
+        brief = build_brief(
+            cluster,
+            {"delinquent_stake_pct": 1.42, "delinquent_count": 12},
+            {}, {}, {"score": 82, "tps_baseline": 3500}, [], [],
+        )
+        self.assertEqual(brief["network_health"], "WATCH")
+        self.assertIn("delinquen", brief["biggest_risk"].lower())
+        self.assertFalse(brief["biggest_risk"].lower().startswith("none"))
+
+    def test_slot_watch_is_the_biggest_risk(self):
+        cluster = {"tps_total": 4000, "slot_time_sec": 0.65, "health": "ok", "slot": 1}
+        brief = build_brief(
+            cluster, {"delinquent_stake_pct": 0.1}, {}, {}, {"score": 85, "tps_baseline": 3500}, [], [],
+        )
+        self.assertIn(brief["network_health"], ("WATCH", "DEGRADED"))
+        self.assertIn("slot", brief["biggest_risk"].lower())
+        self.assertFalse(brief["biggest_risk"].lower().startswith("none"))
+
+    def test_rpc_down_risk_mentions_rpc(self):
+        cluster = {"tps_total": None, "slot": None, "slot_time_sec": None, "health": None}
+        brief = build_brief(cluster, {"delinquent_stake_pct": 0.0}, {}, {}, {}, [], [])
+        self.assertIn(brief["network_health"], ("CRITICAL", "DEGRADED"))
+        self.assertIn("rpc", brief["biggest_risk"].lower())
+        self.assertFalse(brief["biggest_risk"].lower().startswith("none"))
 
 
 class FeeWindowTests(unittest.TestCase):
@@ -418,14 +475,18 @@ class Simd525Tests(unittest.TestCase):
                       "biggest_risk": "None — no isolated adverse network or market print this run.",
                       "score": 100, "what_changed": "DEX 7d +103%", "why_it_matters": "network healthy"},
             "editorial": ed,
-            "economics": {"rev_24h_usd": 1_140_000, "rev_kind": "MEASURED in-protocol + ESTIMATED Jito tips",
+            "economics": {"rev_24h_usd": None, "rev_complete": False,
+                          "rev_kind": "INCOMPLETE — no 24h Jito tip tape on zero-key sources",
+                          "network_fees_usd_24h": 1_140_000,
+                          "headline_primary": {"label": "in-protocol network fees 24h", "usd": 1_140_000},
                           "rev_definition": "Blockworks/Helius: fees + tips"},
             "health_score": {"score": 100, "formula": "25x"},
         })
         self.assertIn("SIMD-525", html)
         self.assertIn("HEALTHY", html)
-        self.assertIn("1.14", html.replace(",", "") if False else html)  # usd() formats $1.14M
-        self.assertIn("$1.14M", html)
+        self.assertIn("$1.14M", html)  # in-protocol fees 24h, not Full REV
+        self.assertIn("incomplete", html)
+        self.assertNotIn("Borealis REV 24h", html)
 
     def test_365ms_maps_to_350_stage(self):
         st = infer_simd0525_stage(365)
@@ -511,8 +572,10 @@ class FailureFixtureTests(unittest.TestCase):
                       "biggest_risk": "None — no isolated adverse network or market print this run.",
                       "score": 100, "what_changed": "x", "why_it_matters": "y"},
             "health_score": {"score": 100, "formula": "25x"},
-            "economics": {"rev_24h_usd": 1_000_000,
-                          "rev_kind": "MEASURED in-protocol + ESTIMATED Jito tips",
+            "economics": {"rev_24h_usd": None, "rev_complete": False,
+                          "rev_kind": "INCOMPLETE — no 24h Jito tip tape on zero-key sources",
+                          "network_fees_usd_24h": 1_000_000,
+                          "headline_primary": {"label": "in-protocol network fees 24h", "usd": 1_000_000},
                           "protocol_fees_usd": 14_000_000},
             "xstocks": {
                 "market_cap_usd": 276_000_000,
@@ -541,16 +604,18 @@ class FailureFixtureTests(unittest.TestCase):
         self.assertIn("required sources 10/10 OK", html)
         self.assertIn("expected unavailable", html)
         self.assertNotIn("108/132", html)
-        # protocol fees stay excluded from the REV tile value
+        # protocol fees stay excluded from in-protocol fees / Full REV tiles
         self.assertIn("$1.00M", html)
-        self.assertNotIn("$14.00M", html.split("Borealis REV 24h")[1].split("Protocol fees")[0]
-                         if "Borealis REV 24h" in html else html)
+        self.assertIn("incomplete", html)
+        self.assertNotIn("Borealis REV 24h", html)
+        proto_chunk = html.split("In-protocol fees 24h")[1].split("Protocol fees")[0] if "In-protocol fees 24h" in html else html
+        self.assertNotIn("$14.00M", proto_chunk)
 
 
 
-class MultiplierSkipTests(unittest.TestCase):
-    def test_xstocks_never_fetches_multiplier_route(self):
-        assets = json.dumps({
+class MultiplierFetchTests(unittest.TestCase):
+    def _assets(self):
+        return json.dumps({
             "nodes": [{
                 "name": "Tesla xStock", "symbol": "TSLAx", "underlyingSymbol": "TSLA",
                 "isTradingHalted": False,
@@ -558,26 +623,52 @@ class MultiplierSkipTests(unittest.TestCase):
             }],
             "page": {"hasNextPage": False, "currentPage": 0},
         }).encode()
+
+    def test_xstocks_fetches_multiplier_and_uses_currentMultiplier(self):
+        price = json.dumps({"quote": 10}).encode()
+        circ = json.dumps({"value": 100}).encode()
+        mult = json.dumps({"currentMultiplier": 2}).encode()
+        http = ScriptedHttp([
+            ("/public/assets?pageSize", 200, self._assets()),
+            ("/price-data", 200, price),
+            ("circulating-supply", 200, circ),
+            ("/multiplier?network=Solana", 200, mult),
+        ])
+        xs = fetch_xstocks(http)
+        urls = [str(r.get("url") or "") for r in http.log]
+        ids = [str(r.get("id") or "") for r in http.log]
+        self.assertTrue(any("/multiplier?network=Solana" in u for u in urls))
+        self.assertTrue(any(i.startswith("xstocks.mult") for i in ids))
+        self.assertIn("multiplier", xs.get("multiplier_route") or "")
+        self.assertTrue(xs.get("ok"))
+        self.assertAlmostEqual(xs.get("market_cap_usd"), 2000.0)  # 10*100*2, not silent 1.0
+        self.assertEqual(xs.get("count_multiplier_ok"), 1)
+        self.assertEqual(xs.get("count_mcap_computable"), 1)
+        self.assertFalse(xs.get("mcap_is_census"))
+        self.assertIn("Solana", xs.get("count_meaning") or "")
+
+    def test_missing_multiplier_omits_mcap_never_silent_one(self):
         price = json.dumps({"quote": 10}).encode()
         circ = json.dumps({"value": 100}).encode()
         http = ScriptedHttp([
-            ("/public/assets?pageSize", 200, assets),
+            ("/public/assets?pageSize", 200, self._assets()),
             ("/price-data", 200, price),
             ("circulating-supply", 200, circ),
             ("/multiplier", 400, None),
         ])
         xs = fetch_xstocks(http)
         urls = [str(r.get("url") or "") for r in http.log]
-        ids = [str(r.get("id") or "") for r in http.log]
-        self.assertFalse(any("/multiplier" in u for u in urls))
-        self.assertFalse(any(i.startswith("xstocks.mult") for i in ids))
-        self.assertEqual(xs.get("multiplier_route"), "skipped")
-        self.assertTrue(xs.get("ok"))
-        self.assertAlmostEqual(xs.get("market_cap_usd"), 1000.0)
-        self.assertFalse(xs.get("mcap_is_census"))
+        self.assertTrue(any("/multiplier?network=Solana" in u for u in urls))
+        self.assertIsNone(xs.get("market_cap_usd"))
+        self.assertEqual(xs.get("count_multiplier_ok"), 0)
+        self.assertEqual(xs.get("count_mcap_computable"), 0)
+        row = (xs.get("assets") or [{}])[0]
+        self.assertIsNone(row.get("multiplier"))
+        self.assertIsNone(row.get("mcap_usd"))
+        # 10*100*1.0 would be 1000 — that silent 1.0 is the 1.4.1 lie
+        self.assertNotEqual(row.get("mcap_usd"), 1000.0)
         dh = build_data_health(http.log, {"usd": 100}, {"tps_total": 4000})
-        self.assertFalse(any(str(s.get("id") or "").startswith("xstocks.mult") for s in http.log))
-        self.assertEqual(dh["ok"], dh["total"])
+        self.assertGreaterEqual(dh["expected_unavailable"], 1)
 
 
 class FeeCensusLabelTests(unittest.TestCase):
@@ -618,12 +709,20 @@ class FeeCensusLabelTests(unittest.TestCase):
         )
         tips_p50 = 1e-5 * 2000 * 86400 * 100
         tips_p95 = 4e-5 * 2000 * 86400 * 100
-        self.assertAlmostEqual(eco.get("rev_24h_usd"), 900_000 + tips_p50)
-        self.assertNotAlmostEqual(eco.get("rev_24h_usd"), 900_000 + tips_p95)
+        self.assertIsNone(eco.get("rev_24h_usd"))
+        self.assertFalse(eco.get("rev_complete"))
+        self.assertAlmostEqual(eco.get("network_fees_usd_24h"), 900_000)
+        self.assertNotEqual(eco.get("rev_24h_usd"), 900_000 + tips_p50)
+        self.assertNotEqual(eco.get("rev_24h_usd"), 900_000 + tips_p95)
+        jr = eco.get("jito_runrate_not_rev") or {}
+        self.assertTrue(jr.get("not_a_24h_aggregate"))
+        self.assertFalse(jr.get("included_in_headline"))
+        self.assertAlmostEqual(jr.get("runrate_24h_usd"), tips_p50)
+        self.assertAlmostEqual(jr.get("runrate_p95_usd"), tips_p95)
         self.assertIn("p50", (eco.get("rev_sensitivity") or "").lower())
         self.assertIn("p95", (eco.get("rev_sensitivity") or "").lower())
         self.assertFalse(eco.get("rev_jito_is_ledger"))
-        self.assertEqual(eco.get("jito", {}).get("tips_24h_kind"), "ESTIMATED")
+        self.assertIn("INVALID", (jr.get("kind") or "").upper())
 
 
 
