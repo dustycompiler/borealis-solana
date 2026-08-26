@@ -100,6 +100,59 @@ def sparkline(values, w=220, h=48, color="#3ee0b0", fill=True) -> str:
     )
 
 
+def axis_fmt(n, money=False) -> str:
+    try:
+        x = float(n)
+    except (TypeError, ValueError):
+        return "—"
+    ax = abs(x)
+    sign = "−" if x < 0 else ""
+    if money:
+        if ax >= 1_000_000_000:
+            return f"{sign}${ax/1e9:.2f}B"
+        if ax >= 1_000_000:
+            return f"{sign}${ax/1e6:.2f}M"
+        if ax >= 1_000:
+            return f"{sign}${ax/1e3:.1f}K"
+        return f"{sign}${ax:.2f}"
+    if ax >= 1_000_000:
+        return f"{sign}{ax/1e6:.2f}M"
+    if ax >= 1_000:
+        return f"{sign}{ax/1e3:.1f}K"
+    if ax >= 100:
+        return f"{sign}{ax:.0f}"
+    if ax >= 10:
+        return f"{sign}{ax:.1f}"
+    return f"{sign}{ax:.2f}"
+
+def trend_chart(points, *, w=560, h=176, color="#3ee0b0", ylabel="", money=False) -> str:
+    vals, labels = [], []
+    for p in points or []:
+        if isinstance(p, dict):
+            v, ts = p.get("v"), p.get("ts")
+        elif isinstance(p, (int, float)):
+            v, ts = p, None
+        else:
+            continue
+        if isinstance(v, (int, float)) and math.isfinite(v):
+            vals.append(float(v))
+            labels.append(str(ts or ""))
+    if len(vals) < 2:
+        return '<p class="muted tiny">Not enough points for a trend yet.</p>'
+    body = sparkline(vals, w=max(w - 64, 200), h=max(h - 36, 80), color=color, fill=True)
+    lo, hi, last = min(vals), max(vals), vals[-1]
+    t0 = (labels[0] or "")[:10]
+    t1 = (labels[-1] or "")[:10]
+    return (
+        '<div class="trend-wrap">'
+        + '<div class="trend-y">' + '<span>' + e(axis_fmt(hi, money=money)) + '</span>'
+        + '<span>' + e(axis_fmt(lo, money=money)) + '</span></div>'
+        + '<div class="trend-plot">' + body + '<div class="trend-x">'
+        + '<span>' + e(t0) + '</span>'
+        + '<span>' + e(ylabel) + " " + e(axis_fmt(last, money=money)) + '</span>'
+        + '<span>' + e(t1) + '</span></div></div></div>'
+    )
+
 def epoch_ring(pct_v) -> str:
     if pct_v is None:
         pct_v = 0
@@ -187,6 +240,29 @@ CSS += """
 .watching { color:var(--muted); font-size:13px; padding:6px 0 2px; }
 .age { color:var(--teal); }
 .score-hero .ring { width:64px; height:64px; }
+.trend-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px; }
+@media (max-width: 980px) { .trend-grid { grid-template-columns:1fr; } }
+.trend-wrap { display:grid; grid-template-columns:52px 1fr; gap:6px; align-items:stretch; }
+.trend-y { display:flex; flex-direction:column; justify-content:space-between; color:var(--faint);
+  font-size:10px; font-family:"IBM Plex Mono", ui-monospace, monospace; padding:8px 0 28px; text-align:right; }
+.trend-plot .spark { height:128px; width:100%; margin-top:0; }
+.trend-x { display:flex; justify-content:space-between; gap:8px; color:var(--faint); font-size:10px;
+  font-family:"IBM Plex Mono", ui-monospace, monospace; margin-top:4px; }
+.dune-frame { width:100%; min-height:560px; border:1px solid var(--line); border-radius:12px; background:#0b0f14; }
+.burn-note { font-size:11px; color:var(--faint); margin-top:6px; word-break:break-all; }
+.brief { display:grid; grid-template-columns:160px 1fr 1fr 1fr; gap:10px; margin:14px 0 8px;
+  padding:12px 14px; border:1px solid var(--line2); border-radius:14px;
+  background:linear-gradient(180deg,#121a14,#0c1017); }
+.brief .verdict { font-size:22px; font-weight:650; letter-spacing:.06em; }
+.brief .verdict.HEALTHY { color:var(--teal); }
+.brief .verdict.WATCH { color:var(--amber); }
+.brief .verdict.DEGRADED { color:var(--rose); }
+.brief dl { margin:0; }
+.brief dt { color:var(--faint); font-size:10px; letter-spacing:.1em; text-transform:uppercase; }
+.brief dd { margin:2px 0 8px; font-size:13px; }
+.insight { border-left:3px solid var(--teal); padding:6px 10px; margin:0 0 8px; background:#101810; border-radius:0 8px 8px 0; }
+.meta-line { font-size:10px; color:var(--faint); margin-top:4px; }
+.range-btns button { margin-right:4px; }
 """
 
 
@@ -208,6 +284,20 @@ JS += """
   }
   tickAge();
   setInterval(tickAge, 15000);
+  var rb = document.getElementById("range-btns");
+  if (rb) {
+    rb.addEventListener("click", function(ev){
+      var b = ev.target.closest("button[data-range]");
+      if (!b) return;
+      var r = b.getAttribute("data-range");
+      rb.querySelectorAll("button").forEach(function(x){ x.classList.remove("on"); });
+      b.classList.add("on");
+      document.querySelectorAll(".range-grid").forEach(function(g){
+        if (g.getAttribute("data-range") === r) g.classList.remove("hidden");
+        else g.classList.add("hidden");
+      });
+    });
+  }
   var live = document.getElementById("live-sol");
   if (live) {
     fetch("https://api.exchange.coinbase.com/products/SOL-USD/stats", {headers:{Accept:"application/json"}})
@@ -235,13 +325,21 @@ MARK = """<svg class="mark" viewBox="0 0 36 36" aria-hidden="true">
 </svg>"""
 
 
-def tile(title, value, sub="", chip=None, ghost=False, spark=""):
+def tile(title, value, sub="", chip=None, ghost=False, spark="", source=None, conf=None, extra=""):
     cls = "card ghost" if ghost else "card"
     chip_html = ""
     if chip is not None:
         chip_html = f'<span class="chip {delta_class(chip)}">{pct(chip)}</span>'
     sub_html = f'<div class="sub">{sub} {chip_html}</div>' if (sub or chip is not None) else ""
-    return f'<article class="{cls}"><h3>{e(title)}</h3><div class="val">{value}</div>{sub_html}{spark}</article>'
+    prov = provenance(source, conf, extra)
+    return f'<article class="{cls}"><h3>{e(title)}</h3><div class="val">{value}</div>{sub_html}{prov}{spark}</article>'
+
+
+def provenance(source=None, conf=None, extra=""):
+    bits = [x for x in (source, conf, extra) if x]
+    if not bits:
+        return ""
+    return '<div class="meta-line">' + e(" · ".join(str(b) for b in bits)) + "</div>"
 
 
 def render_html(snap: dict) -> str:
@@ -261,6 +359,16 @@ def render_html(snap: dict) -> str:
     hs = snap.get("health_score") or {}
     eco = snap.get("economics") or {}
     hist = snap.get("history") or []
+    inc = snap.get("incinerator") or {}
+    trends = snap.get("trends") or {}
+    dune = snap.get("dune") or {}
+    chart = trends.get("chart") or {}
+    brief = snap.get("brief") or {}
+    xs = snap.get("xstocks") or {}
+    insights = snap.get("insights") or []
+    txf = snap.get("tx_fees") or {}
+    dh = snap.get("data_health") or {}
+    eco = snap.get("economics") or eco
 
     health = c.get("health")
     health_ok = health == "ok"
@@ -297,35 +405,64 @@ def render_html(snap: dict) -> str:
     rwa = d.get("rwa") or {}
     rwa_ghost = rwa.get("tvl_usd") is None
 
+    age = (m.get("generated_at_utc") or m.get("generated_at") or "this snapshot")
+    hc = (dh.get("headline_confidence") or "MED")
+    fee_conf = "HIGH" if (eco.get("median_tx_fee_n") or 0) and eco.get("median_tx_fee_n") >= 200 else (
+        "MED" if eco.get("median_tx_fee_sol") is not None else "LOW"
+    )
+    xs_conf = "MED" if xs.get("market_cap_usd") is not None else "LOW"
     kpis = "".join([
         tile("TPS", nfmt(c.get("tps_total"), 0),
              f"median {nfmt(c.get('tps_median'), 0)} · {nfmt(c.get('performance_window_sec'))}s window",
-             spark=tps_spark),
-        tile("Non-vote TPS", nfmt(c.get("tps_nonvote"), 0), "from numNonVoteTransactions", spark=nv_spark),
+             spark=tps_spark, source="getRecentPerformanceSamples", conf="HIGH", extra=age),
+        tile("Non-vote TPS", nfmt(c.get("tps_nonvote"), 0), "from numNonVoteTransactions", spark=nv_spark,
+             source="getRecentPerformanceSamples", conf="HIGH", extra=age),
         tile("Slot time", (nfmt((c.get("slot_time_sec") or 0)*1000, 1) + " ms") if c.get("slot_time_sec") else "—",
              f"median {nfmt((c.get('slot_time_median') or 0)*1000, 1)} ms · max {nfmt((c.get('slot_time_max') or 0)*1000, 1)}",
-             spark=st_spark),
+             spark=st_spark, source="getRecentPerformanceSamples", conf="HIGH", extra=age),
         tile("SOL", usd(px.get("usd"), 2) if not px_ghost else "—",
              (px.get("usd_24h_change_source") or px.get("source") or "price") if not px_ghost else "price omitted",
-             chip=px.get("usd_24h_change"), ghost=px_ghost),
-        tile("REV proxy", usd(eco.get("rev_proxy_usd")) if eco.get("rev_proxy_usd") is not None else "—",
-             eco.get("rev_label") or "DeFiLlama Solana fees 24h (REV proxy)",
-             chip=eco.get("rev_change_1d_pct"), ghost=eco.get("rev_proxy_usd") is None),
+             chip=px.get("usd_24h_change"), ghost=px_ghost,
+             source=px.get("usd_24h_change_source") or px.get("source") or "Coinbase/Kraken",
+             conf=("MED" if "fallback" in str(px.get("usd_24h_change_source") or "").lower() or "coinbase" in str(px.get("source") or "").lower() else hc),
+             extra=age),
+        tile("Median tx fee",
+             ((nfmt(eco.get("median_tx_fee_sol"), 6) + " SOL") if eco.get("median_tx_fee_sol") is not None else "—"),
+             (f"p90 {nfmt(eco.get('median_tx_fee_p90_sol'), 6)} · n={nfmt(eco.get('median_tx_fee_n'))} txs · getBlock"
+              if eco.get("median_tx_fee_sol") is not None else "getBlock sample omitted"),
+             ghost=eco.get("median_tx_fee_sol") is None,
+             source="RPC getBlock meta.fee", conf=fee_conf, extra=age),
         tile("TVL", usd(d.get("tvl_usd")) if not tvl_ghost else "—",
-             "DeFiLlama chain TVL", chip=d.get("tvl_change_1d_pct"), ghost=tvl_ghost, spark=tvl_spark),
+             "DeFiLlama chain TVL", chip=d.get("tvl_change_1d_pct"), ghost=tvl_ghost, spark=tvl_spark,
+             source="api.llama.fi/v2/chains", conf="HIGH", extra=age),
         tile("DEX 24h", usd((d.get("dex") or {}).get("total_24h_usd")),
              f"7d {usd((d.get('dex') or {}).get('total_7d_usd'))}",
-             chip=(d.get("dex") or {}).get("change_1d_pct")),
+             chip=(d.get("dex") or {}).get("change_1d_pct"),
+             source="api.llama.fi/overview/dexs/Solana", conf="HIGH", extra=age),
         tile("Stables", usd(st.get("circulating_usd")) if not stab_ghost else "—",
-             "Solana pegged-USD", chip=st.get("change_1d_pct"), ghost=stab_ghost, spark=stab_spark),
+             "Solana pegged-USD", chip=st.get("change_1d_pct"), ghost=stab_ghost, spark=stab_spark,
+             source="stablecoins.llama.fi", conf="HIGH", extra=age),
         tile("RWA TVL", usd(rwa.get("tvl_usd")) if not rwa_ghost else "—",
-             f"{nfmt(rwa.get('protocol_count'))} RWA protocols on Solana", ghost=rwa_ghost),
+             f"{nfmt(rwa.get('protocol_count'))} RWA protocols on Solana (DeFiLlama, not equities)", ghost=rwa_ghost,
+             source="DeFiLlama RWA category TVL", conf="MED", extra=age),
+        tile("xStocks", usd(xs.get("market_cap_usd")) if xs.get("market_cap_usd") is not None else "—",
+             f"{nfmt(xs.get('count_solana'))} Solana-deployed · quote*circ*mult",
+             ghost=xs.get("market_cap_usd") is None,
+             source="xStocks public API · quote × circulating × multiplier", conf=xs_conf, extra=age),
         tile("Active addrs", nfmt(daa.get("headline_value")) if not daa_ghost else "—",
-             daa_sub, ghost=daa_ghost),
+             daa_sub, ghost=daa_ghost,
+             source="solana.com/data Active Addresses", conf="MED", extra=age),
         tile("Validators", nfmt(v.get("active_count")),
-             f"delinquent {nfmt(v.get('delinquent_count'))} · {pct(v.get('delinquent_stake_pct'), 3)} stake"),
+             f"delinquent {nfmt(v.get('delinquent_count'))} · {pct(v.get('delinquent_stake_pct'), 3)} stake",
+             source="getVoteAccounts", conf="HIGH", extra=age),
         tile("Nakamoto 33%", nfmt(v.get("nakamoto_33")),
-             f"50% {nfmt(v.get('nakamoto_50'))} · 67% {nfmt(v.get('supermajority_67'))}"),
+             f"50% {nfmt(v.get('nakamoto_50'))} · 67% {nfmt(v.get('supermajority_67'))}",
+             source="derived from getVoteAccounts stake", conf="HIGH", extra=age),
+        tile("Burned SOL",
+             (nfmt(inc.get("sol"), 2) + " SOL") if inc.get("ok") and inc.get("sol") is not None else "—",
+             "incinerator getBalance · Foundation burn address",
+             ghost=not inc.get("ok"),
+             source="getBalance incinerator", conf=("HIGH" if inc.get("ok") else "LOW"), extra=age),
     ])
 
     n_samples = len(c.get("tps_samples") or [])
@@ -468,6 +605,137 @@ def render_html(snap: dict) -> str:
         f'<div class="score-parts">{e(parts_txt)}</div>'
         f'<p class="formula">{e(hs.get("formula") or "")}</p></div></div>'
     )
+    dune_html = ''
+    if dune.get('ok') and dune.get('embed_url'):
+        dune_html = (
+            '<div class="panel" style="margin-top:10px">'
+            + '<h2>Public Dune embed</h2>'
+            + '<p class="tiny muted">'
+            + e(dune.get('label') or 'public Dune embed, not our query') + ' — '
+            + e(dune.get('title') or '') + '</p>'
+            + '<iframe class="dune-frame" title="public Dune embed, not our query" loading="lazy" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups" src="' + e(dune.get('embed_url')) + '"></iframe>'
+            + '<p class="tiny muted">' + '<a href="' + e(dune.get('dashboard_url') or '') + '" rel="noopener">Open on Dune</a> · no API key</p>'
+            + '</div>'
+        )
+    else:
+        dune_html = (
+            '<div class="panel" style="margin-top:10px">'
+            + '<h2>Public Dune embed</h2>'
+            + '<p class="omit">' + e(dune.get('error') or 'Public Dune embed skipped (no key, embed did not return 200).') + '</p></div>'
+        )
+
+
+    vrd = e(brief.get("verdict") or "WATCH")
+    brief_html = (
+        f'<section class="brief" aria-label="executive view">'
+        f'<div><div class="tiny muted">SOLANA</div>'
+        f'<div class="verdict {vrd}">{vrd}</div>'
+        f'<div class="tiny muted">score {e(brief.get("score"))}</div></div>'
+        f'<dl><dt>What changed</dt><dd>{e(brief.get("what_changed"))}</dd>'
+        f'<dt>Why it matters</dt><dd>{e(brief.get("why_it_matters"))}</dd></dl>'
+        f'<dl><dt>Biggest positive</dt><dd>{e(brief.get("biggest_positive"))}</dd>'
+        f'<dt>Biggest risk</dt><dd>{e(brief.get("biggest_risk"))}</dd></dl>'
+        f'<dl><dt>Network</dt><dd>{e(brief.get("network"))}</dd>'
+        f'<dt>Capital</dt><dd>{e(brief.get("capital"))}</dd>'
+        f'<dt>Usage</dt><dd>{e(brief.get("usage"))}</dd>'
+        f'<dt>Decentralization</dt><dd>{e(brief.get("decentralization"))}</dd></dl>'
+        f'</section>'
+    )
+    ins_bits = []
+    for ins in insights[:6]:
+        ins_bits.append(
+            f'<div class="insight"><b>{e(ins.get("title"))}</b>'
+            f'<p>{e(ins.get("detail"))}</p>'
+            f'<p class="tiny muted">evidence: {e(", ".join(ins.get("evidence") or []))}</p></div>'
+        )
+    insight_html = "".join(ins_bits) or '<p class="watching">No insight lines this run.</p>'
+    xs_rows = "".join(
+        f'<tr><td>{e(a.get("symbol"))}</td><td>{e(a.get("name"))}</td>'
+        f'<td class="right">{usd(a.get("quote"), 2)}</td>'
+        f'<td class="right">{nfmt(a.get("circulating"), 2)}</td>'
+        f'<td class="right">{nfmt(a.get("multiplier"), 4)}</td>'
+        f'<td class="right">{usd(a.get("mcap_usd"))}</td></tr>'
+        for a in (xs.get("top") or [])[:10]
+    )
+    fee_box = (
+        f'<div class="panel"><h2>Sampled tx fees (getBlock meta.fee)</h2>'
+        f'<p class="val">{nfmt(eco.get("median_tx_fee_sol"), 6)} SOL'
+        f' <span class="muted">p50</span> · {usd(eco.get("median_tx_fee_usd"), 4)}</p>'
+        f'<p class="sub">p90 {nfmt(eco.get("median_tx_fee_p90_sol"), 6)} · p99 {nfmt(eco.get("median_tx_fee_p99_sol"), 6)} SOL'
+        f' · n={nfmt(eco.get("median_tx_fee_n"))} · slots {e(eco.get("median_tx_fee_slots"))}</p>'
+        f'<p class="tiny muted">{e(eco.get("median_tx_fee_note"))}</p>'
+        f'<p class="tiny muted">Priority p50 {nfmt(eco.get("priority_p50_sol"), 6)} SOL · {e(eco.get("priority_note"))}</p>'
+        f'</div>'
+    )
+    jt = eco.get("jito") or {}
+    if jt.get("ok") and jt.get("landed_p50_sol") is not None:
+        jito_cell = f'{nfmt(jt.get("landed_p50_sol"), 6)} SOL p50 landed · p95 {nfmt(jt.get("landed_p95_sol"), 6)}'
+    else:
+        jito_cell = e(jt.get("reason") or "omitted")
+    eco_box = (
+        f'<div class="panel"><h2>Economic value (not REV)</h2>'
+        f'<table><tbody>'
+        f'<tr><td>Network fees 24h</td><td class="right">{nfmt(eco.get("network_fees_sol_24h"), 1)} SOL'
+        f' ({usd(eco.get("network_fees_usd_24h"))})</td></tr>'
+        f'<tr><td>Protocol fees 24h</td><td class="right">{usd(eco.get("protocol_fees_usd"))}</td></tr>'
+        f'<tr><td>Jito/MEV tip floor</td><td class="right">{jito_cell}</td></tr>'
+        f'<tr><td>REV total</td><td class="right">— · {e(eco.get("total_rev_note"))}</td></tr>'
+        f'</tbody></table>'
+        f'<p class="tiny muted">Protocol fees are DeFiLlama Solana fees, labeled as protocol fees, not REV. '
+        f'Network fees from solana.com/data. Sampled p50 is a getBlock distribution, not a 24h sum.</p></div>'
+    )
+    xs_box = (
+        f'<div class="panel"><h2>Tokenized equities · xStocks</h2>'
+        f'<p>{nfmt(xs.get("count_solana"))} Solana-deployed of {nfmt(xs.get("count_listed"))} listed · '
+        f'priced mcap {usd(xs.get("market_cap_usd"))}</p>'
+        f'<p class="tiny muted">{e(xs.get("mcap_note") or xs.get("error") or "")} Formula: {e(xs.get("mcap_formula"))}. '
+        f'{e(xs.get("solana_share_label") or "")}</p>'
+        f'<table><thead><tr><th>Sym</th><th>Name</th><th class="right">Quote</th>'
+        f'<th class="right">Circ</th><th class="right">Mult</th><th class="right">Mcap</th></tr></thead>'
+        f'<tbody>{xs_rows or "<tr><td colspan=6 class=omit>No priced xStocks this run.</td></tr>"}</tbody></table></div>'
+    )
+    dh_fail = "".join(
+        f'<li><b>{e(x.get("id"))}</b> — {e(x.get("error") or x.get("status"))}</li>'
+        for x in (dh.get("failures") or [])[:8]
+    )
+    dh_html = (
+        f'<div class="panel" style="margin-top:10px"><h2>Data health</h2>'
+        f'<p>sources {nfmt(dh.get("ok"))}/{nfmt(dh.get("total"))} · headline confidence {e(dh.get("headline_confidence"))}</p>'
+        f'<ul>{dh_fail or "<li>No fetch failures this run.</li>"}</ul></div>'
+    )
+
+
+    def _tail(pts, n):
+        pts = pts or []
+        return pts[-n:] if n and len(pts) > n else pts
+    daily = trends.get("daily") or {}
+    runp = trends.get("run") or {}
+    range_sets = {
+        "24h": (runp.get("tps") or _tail(daily.get("tps"), 2),
+                runp.get("tvl") or _tail(daily.get("tvl"), 2),
+                runp.get("sol") or _tail(daily.get("sol"), 2),
+                "15-min tape or last daily points"),
+        "7d": (_tail(daily.get("tps"), 7), _tail(daily.get("tvl"), 7), _tail(daily.get("sol"), 7),
+               "daily seed 7d"),
+        "30d": (_tail(daily.get("tps"), 30), _tail(daily.get("tvl"), 30), _tail(daily.get("sol"), 30),
+                "daily seed 30d"),
+        "90d": (_tail(daily.get("tps"), 90), _tail(daily.get("tvl"), 90), _tail(daily.get("sol"), 90),
+                "daily seed 90d (TVL) / available TPS-SOL"),
+    }
+    range_bits = []
+    for key, (tp, tv, so, lab) in range_sets.items():
+        hide = "" if key == "30d" else " hidden"
+        range_bits.append(
+            f'<div class="trend-grid range-grid{hide}" data-range="{key}">'
+            f'<div class="trend-card"><h3>TPS {key}</h3>{trend_chart(tp, color="#3ee0b0", ylabel="TPS")}'
+            f'<p class="tiny muted">{e(lab)}</p></div>'
+            f'<div class="trend-card"><h3>TVL {key}</h3>{trend_chart(tv, color="#f0b429", ylabel="TVL", money=True)}'
+            f'<p class="tiny muted">{e(lab)}</p></div>'
+            f'<div class="trend-card"><h3>SOL {key}</h3>{trend_chart(so, color="#7aa2ff", ylabel="SOL", money=True)}'
+            f'<p class="tiny muted">{e(lab)}</p></div></div>'
+        )
+    range_html = "".join(range_bits)
+
     payload = json.dumps({
         "meta": m,
         "anomalies": flags,
@@ -518,6 +786,7 @@ def render_html(snap: dict) -> str:
       <div id="live-sol" class="live-sol"></div>
     </div>
   </header>
+  {brief_html}
 
   <nav class="tabs">
     <button class="on" data-tab="overview">Overview</button>
@@ -525,11 +794,28 @@ def render_html(snap: dict) -> str:
     <button data-tab="defi">DeFi &amp; assets</button>
     <button data-tab="news">News &amp; status</button>
     <button data-tab="anomalies">Anomalies</button>
+    <button data-tab="trends">Trends</button>
     <button data-tab="sources">Sources</button>
   </nav>
 
   <section data-panel="overview">
     <div class="kpis">{kpis}</div>
+    <div class="panel" style="margin-top:10px">
+      <h2>Borealis Intelligence</h2>
+      {insight_html}
+    </div>
+    <div class="grid3" style="margin-top:10px">{fee_box}{eco_box}{xs_box}</div>
+    <div class="panel" style="margin-top:10px">
+      <h2>Trends · TPS / TVL / SOL</h2>
+      <p class="tiny muted">{e((trends or {}).get("note") or "")}</p>
+      <div class="range-btns tools" id="range-btns">
+        <button class="linkish" type="button" data-range="24h">24h</button>
+        <button class="linkish" type="button" data-range="7d">7d</button>
+        <button class="linkish on" type="button" data-range="30d">30d</button>
+        <button class="linkish" type="button" data-range="90d">90d</button>
+      </div>
+      {range_html}
+    </div>
     <div class="grid2">
       <div class="panel">
         <h2>Anomaly strip</h2>
@@ -621,7 +907,7 @@ def render_html(snap: dict) -> str:
         <p>Protocol TVL tagged RWA / RWA Lending with a Solana chain split: <b>{usd(rwa.get("tvl_usd"))}</b></p>
         <ul>{rwa_lis}</ul>
         <p class="tiny muted">Labeled RWA protocol TVL — not a tokenized-equities market cap. Llama /rwa/* routes are Pro-only.</p>
-        <p class="tiny muted">Median tx fee is not published on these public feeds. REV shown is DeFiLlama Solana fees 24h (REV proxy): {usd(eco.get("rev_proxy_usd"))}. Network fees {nfmt(eco.get("network_fees_sol_24h"),1)} SOL ({e(eco.get("network_fees_source") or "—")}).</p>
+        <p class="tiny muted">Median tx fee is sampled from getBlock meta.fee (see Overview). Protocol fees 24h {usd(eco.get("protocol_fees_usd"))} are DeFiLlama, not REV. Network fees {nfmt(eco.get("network_fees_sol_24h"),1)} SOL ({e(eco.get("network_fees_source") or "—")}).</p>
       </div>
       <div class="panel">
         <h2>Daily active addresses</h2>
@@ -665,7 +951,32 @@ def render_html(snap: dict) -> str:
     </div>
   </section>
 
+  <section class="hidden" data-panel="trends">
+    <div class="panel">
+      <h2>Multi-run tape · data/history.jsonl</h2>
+      <p class="tiny muted">{e((trends or {}).get("note") or "")} · run points {nfmt((trends.get("run") or {}).get("n"))}</p>
+      <div class="trend-grid">
+        <div class="trend-card"><h3>TPS (15-min tape)</h3>{trend_chart((trends.get("run") or {}).get("tps") or [], color="#3ee0b0", ylabel="TPS")}</div>
+        <div class="trend-card"><h3>TVL (15-min tape)</h3>{trend_chart((trends.get("run") or {}).get("tvl") or [], color="#f0b429", ylabel="TVL", money=True)}</div>
+        <div class="trend-card"><h3>SOL (15-min tape)</h3>{trend_chart((trends.get("run") or {}).get("sol") or [], color="#7aa2ff", ylabel="SOL", money=True)}</div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:10px">
+      <h2>Daily seed · DeFiLlama + solana.com/data</h2>
+      <div class="trend-grid">
+        <div class="trend-card"><h3>TPS 30d</h3>{trend_chart((trends.get("daily") or {}).get("tps") or [], color="#3ee0b0", ylabel="TPS")}
+          <p class="tiny muted">{e((trends.get("daily") or {}).get("tps_source") or "")}</p></div>
+        <div class="trend-card"><h3>TVL 90d</h3>{trend_chart((trends.get("daily") or {}).get("tvl") or [], color="#f0b429", ylabel="TVL", money=True)}
+          <p class="tiny muted">{e((trends.get("daily") or {}).get("tvl_source") or "")}</p></div>
+        <div class="trend-card"><h3>SOL 30d</h3>{trend_chart((trends.get("daily") or {}).get("sol") or [], color="#7aa2ff", ylabel="SOL", money=True)}
+          <p class="tiny muted">{e((trends.get("daily") or {}).get("sol_source") or "")}</p></div>
+      </div>
+    </div>
+  </section>
+
   <section class="hidden" data-panel="sources">
+    {dh_html}
+    {dune_html}
     <div class="panel">
       <h2>This run</h2>
       <p class="tiny muted">{e(m.get("generated_at_utc"))} · python {e(m.get("python"))} · author {e(m.get("author"))}</p>
