@@ -1,4 +1,4 @@
-# Official requirement matrix — Borealis 1.5.2
+# Official requirement matrix — Borealis 1.5.3
 
 Source: live Superteam Canada listing
 https://earn.superteam.fun/listing/develop-solana-ecosystem-auto-updating-report-and-interactive-dashboard
@@ -25,7 +25,7 @@ Green = implemented as specified. Partial = related metric present, limitation n
 | DEX volume | yes | 24h, 7d total, change_1d, change_7d (24h vs 7d-ago), change_7dover7d | DeFiLlama /overview/dexs/Solana | yes | yes | yes | yes | Labels distinguish change_7d vs 7d-total. |
 | Real Economic Value (REV) | yes | Same completed UTC day: in-protocol fees + gross Jito MEV (`jito_tips + validator_tips`); USD at that day's solana.com/data SOL Price | solana.com/data Fees + SOL Price + kobe.mainnet.jito.network/api/v1/daily_mev_rewards | yes | yes | yes | yes | UTC calendar day, not rolling 24h. Dates never mixed. Today's Jito row skipped. Llama app fees excluded. Tip-floor × TPS is not REV. Split is not a TipRouter fee rate. |
 | Median transaction fees | yes | getBlock meta.fee p50, time-stratified ~2–3h | RPC getBlock | yes | yes | yes | yes | Not a 24h census; window_seconds labeled. |
-| Tokenized asset volumes (equities) | yes | Jupiter stats24h buy+sell on matched xStock mints | lite-api.jup.ag | yes | yes | yes | helper | Subset, not all 715, not all Solana DEX. |
+| Tokenized asset volumes (equities) | yes | Jupiter stats24h buy+sell; query=xStock first, per-symbol only for misses, <=0.5 RPS; STALE cache <=24h | lite-api.jup.ag | yes | yes | yes | yes | Subset, not all 715, not all Solana DEX. STALE labeled, never presented as current. |
 | Daily active addresses | yes | Allium series via solana.com/data | solana.com/api/databricks | yes | yes | yes | helper | Vendors disagree; not averaged. |
 | Alpenglow | yes | SIMD-0326 editorial + status | SIMD docs / solana.com | yes | yes | yes | yes | Not claimed activated from slot time. |
 | SIMD-525 | yes | Listing token SIMD-525 = SIMD-0525 slot-time stages | solana.com/news + SIMD-0525 | yes | yes | yes | yes | Observed slot is INFERRED corroboration, not a feature-gate RPC. |

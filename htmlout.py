@@ -467,10 +467,12 @@ def render_html(snap: dict) -> str:
              source="DeFiLlama RWA category TVL", conf="MED", extra=age),
         tile("xStocks vol 24h",
              usd(xs.get("volume_24h_usd")) if xs.get("volume_24h_usd") is not None else "—",
-             ((xs.get("volume_kind") or "Jupiter-reported xStocks subset 24h activity (stats24h buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX)")
+             ((xs.get("volume_stale_label") + " · " if xs.get("volume_stale") else "")
+              + (xs.get("volume_kind") or "Jupiter-reported xStocks subset 24h activity (stats24h buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX)")
               + (" · 7d omitted (no no-key series)" if xs.get("volume_7d_usd") is None else f" · 7d {usd(xs.get('volume_7d_usd'))}")),
              ghost=xs.get("volume_24h_usd") is None,
-             source=xs.get("volume_source") or "Jupiter lite-api stats24h (subset; not all 715, not all Solana DEX)", conf="MED", extra=age),
+             source=((xs.get("volume_stale_label") + " · ") if xs.get("volume_stale") else "") + (xs.get("volume_source") or "Jupiter lite-api stats24h (subset; not all 715, not all Solana DEX)"),
+             conf=("LOW" if xs.get("volume_stale") else "MED"), extra=age),
         tile("xStocks mcap",
              usd(xs.get("market_cap_usd")) if xs.get("market_cap_usd") is not None else "—",
              f"priced {nfmt(xs.get('count_mcap_computable') or xs.get('count_priced'))} of {nfmt(xs.get('count_solana'))} Solana listings · multiplier ok {nfmt(xs.get('count_multiplier_ok'))}/{nfmt(xs.get('count_attempted'))} · lower bound, not a census",
@@ -746,6 +748,7 @@ def render_html(snap: dict) -> str:
     xs_box = (
         f'<div class="panel"><h2>Tokenized equities · xStocks</h2>'
         f'<p>24h volume {usd(xs.get("volume_24h_usd"))}'
+        f'{" · " + e(xs.get("volume_stale_label")) if xs.get("volume_stale") else ""}'
         f' · 7d volume {usd(xs.get("volume_7d_usd")) if xs.get("volume_7d_usd") is not None else "omitted (no no-key series)"}'
         f' · priced-subset mcap {usd(xs.get("market_cap_usd"))} (lower bound, not a census)'
         f' · DeFiLlama protocol TVL {usd(xs.get("llama_solana_tvl_usd"))} (liquidity, not mcap)</p>'

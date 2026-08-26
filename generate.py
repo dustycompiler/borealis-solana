@@ -37,7 +37,7 @@ from zoneinfo import ZoneInfo
 
 from htmlout import render_html
 
-VERSION = "1.5.2"
+VERSION = "1.5.3"
 PRODUCT = "Borealis"
 LAMPORTS = 1_000_000_000
 PT = ZoneInfo("America/Vancouver")
@@ -47,7 +47,7 @@ PRIMARY_RPC = "https://api.mainnet-beta.solana.com"
 FALLBACK_RPC = "https://solana-rpc.publicnode.com"
 
 USER_AGENT = (
-    "BorealisReport/1.5.2 (Solana ecosystem dashboard; stdlib urllib; no API key)"
+    "BorealisReport/1.5.3 (Solana ecosystem dashboard; stdlib urllib; no API key)"
 )
 
 # Official Solana burn address, cited from Solana Foundation (not guessed):
@@ -78,6 +78,10 @@ XSTOCKS_HOSTS = (
     "https://api.xstocks.fi/api/v2",
 )
 XSTOCKS_PRICE_CAP = 80  # try >24; still a priced subset of ~715, never a census
+JUPITER_MIN_INTERVAL_SEC = 2.0  # keyless 0.5 RPS (developers.jup.ag)
+VOLUME_CACHE_NAME = "xstocks-volume-cache.json"
+VOLUME_STALE_MAX_HOURS = 24.0
+JUPITER_SYMBOL_FALLBACK_CAP = 8
 XSTOCKS_PRICE_CONCURRENCY = 8  # stdlib ThreadPoolExecutor; urllib only
 XSTOCKS_DOCS = "https://docs.xstocks.fi/developers"
 JUPITER_TOKEN_SEARCH = "https://lite-api.jup.ag/tokens/v2/search"
@@ -1495,12 +1499,104 @@ def fetch_llama_xstocks(http: Http) -> dict[str, Any]:
     return out
 
 
-def fetch_tokenized_volume(http: Http, xstocks: dict[str, Any]) -> dict[str, Any]:
-    """24h tokenized-equity volume from no-key sources. Never invent. Never call mcap volume.
+def volume_cache_path(root: str | None = None) -> str:
+    base = root or os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base, "data", VOLUME_CACHE_NAME)
 
-    Routes tried (in order): Jupiter lite-api token search stats24h for priced xStock
-    symbols; DeFiLlama DEX overview name filter; GeckoTerminal / DexScreener / Birdeye
-    public (often 401/429 from shared IPs). 7d omitted unless a no-key series answers.
+
+def retry_after_wait(retry_after: Any, *, cap: float = 25.0, floor: float = 0.5) -> float:
+    """Seconds to sleep for a 429 Retry-After. Bounded."""
+    try:
+        v = float(retry_after)
+    except (TypeError, ValueError):
+        return 0.0
+    if not math.isfinite(v) or v <= 0:
+        return 0.0
+    return min(max(v, floor), cap)
+
+
+class RateLimiter:
+    """Min gap between calls. Default 2s = 0.5 RPS."""
+
+    def __init__(self, min_interval: float = JUPITER_MIN_INTERVAL_SEC, sleeper=None, clock=None):
+        self.min_interval = float(min_interval)
+        self._sleeper = sleeper or time.sleep
+        self._clock = clock or time.monotonic
+        self._last: float | None = None
+        self.waits: list[float] = []
+
+    def wait(self) -> float:
+        now = self._clock()
+        slept = 0.0
+        if self._last is not None:
+            need = self.min_interval - (now - self._last)
+            if need > 0:
+                self.waits.append(need)
+                self._sleeper(need)
+                slept = need
+                now = self._clock()
+        self._last = now
+        return slept
+
+
+def load_volume_cache(path: str, now: datetime | None = None) -> dict[str, Any] | None:
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = json.load(f)
+    except (OSError, json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(raw, dict) or fnum(raw.get("volume_24h_usd")) is None:
+        return None
+    fetched = raw.get("fetched_at_utc")
+    try:
+        ts = datetime.fromisoformat(str(fetched).replace("Z", "+00:00"))
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=UTC)
+    except (TypeError, ValueError):
+        return None
+    now = now or utcnow()
+    age_h = (now - ts.astimezone(UTC)).total_seconds() / 3600.0
+    raw = dict(raw)
+    raw["_age_hours"] = age_h
+    raw["_expired"] = age_h > VOLUME_STALE_MAX_HOURS
+    return raw
+
+
+def save_volume_cache(path: str, payload: dict[str, Any]) -> None:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, default=str)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+def _jup_row_volume(row: dict[str, Any]) -> tuple[float, float]:
+    st = row.get("stats24h") or {}
+    buy = fnum(st.get("buyVolume")) or 0.0
+    sell = fnum(st.get("sellVolume")) or 0.0
+    return buy, sell
+
+
+def jup_search(http: Http, query: str, limiter: RateLimiter | None, *, retries: int = 2) -> tuple[Any, dict[str, Any]]:
+    if limiter is not None:
+        limiter.wait()
+    url = f"{JUPITER_TOKEN_SEARCH}?query={urllib.parse.quote(str(query))}"
+    return http.json(url, source_id=f"jup.tokens.search.{query}", timeout=12, retries=retries)
+
+
+def fetch_tokenized_volume(
+    http: Http,
+    xstocks: dict[str, Any],
+    *,
+    limiter: RateLimiter | None = None,
+    cache_path: str | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """24h tokenized-equity volume. Keyless Jupiter at <=0.5 RPS. Never invent.
+
+    Broad query=xStock first. Per-symbol fallbacks only for priced assets missing
+    from that response. On Jupiter failure, last-known-good cache (STALE, <=24h).
     """
     routes: list[dict[str, Any]] = []
     out: dict[str, Any] = {
@@ -1511,6 +1607,8 @@ def fetch_tokenized_volume(http: Http, xstocks: dict[str, Any]) -> dict[str, Any
         "routes_tried": routes,
         "source": None,
         "kind": None,
+        "stale": False,
+        "fetched_at_utc": None,
     }
     assets = (xstocks or {}).get("assets") or (xstocks or {}).get("top") or []
     symbols = [a.get("symbol") for a in assets if isinstance(a, dict) and a.get("symbol")]
@@ -1518,78 +1616,76 @@ def fetch_tokenized_volume(http: Http, xstocks: dict[str, Any]) -> dict[str, Any
         a.get("symbol"): a.get("solana_address")
         for a in assets if isinstance(a, dict) and a.get("symbol")
     }
+    limiter = limiter if limiter is not None else RateLimiter()
+    cache_path = cache_path or volume_cache_path()
+    now = now or utcnow()
 
-    # 1) Jupiter lite-api — public, no key. stats24h buy+sell USD.
-    jup_rows = []
+    jup_rows: list[dict[str, Any]] = []
     jup_sum = 0.0
     seen_id: set[str] = set()
-    # Jupiter search is 1 request per symbol; keep a small query cap even if we priced more.
-    queries = list(dict.fromkeys(symbols[:24] + ["xStock"]))
-    for q in queries:
-        data, rec = http.json(
-            f"{JUPITER_TOKEN_SEARCH}?query={urllib.parse.quote(str(q))}",
-            source_id=f"jup.tokens.search.{q}", timeout=12, retries=0,
-        )
-        if not isinstance(data, list):
-            routes.append({"route": f"jup.search:{q}", "ok": False, "error": rec.get("error") or rec.get("status")})
-            continue
-        routes.append({"route": f"jup.search:{q}", "ok": True, "n": len(data)})
-        want_addr = (addr_by_sym.get(q) or "").strip()
-        picked = None
-        for row in data:
-            if not isinstance(row, dict):
-                continue
-            rid = str(row.get("id") or "")
-            if want_addr and rid == want_addr:
-                picked = row
-                break
-        if picked is None:
-            # verified / organic xStock row whose symbol matches
-            for row in data:
-                if not isinstance(row, dict):
-                    continue
-                if str(row.get("symbol") or "") == q and (row.get("organicScore") or 0) >= 20:
-                    picked = row
-                    break
-        if picked is None and q == "xStock":
-            for row in data:
-                if not isinstance(row, dict):
-                    continue
-                rid = str(row.get("id") or "")
-                if rid in seen_id:
-                    continue
-                st = row.get("stats24h") or {}
-                buy = fnum(st.get("buyVolume")) or 0.0
-                sell = fnum(st.get("sellVolume")) or 0.0
-                if buy + sell <= 0:
-                    continue
-                seen_id.add(rid)
-                jup_rows.append({
-                    "symbol": row.get("symbol"), "id": rid,
-                    "volume_24h_usd": buy + sell,
-                    "buy": buy, "sell": sell,
-                    "mcap": fnum(row.get("mcap")),
-                    "via": "jup.search:xStock",
-                })
-                jup_sum += buy + sell
-            continue
-        if picked is None:
-            continue
-        rid = str(picked.get("id") or "")
-        if rid in seen_id:
-            continue
-        st = picked.get("stats24h") or {}
-        buy = fnum(st.get("buyVolume")) or 0.0
-        sell = fnum(st.get("sellVolume")) or 0.0
-        seen_id.add(rid)
+    seen_sym: set[str] = set()
+
+    def add_row(row: dict[str, Any], via: str, fallback_sym: str | None = None) -> None:
+        nonlocal jup_sum
+        rid = str(row.get("id") or "")
+        if rid and rid in seen_id:
+            return
+        buy, sell = _jup_row_volume(row)
+        if buy + sell <= 0:
+            return
+        if rid:
+            seen_id.add(rid)
+        sym = row.get("symbol") or fallback_sym
+        if sym:
+            seen_sym.add(str(sym))
         jup_rows.append({
-            "symbol": picked.get("symbol") or q, "id": rid,
+            "symbol": sym, "id": rid,
             "volume_24h_usd": buy + sell, "buy": buy, "sell": sell,
-            "mcap": fnum(picked.get("mcap")),
-            "via": f"jup.search:{q}",
+            "mcap": fnum(row.get("mcap")), "via": via,
         })
         jup_sum += buy + sell
 
+    data, rec = jup_search(http, "xStock", limiter)
+    if rec.get("status") == 429:
+        routes.append({"route": "jup.search:xStock", "ok": False,
+                       "error": rec.get("error") or 429})
+    elif not isinstance(data, list):
+        routes.append({"route": "jup.search:xStock", "ok": False,
+                       "error": rec.get("error") or rec.get("status")})
+    else:
+        routes.append({"route": "jup.search:xStock", "ok": True, "n": len(data)})
+        for row in data:
+            if isinstance(row, dict):
+                add_row(row, "jup.search:xStock")
+        missing = [s for s in symbols if s and s not in seen_sym][:JUPITER_SYMBOL_FALLBACK_CAP]
+        for q in missing:
+            data_s, rec_s = jup_search(http, q, limiter)
+            if not isinstance(data_s, list):
+                routes.append({"route": f"jup.search:{q}", "ok": False,
+                               "error": rec_s.get("error") or rec_s.get("status")})
+                continue
+            routes.append({"route": f"jup.search:{q}", "ok": True, "n": len(data_s)})
+            want_addr = (addr_by_sym.get(q) or "").strip()
+            picked = None
+            for row in data_s:
+                if not isinstance(row, dict):
+                    continue
+                if want_addr and str(row.get("id") or "") == want_addr:
+                    picked = row
+                    break
+            if picked is None:
+                for row in data_s:
+                    if isinstance(row, dict) and str(row.get("symbol") or "") == q:
+                        picked = row
+                        break
+            if picked is not None:
+                add_row(picked, f"jup.search:{q}", q)
+
+    note7 = (
+        "7d omitted: Jupiter lite-api exposes stats5m/1h/6h/24h, not 7d. "
+        "DeFiLlama protocol/xstocks has TVL (liquidity), not a volume series. "
+        "No no-key 7d tokenized-equity volume answered this run — not invented."
+    )
     if jup_rows:
         out["ok"] = True
         out["volume_24h_usd"] = jup_sum
@@ -1608,14 +1704,38 @@ def fetch_tokenized_volume(http: Http, xstocks: dict[str, Any]) -> dict[str, Any
             "not all 715, not all Solana DEX)"
         )
         out["volume_7d_usd"] = None
-        out["volume_7d_kind"] = None
-        out["volume_7d_note"] = (
-            "7d omitted: Jupiter lite-api exposes stats5m/1h/6h/24h, not 7d. "
-            "DeFiLlama protocol/xstocks has TVL (liquidity), not a volume series. "
-            "No no-key 7d tokenized-equity volume answered this run — not invented."
-        )
+        out["volume_7d_note"] = note7
+        out["fetched_at_utc"] = iso(now)
+        out["stale"] = False
+        save_volume_cache(cache_path, {
+            "volume_24h_usd": jup_sum,
+            "fetched_at_utc": out["fetched_at_utc"],
+            "n_venues": out["n_venues"],
+            "top": out["top"],
+            "source": out["source"],
+            "kind": out["kind"],
+            "coverage": out["coverage"],
+        })
+        return out
 
-    # 2) DeFiLlama DEX name filter — record even if empty so the audit trail is complete.
+    cached = load_volume_cache(cache_path, now=now)
+    if cached and not cached.get("_expired"):
+        age = cached.get("_age_hours") or 0
+        out["ok"] = True
+        out["stale"] = True
+        out["volume_24h_usd"] = fnum(cached.get("volume_24h_usd"))
+        out["n_venues"] = cached.get("n_venues")
+        out["top"] = cached.get("top")
+        out["source"] = cached.get("source")
+        out["kind"] = cached.get("kind")
+        out["coverage"] = cached.get("coverage")
+        out["fetched_at_utc"] = cached.get("fetched_at_utc")
+        out["stale_age_hours"] = age
+        out["stale_label"] = f"STALE · last successful {age:.1f}h ago"
+        out["volume_7d_note"] = note7
+        return out
+    out["cache_expired"] = bool(cached and cached.get("_expired"))
+    out["volume_7d_note"] = note7
     return out
 
 
@@ -4409,6 +4529,10 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
         xstocks["volume_coverage"] = tok_vol.get("coverage")
         xstocks["volume_top"] = tok_vol.get("top")
         xstocks["volume_routes_tried"] = tok_vol.get("routes_tried")
+        xstocks["volume_stale"] = bool(tok_vol.get("stale"))
+        xstocks["volume_fetched_at_utc"] = tok_vol.get("fetched_at_utc")
+        xstocks["volume_stale_age_hours"] = tok_vol.get("stale_age_hours")
+        xstocks["volume_stale_label"] = tok_vol.get("stale_label")
         if llama_xs.get("solana_tvl_usd") is not None:
             xstocks["llama_solana_tvl_usd"] = llama_xs.get("solana_tvl_usd")
             xstocks["llama_token_count"] = llama_xs.get("llama_token_count")

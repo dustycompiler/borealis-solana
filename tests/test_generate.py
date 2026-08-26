@@ -35,6 +35,11 @@ from generate import (  # noqa: E402
     equity_mcap,
     fee_stats_from_lamports,
     fetch_xstocks,
+    fetch_tokenized_volume,
+    load_volume_cache,
+    RateLimiter,
+    retry_after_wait,
+    save_volume_cache,
     filter_rss_by_recency,
     infer_simd0525_stage,
     jito_gross_tips_sol,
@@ -927,3 +932,121 @@ class ConfidenceCapTests(unittest.TestCase):
             {"count_mcap_computable": 10, "count_solana": 10},
         )
         self.assertEqual(out["headline_confidence"], "HIGH")
+
+
+
+class JupiterVolumeReliabilityTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = os.path.join(ROOT, "data", "_test_vol_cache.json")
+        if os.path.isfile(self.tmp):
+            os.remove(self.tmp)
+
+    def tearDown(self):
+        if os.path.isfile(self.tmp):
+            os.remove(self.tmp)
+
+    def _row(self, sym, mint, buy, sell):
+        return {"id": mint, "symbol": sym, "stats24h": {"buyVolume": buy, "sellVolume": sell}}
+
+    def _xs(self):
+        return {"count_solana": 715, "assets": [
+            {"symbol": "TSLAx", "solana_address": "mintTSLA"},
+            {"symbol": "AAPLx", "solana_address": "mintAAPL"},
+        ]}
+
+    def test_broad_xstock_skips_per_symbol_burst(self):
+        body = json.dumps([
+            self._row("TSLAx", "mintTSLA", 10, 5),
+            self._row("AAPLx", "mintAAPL", 20, 10),
+        ]).encode()
+        http = ScriptedHttp([("query=xStock", 200, body), ("query=TSLAx", 200, b"[]"), ("query=AAPLx", 200, b"[]")])
+        lim = RateLimiter(min_interval=0, sleeper=lambda s: None)
+        out = fetch_tokenized_volume(http, self._xs(), limiter=lim, cache_path=self.tmp)
+        urls = [r.get("url") or "" for r in http.log]
+        self.assertTrue(out["ok"])
+        self.assertAlmostEqual(out["volume_24h_usd"], 45)
+        self.assertTrue(any("query=xStock" in u for u in urls))
+        self.assertFalse(any("query=TSLAx" in u for u in urls))
+        self.assertFalse(any("query=AAPLx" in u for u in urls))
+        self.assertFalse(out.get("stale"))
+
+    def test_retry_after_wait_bounded(self):
+        self.assertAlmostEqual(retry_after_wait("3"), 3.0)
+        self.assertAlmostEqual(retry_after_wait(100, cap=25), 25.0)
+        self.assertEqual(retry_after_wait(None), 0.0)
+        self.assertEqual(retry_after_wait("nope"), 0.0)
+
+    def test_rate_limiter_half_rps(self):
+        slept = []
+        clock = {"t": 0.0}
+        def now():
+            return clock["t"]
+        def sleep(s):
+            slept.append(s)
+            clock["t"] += s
+        lim = RateLimiter(min_interval=2.0, sleeper=sleep, clock=now)
+        lim.wait()
+        clock["t"] += 0.1
+        lim.wait()
+        self.assertEqual(len(slept), 1)
+        self.assertGreaterEqual(slept[0], 1.89)
+        self.assertLessEqual(1.0 / 2.0, 0.5)
+
+    def test_failure_with_valid_cache_shows_stale(self):
+        now = datetime(2026, 8, 26, 4, 0, tzinfo=timezone.utc)
+        save_volume_cache(self.tmp, {
+            "volume_24h_usd": 23_000_000,
+            "fetched_at_utc": "2026-08-26T01:00:00Z",
+            "n_venues": 12, "source": "lite-api.jup.ag/tokens/v2/search stats24h",
+            "kind": "subset", "coverage": "subset",
+        })
+        http = ScriptedHttp([("query=xStock", 429, None)])
+        lim = RateLimiter(min_interval=0, sleeper=lambda s: None)
+        out = fetch_tokenized_volume(http, self._xs(), limiter=lim, cache_path=self.tmp, now=now)
+        self.assertTrue(out["ok"])
+        self.assertTrue(out["stale"])
+        self.assertAlmostEqual(out["volume_24h_usd"], 23_000_000)
+        self.assertIn("STALE", out.get("stale_label") or "")
+        html = render_html({
+            "meta": {"version": "1.5.3", "generated_at_utc": "2026-08-26T04:00:00Z",
+                     "generated_at_pt": "2026-08-25 21:00:00 PT"},
+            "cluster": {"health": "ok", "slot_time_sec": 0.365, "tps_total": 4000},
+            "brief": {"network_health": "HEALTHY", "ecosystem_activity": "SURGE",
+                      "verdict": "HEALTHY", "biggest_positive": "DEX",
+                      "biggest_risk": "None", "score": 100,
+                      "what_changed": "x", "why_it_matters": "y"},
+            "health_score": {"score": 100, "formula": "25x"},
+            "xstocks": {"volume_24h_usd": out["volume_24h_usd"], "volume_stale": True,
+                        "volume_stale_label": out["stale_label"], "volume_kind": "subset"},
+        })
+        self.assertIn("STALE", html)
+        self.assertIn("$23.00M", html)
+
+    def test_expired_cache_is_unavailable(self):
+        now = datetime(2026, 8, 27, 6, 0, tzinfo=timezone.utc)
+        save_volume_cache(self.tmp, {
+            "volume_24h_usd": 23_000_000,
+            "fetched_at_utc": "2026-08-26T01:00:00Z",
+        })
+        cached = load_volume_cache(self.tmp, now=now)
+        self.assertTrue(cached["_expired"])
+        http = ScriptedHttp([("query=xStock", 429, None)])
+        lim = RateLimiter(min_interval=0, sleeper=lambda s: None)
+        out = fetch_tokenized_volume(http, self._xs(), limiter=lim, cache_path=self.tmp, now=now)
+        self.assertIsNone(out.get("volume_24h_usd"))
+        self.assertFalse(out.get("stale"))
+
+    def test_fresh_fetch_replaces_cache(self):
+        save_volume_cache(self.tmp, {
+            "volume_24h_usd": 1,
+            "fetched_at_utc": "2026-08-20T00:00:00Z",
+        })
+        body = json.dumps([self._row("TSLAx", "mintTSLA", 100, 50)]).encode()
+        http = ScriptedHttp([("query=xStock", 200, body)])
+        lim = RateLimiter(min_interval=0, sleeper=lambda s: None)
+        now = datetime(2026, 8, 26, 4, 0, tzinfo=timezone.utc)
+        out = fetch_tokenized_volume(http, self._xs(), limiter=lim, cache_path=self.tmp, now=now)
+        self.assertAlmostEqual(out["volume_24h_usd"], 150)
+        self.assertFalse(out.get("stale"))
+        cached = load_volume_cache(self.tmp, now=now)
+        self.assertAlmostEqual(cached["volume_24h_usd"], 150)

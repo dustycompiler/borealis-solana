@@ -1,7 +1,7 @@
 # Borealis
 
-**Version 1.5.2.** 
-Live Solana cluster & ecosystem report, **version 1.5.2**. One command, **no API keys**, Python stdlib only (`urllib`).
+**Version 1.5.3.** 
+Live Solana cluster & ecosystem report, **version 1.5.3**. One command, **no API keys**, Python stdlib only (`urllib`).
 
 [![Live demo](https://img.shields.io/badge/live-demo-3ee0b0?style=flat-square)](https://dustycompiler.github.io/borealis-solana/)
 [![Tests](https://github.com/dustycompiler/borealis-solana/actions/workflows/tests.yml/badge.svg)](https://github.com/dustycompiler/borealis-solana/actions/workflows/tests.yml)
@@ -95,7 +95,7 @@ Live JSON-RPC against `https://api.mainnet-beta.solana.com`, falling back to `ht
 - **stablecoins.llama.fi** chain circulating + per-asset Solana supply + 90-day chart
 - **RWA** = sum of `chainTvls.Solana` for protocols whose DeFiLlama category is `RWA` or `RWA Lending`. Labeled protocol TVL, **not** a tokenized-equities census (those Llama routes are Pro-only). Shown separately from xStocks.
 
-**Tokenized equities (xStocks)** — public no-key API (`api.backed.fi` then `api.xstocks.fi`). Paginated `/public/assets` plus concurrent `/price-data`, `/circulating-supply`, and `/public/assets/{sym}/multiplier?network=Solana` (stdlib ThreadPoolExecutor, cap 80). Parse `currentMultiplier`. **If the multiplier fetch fails or `currentMultiplier` is missing: multiplier=None, mcap omitted — never silent 1.0.** Coverage: `count_multiplier_ok`, `count_mcap_computable`. **count_meaning:** unique xStocks names with a Solana deployment (catalog; 1:1 with unique underlyings in current API; not every tokenized equity on Solana). **Market cap formula (labeled):** `quote × circulating × live currentMultiplier`, **priced N of M · lower bound — not a 715 census**. **24h activity** is Jupiter-reported xStocks subset (`stats24h` buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX). Jupiter has no 7d stats series and DeFiLlama `protocol/xstocks` has TVL not volume, so **7d volume is omitted** rather than invented. DeFiLlama `protocol/xstocks` Solana TVL is shown as **labeled coverage** (liquidity census, not the priced-subset mcap, not 24h volume) when it answers. Missing quotes/multipliers are omitted, never invented.
+**Tokenized equities (xStocks)** — public no-key API (`api.backed.fi` then `api.xstocks.fi`). Paginated `/public/assets` plus concurrent `/price-data`, `/circulating-supply`, and `/public/assets/{sym}/multiplier?network=Solana` (stdlib ThreadPoolExecutor, cap 80). Parse `currentMultiplier`. **If the multiplier fetch fails or `currentMultiplier` is missing: multiplier=None, mcap omitted — never silent 1.0.** Coverage: `count_multiplier_ok`, `count_mcap_computable`. **count_meaning:** unique xStocks names with a Solana deployment (catalog; 1:1 with unique underlyings in current API; not every tokenized equity on Solana). **Market cap formula (labeled):** `quote × circulating × live currentMultiplier`, **priced N of M · lower bound — not a 715 census**. **24h activity** is Jupiter lite-api at <=0.5 RPS (query=`xStock` first, per-symbol only for misses; STALE cache <=24h if Jupiter 429s). Jupiter-reported xStocks subset (`stats24h` buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX). Jupiter has no 7d stats series and DeFiLlama `protocol/xstocks` has TVL not volume, so **7d volume is omitted** rather than invented. DeFiLlama `protocol/xstocks` Solana TVL is shown as **labeled coverage** (liquidity census, not the priced-subset mcap, not 24h volume) when it answers. Missing quotes/multipliers are omitted, never invented.
 
 **Solana REV (Blockworks/Helius, latest complete UTC calendar day):** in-protocol transaction fees (vote + base + priority) plus out-of-protocol Jito MEV tips, **same UTC date**. Headline is **SOL total + USD**. USD uses that UTC day's `solana.com/data` SOL Price (vendor series; not the live snapshot). Spot equivalent at run SOL-USD is labeled separately and is not the tile. Jito = public no-key `GET https://kobe.mainnet.jito.network/api/v1/daily_mev_rewards`. **Gross tips = `jito_tips + validator_tips`** (Jito-paid/retained vs validator-distributed; not inclusive; we do not treat the split as a TipRouter protocol-fee rate). Today's incomplete Jito row is skipped. Dates are never mixed. This is a UTC calendar day, **not a rolling 24h**. `tip_floor p50 × non-vote TPS × 86400` stays `jito_runrate_not_rev` (`included_in_headline=false`). **DeFiLlama `/overview/fees/Solana` protocol/application fees are listed separately and NEVER summed into REV.** DeFiLlama `summary/fees/jito-mev-tips` is a rolling-24h cross-check, not the addend.
 
@@ -219,7 +219,7 @@ See `crontab.example` (`*/15 * * * *`).
 - No API keys, no scraping of authenticated dashboards.
 - If a source 429s or 5xxs after retries, the tile is omitted and `omissions[]` explains why.
 - Every fetch is logged in `report.json` → `sources[]` with URL, HTTP status, bytes, milliseconds, UTC timestamp — including failures.
-- User-Agent: `BorealisReport/1.5.2 (Solana ecosystem dashboard; stdlib urllib; no API key)`.
+- User-Agent: `BorealisReport/1.5.3 (Solana ecosystem dashboard; stdlib urllib; no API key)`.
 
 ## Layout
 

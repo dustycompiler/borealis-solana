@@ -1,0 +1,118 @@
+{
+  "volume_24h_usd": 22307176.308656856,
+  "fetched_at_utc": "2026-08-26T04:50:06Z",
+  "n_venues": 20,
+  "top": [
+    {
+      "symbol": "CRCLx",
+      "id": "XsueG8BtpquVJX9LVLLEGuViXUungE6WmK5YZ3p3bd1",
+      "volume_24h_usd": 10570814.399075888,
+      "buy": 5398128.371806365,
+      "sell": 5172686.027269523,
+      "mcap": 74969462.41960871,
+      "via": "jup.search:xStock"
+    },
+    {
+      "symbol": "SPYx",
+      "id": "XsoCS1TfEyfFhfvj8EtZ528L3CaKBDBRqRapnBbDF2W",
+      "volume_24h_usd": 2990721.803639184,
+      "buy": 1473067.4945755035,
+      "sell": 1517654.3090636807,
+      "mcap": 73246414.19465587,
+      "via": "jup.search:xStock"
+    },
+    {
+      "symbol": "MSTRx",
+      "id": "XsP7xzNPvEHS1m6qfanPUGjNmdnmsLKEoNAnHjdxxyZ",
+      "volume_24h_usd": 1668441.9109856384,
+      "buy": 870130.9898443088,
+      "sell": 798310.9211413297,
+      "mcap": 54355519.67016404,
+      "via": "jup.search:xStock"
+    },
+    {
+      "symbol": "SPCXx",
+      "id": "Xs3oZwbHvqis4NYcf4YKWmEia2eC84wSiVrcYcTqpH8",
+      "volume_24h_usd": 1520659.0237058413,
+      "buy": 813276.0082992451,
+      "sell": 707383.0154065961,
+      "mcap": 77452554.24919885,
+      "via": "jup.search:xStock"
+    },
+    {
+      "symbol": "NVDAx",
+      "id": "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+      "volume_24h_usd": 1327393.9897780786,
+      "buy": 672753.9388707136,
+      "sell": 654640.050907365,
+      "mcap": 68668939.20117451,
+      "via": "jup.search:xStock"
+    },
+    {
+      "symbol": "TSLAx",
+      "id": "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+      "volume_24h_usd": 1263104.8877683561,
+      "buy": 665312.1115884008,
+      "sell": 597792.7761799552,
+      "mcap": 80426670.80868047,
+      "via": "jup.search:xStock"
+    },
+    {
+      "symbol": "QQQx",
+      "id": "Xs8S1uUs1zvS2p7iwtsG3b6fkhpvmwz4GYU3gWAmWHZ",
+      "volume_24h_usd": 695935.6923254064,
+      "buy": 352484.72688532126,
+      "sell": 343450.9654400851,
+      "mcap": 59987766.95296948,
+      "via": "jup.search:xStock"
+    },
+    {
+      "symbol": "COINx",
+      "id": "Xs7ZdzSHLU9ftNJsii5fCeJhoRWSC32SQGzGQtePxNu",
+      "volume_24h_usd": 658770.3656381945,
+      "buy": 368140.8957172494,
+      "sell": 290629.46992094506,
+      "mcap": 25403338.61111771,
+      "via": "jup.search:xStock"
+    },
+    {
+      "symbol": "MCDx",
+      "id": "XsqE9cRRpzxcGKDXj1BJ7Xmg4GRhZoyY1KpmGSxAWT2",
+      "volume_24h_usd": 423338.8996408287,
+      "buy": 204558.46748698852,
+      "sell": 218780.4321538402,
+      "mcap": 14984913.668633359,
+      "via": "jup.search:xStock"
+    },
+    {
+      "symbol": "GOOGLx",
+      "id": "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
+      "volume_24h_usd": 195631.3171898364,
+      "buy": 78501.73262570502,
+      "sell": 117129.5845641314,
+      "mcap": 55709046.9808005,
+      "via": "jup.search:xStock"
+    },
+    {
+      "symbol": "STRCx",
+      "id": "Xs78JED6PFZxWc2wCEPspZW9kL3Se5J7L5TChKgsidH",
+      "volume_24h_usd": 194110.71398969265,
+      "buy": 92658.74173335536,
+      "sell": 101451.97225633729,
+      "mcap": 49184802.482825145,
+      "via": "jup.search:xStock"
+    },
+    {
+      "symbol": "METAx",
+      "id": "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu",
+      "volume_24h_usd": 172066.9267336696,
+      "buy": 87912.60251774124,
+      "sell": 84154.32421592835,
+      "mcap": 41537175.1079494,
+      "via": "jup.search:xStock"
+    }
+  ],
+  "source": "lite-api.jup.ag/tokens/v2/search stats24h",
+  "kind": "Jupiter-reported xStocks subset 24h activity (stats24h buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX)",
+  "coverage": "Jupiter-reported xStocks subset 24h activity (stats24h buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX; 20 matched mints)."
+}
