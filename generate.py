@@ -37,7 +37,7 @@ from zoneinfo import ZoneInfo
 
 from htmlout import render_html
 
-VERSION = "1.5.0"
+VERSION = "1.5.1"
 PRODUCT = "Borealis"
 LAMPORTS = 1_000_000_000
 PT = ZoneInfo("America/Vancouver")
@@ -47,7 +47,7 @@ PRIMARY_RPC = "https://api.mainnet-beta.solana.com"
 FALLBACK_RPC = "https://solana-rpc.publicnode.com"
 
 USER_AGENT = (
-    "BorealisReport/1.5.0 (Solana ecosystem dashboard; stdlib urllib; no API key)"
+    "BorealisReport/1.5.1 (Solana ecosystem dashboard; stdlib urllib; no API key)"
 )
 
 # Official Solana burn address, cited from Solana Foundation (not guessed):
@@ -1639,6 +1639,99 @@ def probe_jito_tip(http: Http) -> dict[str, Any]:
             out["data"] = {"raw": str(data)[:400]}
         return out
     out["error"] = rec.get("error") or f"HTTP {rec.get('status')} or slow"
+    return out
+
+
+
+JITO_DAILY_MEV_URL = "https://kobe.mainnet.jito.network/api/v1/daily_mev_rewards"
+JITO_DAILY_MEV_DOCS = (
+    "https://www.jito.network/docs/jitosol/jitosol-liquid-staking/for-developers/stake-pool-api/"
+)
+
+
+def jito_day_key(day: Any) -> str | None:
+    """'2026-08-25 00:00:00.000 UTC' or '2026-08-25' -> YYYY-MM-DD."""
+    if day is None:
+        return None
+    s = str(day).strip()
+    m = re.match(r"^(\d{4}-\d{2}-\d{2})", s)
+    return m.group(1) if m else None
+
+
+def jito_gross_tips_sol(row: dict[str, Any] | None) -> float | None:
+    """Gross user-paid MEV tips = jito_tips + validator_tips.
+
+    Empirically jito_tips / (jito_tips+validator_tips) == 0.05 every day
+    (TipRouter protocol fee vs remainder to validators). Fields are
+    components, not inclusive. None if either field missing.
+    """
+    if not isinstance(row, dict):
+        return None
+    j, v = fnum(row.get("jito_tips")), fnum(row.get("validator_tips"))
+    if j is None or v is None:
+        return None
+    return j + v
+
+
+def complete_jito_days(rows: list, utc_today: str) -> dict[str, dict[str, Any]]:
+    """UTC calendar days strictly before utc_today (YYYY-MM-DD)."""
+    out: dict[str, dict[str, Any]] = {}
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        d = jito_day_key(row.get("day"))
+        if d and d < utc_today:
+            out[d] = row
+    return out
+
+
+def aligned_rev_date(fee_date: Any, jito_complete: dict[str, dict[str, Any]]) -> str | None:
+    """Same completed UTC day for in-protocol fees and Jito tape. Never mix dates."""
+    fd = jito_day_key(fee_date)
+    if fd and fd in jito_complete:
+        return fd
+    return None
+
+
+def fetch_jito_daily_mev(http: Http) -> dict[str, Any]:
+    """Public no-key Jito daily MEV tape. UTC calendar days, not rolling 24h."""
+    url = JITO_DAILY_MEV_URL
+    data, rec = http.json(url, source_id="jito.daily_mev_rewards", timeout=12, retries=1)
+    today = utcnow().date().isoformat()
+    out: dict[str, Any] = {
+        "ok": False, "url": url, "docs": JITO_DAILY_MEV_DOCS,
+        "utc_today": today, "rows": [], "complete": {},
+        "accounting": (
+            "gross_mev_tips_sol = jito_tips + validator_tips "
+            "(jito_tips is the ~5% TipRouter protocol fee; validator_tips is the remainder; "
+            "not inclusive of each other)"
+        ),
+    }
+    if not rec.get("ok") or not isinstance(data, list):
+        out["error"] = rec.get("error") or f"HTTP {rec.get('status')}"
+        return out
+    rows = [r for r in data if isinstance(r, dict)]
+    out["rows"] = rows[:14]
+    complete = complete_jito_days(rows, today)
+    out["complete"] = {d: {
+        "day": d,
+        "jito_tips_sol": fnum(complete[d].get("jito_tips")),
+        "validator_tips_sol": fnum(complete[d].get("validator_tips")),
+        "gross_tips_sol": jito_gross_tips_sol(complete[d]),
+        "count_mev_tips": complete[d].get("count_mev_tips"),
+        "tippers": complete[d].get("tippers"),
+    } for d in list(complete)[:8]}
+    out["ok"] = bool(complete)
+    out["latest_complete_day"] = max(complete) if complete else None
+    if out["latest_complete_day"]:
+        latest = complete[out["latest_complete_day"]]
+        out["latest"] = {
+            "day": out["latest_complete_day"],
+            "jito_tips_sol": fnum(latest.get("jito_tips")),
+            "validator_tips_sol": fnum(latest.get("validator_tips")),
+            "gross_tips_sol": jito_gross_tips_sol(latest),
+            "count_mev_tips": latest.get("count_mev_tips"),
+        }
     return out
 
 
@@ -3255,13 +3348,12 @@ def build_trends(history, defi, sdata, cluster=None) -> dict[str, Any]:
     }
 
 
-def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None) -> dict[str, Any]:
-    """In-protocol network fees are MEASURED. Full REV is INCOMPLETE (no 24h Jito tape).
+def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None, jito_daily=None) -> dict[str, Any]:
+    """REV = same completed UTC day: in-protocol fees + gross Jito MEV tips.
 
-    Blockworks/Helius definition still includes out-of-protocol Jito tips, but the
-    public zero-key tip_floor is a per-bundle landed percentile — not a 24h aggregate
-    and not paid by every non-vote tx. Do NOT multiply it into a headline named REV.
-    DeFiLlama protocol/application fees are NEVER REV.
+    Gross tips = jito_tips + validator_tips (components, not inclusive).
+    tip_floor × TPS is NOT REV. DeFiLlama protocol/application fees are NEVER REV.
+    Never mix fee date with a different Jito day. Never use today's incomplete Jito row.
     """
     fees = (defi or {}).get("fees") or {}
     derived = (sdata or {}).get("derived") or {}
@@ -3328,6 +3420,22 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None) 
         ),
     }
 
+    jito_daily = jito_daily or {}
+    fee_date = jito_day_key(derived.get("network_fees_date"))
+    utc_today = (jito_daily.get("utc_today") or utcnow().date().isoformat())
+    complete = jito_daily.get("complete") or complete_jito_days(jito_daily.get("rows") or [], utc_today)
+    rev_date = aligned_rev_date(fee_date, complete)
+    gross_jito_sol = None
+    gross_jito_usd = None
+    jito_row = complete.get(rev_date) if rev_date else None
+    if isinstance(jito_row, dict):
+        # complete[] from fetch already has gross_tips_sol; raw rows have jito_tips
+        gross_jito_sol = fnum(jito_row.get("gross_tips_sol"))
+        if gross_jito_sol is None:
+            gross_jito_sol = jito_gross_tips_sol(jito_row)
+        if gross_jito_sol is not None and sol is not None:
+            gross_jito_usd = gross_jito_sol * sol
+
     routes_tried = [
         {"route": "solana.com/data Fees (Allium/Dune/Blockworks)", "role": "measured in-protocol 24h (headline_primary)",
          "ok": net_sol is not None, "sol": net_sol, "usd": net_usd, "included_in_headline": True},
@@ -3347,22 +3455,38 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None) 
         {"route": "DeFiLlama /overview/fees/Solana total24h",
          "role": "EXCLUDED — application/protocol fees, not network REV",
          "ok": proto is not None, "usd": proto, "included": False, "included_in_headline": False},
+        {"route": JITO_DAILY_MEV_URL,
+         "role": "MEASURED Jito gross MEV tips UTC day (jito_tips+validator_tips)",
+         "ok": gross_jito_sol is not None, "sol": gross_jito_sol, "usd": gross_jito_usd,
+         "day": rev_date, "included_in_headline": bool(rev_date and gross_jito_sol is not None)},
     ]
 
-    # Full REV is incomplete: no 24h Jito tip tape on zero-key sources.
-    # Do not set rev_24h_usd to fees+estimate or to in-protocol-only as if it were REV.
     rev_usd = None
     rev_sol = None
-    rev_kind = "INCOMPLETE — no 24h Jito tip tape on zero-key sources"
     rev_complete = False
+    if net_sol is not None and gross_jito_sol is not None and rev_date:
+        rev_sol = net_sol + gross_jito_sol
+        rev_usd = ((net_usd or 0) + (gross_jito_usd or 0)) if (net_usd is not None or gross_jito_usd is not None) else None
+        rev_kind = (
+            f"MEASURED UTC calendar day {rev_date}: in-protocol fees + gross Jito MEV tips "
+            f"(jito_tips + validator_tips; not a rolling 24h)"
+        )
+        rev_complete = True
+    elif net_sol is not None:
+        rev_kind = (
+            "INCOMPLETE — in-protocol fees measured, but no Jito daily tape for the same "
+            f"UTC day {fee_date or '(missing fee date)'}"
+        )
+    else:
+        rev_kind = "INCOMPLETE — in-protocol fees and/or Jito daily tape missing"
 
     rev_def = (
-        "Full network REV (Blockworks/Helius definition) is in-protocol transaction "
-        "fees (vote + base + priority) plus out-of-protocol Jito tips. "
-        "This run cannot publish a REV number: there is no 24h Jito tip tape on "
-        "zero-key sources. tip_floor p50 × non-vote TPS × 86400 is kept as an "
-        "INVALID sensitivity (per-bundle landed percentile, not a tape). "
-        "DeFiLlama Solana protocol/application fees are NOT REV and are not summed."
+        "Full network REV (Blockworks/Helius) is in-protocol transaction fees "
+        "(vote + base + priority) plus out-of-protocol Jito MEV tips. "
+        "Jito tape: GET kobe.mainnet.jito.network/api/v1/daily_mev_rewards (no key). "
+        "Gross tips = jito_tips + validator_tips (components: ~5% TipRouter fee + remainder; "
+        "not inclusive). UTC calendar day, aligned to solana.com/data Fees date. "
+        "Never mix dates. tip_floor × TPS is NOT REV. DeFiLlama protocol/application fees are NOT REV."
     )
     headline_primary = {
         "label": "in-protocol network fees 24h",
@@ -3434,24 +3558,42 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None) 
         "rev_kind": rev_kind,
         "rev_complete": rev_complete,
         "headline_primary": headline_primary,
-        "rev_window": "24h in-protocol = solana.com Fees date = network_fees_date; Jito 24h tape unavailable",
+        "rev_window": ("UTC calendar day " + rev_date) if rev_date else "unaligned / incomplete",
         "rev_sensitivity": jito_sensitivity,
-        "rev_jito_is_ledger": False,
+        "rev_jito_is_ledger": bool(rev_complete),
         "rev_components": [
             {"id": "in_protocol_fees", "label": "In-protocol network fees 24h",
              "sol": net_sol, "usd": net_usd, "kind": "MEASURED",
              "source": derived.get("network_fees_source"), "included_in_headline": True},
-            {"id": "jito_tips", "label": "Jito tip-floor run-rate (NOT REV, not a 24h aggregate)",
+            {"id": "jito_mev_tips", "label": "Jito gross MEV tips (jito_tips + validator_tips)",
+             "sol": gross_jito_sol, "usd": gross_jito_usd, "kind": "MEASURED" if gross_jito_sol is not None else None,
+             "day": rev_date, "included_in_headline": bool(rev_complete),
+             "source": JITO_DAILY_MEV_URL},
+            {"id": "jito_tips_floor_runrate", "label": "Jito tip-floor run-rate (NOT REV)",
              "sol": jito_invalid_runrate_sol, "usd": jito_invalid_runrate_usd, "kind": jito_kind,
              "source": jito_note, "included_in_headline": False, "not_a_24h_aggregate": True},
         ],
         "rev_routes_tried": routes_tried,
-        "rev_label": "Full REV incomplete — no 24h Jito tip tape on zero-key sources",
-        "total_rev_usd": None,
+        "rev_label": (f"Solana REV UTC {rev_date}" if rev_complete else rev_kind),
+        "total_rev_usd": rev_usd if rev_complete else None,
         "total_rev_note": (
             f"{rev_def} This run: {rev_kind}. Protocol fees {proto} USD are listed separately and excluded."
         ),
         "rev_proxy_usd": None,
+        "rev_utc_day": rev_date,
+        "jito_daily": {
+            "ok": bool(jito_daily.get("ok")),
+            "url": jito_daily.get("url") or JITO_DAILY_MEV_URL,
+            "day": rev_date,
+            "jito_tips_sol": (jito_row or {}).get("jito_tips_sol") or fnum((jito_row or {}).get("jito_tips")),
+            "validator_tips_sol": (jito_row or {}).get("validator_tips_sol") or fnum((jito_row or {}).get("validator_tips")),
+            "gross_tips_sol": gross_jito_sol,
+            "gross_tips_usd": gross_jito_usd,
+            "accounting": jito_daily.get("accounting") or (
+                "gross = jito_tips + validator_tips (5% protocol + remainder)"
+            ),
+            "latest_complete_day": jito_daily.get("latest_complete_day"),
+        },
         "sampled_runrate_24h_sol": sampled_24h,
         "sampled_runrate_24h_usd": sampled_24h_usd,
     }
@@ -3928,14 +4070,14 @@ TPS = `numTransactions / samplePeriodSecs`. Slot time = `samplePeriodSecs / numS
 | SOL chart | {len((trends.get('chart') or dict()).get('sol') or [])} | {(trends.get('chart') or dict()).get('sol_source') or '—'} |
 | history.jsonl rows | {(trends.get('run') or dict()).get('n')} | data/history.jsonl |
 
-## Economics — in-protocol fees (full REV incomplete)
+## Economics — Solana REV (UTC calendar day)
 
 {eco.get('rev_definition') or ''}
 
 | Metric | Value | Source |
 | --- | ---: | --- |
 | **In-protocol fees 24h** | **{fmt_usd(eco.get('network_fees_usd_24h'))}** ({fmt_num(eco.get('network_fees_sol_24h'), 1)} SOL) | {eco.get('network_fees_source') or '—'} MEASURED |
-| **Full REV** | incomplete | {eco.get('rev_kind') or eco.get('rev_label')} — Jito 24h aggregate unavailable; tip-floor is a bundle percentile, not a tape |
+| **Solana REV** | **{fmt_usd(eco.get('rev_24h_usd')) if eco.get('rev_complete') else 'incomplete'}** | {eco.get('rev_kind') or eco.get('rev_label')} · UTC day {eco.get('rev_utc_day') or '—'} |
 | Jito tip-floor run-rate (NOT REV) | {fmt_usd((eco.get('jito_runrate_not_rev') or dict()).get('runrate_24h_usd'))} | INVALID as a 24h aggregate · included_in_headline=false · {(eco.get('jito') or dict()).get('sensitivity') or eco.get('rev_sensitivity') or 'tip_floor × nv TPS × 86400'} |
 | Protocol fees 24h | {fmt_usd(eco.get('protocol_fees_usd'))} | EXCLUDED from REV — {eco.get('protocol_fees_label')} |
 | Median tx fee p50 | {fmt_num(eco.get('median_tx_fee_sol'), 6)} SOL ({fmt_usd(eco.get('median_tx_fee_usd'), 4)}) | NOT a 24h census · {eco.get('median_tx_fee_window_label') or 'stratified sample'} · n_tx={eco.get('median_tx_fee_n')} window_seconds={eco.get('median_tx_fee_window_seconds')} |
@@ -4168,7 +4310,11 @@ def cap_headline_confidence(dh: dict[str, Any], eco: dict[str, Any] | None = Non
     xs = xs or {}
     reasons = [n for n in (out.get("notes") or []) if n]
     if not eco.get("rev_complete"):
-        reasons.append("full REV incomplete (no 24h Jito tape on zero-key sources)")
+        reasons.append("full REV incomplete (no same-UTC-day Jito daily tape)")
+    else:
+        d = eco.get("rev_utc_day")
+        if d:
+            reasons.append(f"REV is UTC calendar day {d} (not rolling 24h)")
     priced = xs.get("count_mcap_computable") or xs.get("count_priced") or 0
     listed = xs.get("count_solana") or 0
     if listed and priced < listed:
@@ -4223,7 +4369,8 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
     dune = probe_dune_embed(http)
     simd_live = fetch_simd0525_header(http)
     editorial = editorial_block(generated, cluster=cluster, simd_live=simd_live)
-    economics = build_economics(defi, sdata, market, tx_fees=tx_fees, jito=jito, cluster=cluster)
+    jito_daily = fetch_jito_daily_mev(http)
+    economics = build_economics(defi, sdata, market, tx_fees=tx_fees, jito=jito, cluster=cluster, jito_daily=jito_daily)
     health = compute_health(cluster, validators, sdata)
     trends = build_trends(history, defi, sdata, cluster)
 

@@ -18,6 +18,7 @@ from generate import (  # noqa: E402
     PRIMARY_RPC,
     Http,
     assemble_market,
+    aligned_rev_date,
     build_brief,
     build_data_health,
     cap_headline_confidence,
@@ -26,6 +27,7 @@ from generate import (  # noqa: E402
     classify_ecosystem_activity,
     classify_network_health,
     classify_news_items,
+    complete_jito_days,
     compute_health,
     detect_anomalies,
     editorial_block,
@@ -34,6 +36,7 @@ from generate import (  # noqa: E402
     fetch_xstocks,
     filter_rss_by_recency,
     infer_simd0525_stage,
+    jito_gross_tips_sol,
     pct_24h,
     percentile,
     rss_is_stale,
@@ -316,6 +319,118 @@ class EconomicsHonestyTests(unittest.TestCase):
         self.assertNotIn("ESTIMATED", (eco.get("jito", {}).get("tips_24h_kind") or ""))
         self.assertIn("INVALID", (jr.get("kind") or "").upper())
 
+
+
+    def _jito_daily(self, fee_day="2026-08-25", include_today=True):
+        rows = [
+            {"day": "2026-08-26 00:00:00.000 UTC", "jito_tips": 16.12, "validator_tips": 306.33,
+             "count_mev_tips": 1.83e6},
+            {"day": "2026-08-25 00:00:00.000 UTC", "jito_tips": 113.294, "validator_tips": 2152.587,
+             "count_mev_tips": 12.15e6},
+            {"day": "2026-08-24 00:00:00.000 UTC", "jito_tips": 88.961, "validator_tips": 1690.259,
+             "count_mev_tips": 11.49e6},
+        ]
+        if not include_today:
+            rows = rows[1:]
+        return {
+            "ok": True,
+            "utc_today": "2026-08-26",
+            "rows": rows,
+            "accounting": "gross = jito_tips + validator_tips",
+        }
+
+    def test_gross_mev_is_jito_plus_validator_not_either_alone(self):
+        row = {"jito_tips": 113.294, "validator_tips": 2152.587}
+        gross = jito_gross_tips_sol(row)
+        self.assertAlmostEqual(gross, 2265.881)
+        self.assertAlmostEqual(113.294 / gross, 0.05, places=5)
+        self.assertNotEqual(gross, 113.294)
+        self.assertNotEqual(gross, 2152.587)
+        self.assertIsNone(jito_gross_tips_sol({"jito_tips": 113.294}))
+        self.assertIsNone(jito_gross_tips_sol({"validator_tips": 2152.587}))
+
+    def test_skip_incomplete_today_jito_row(self):
+        complete = complete_jito_days(self._jito_daily()["rows"], "2026-08-26")
+        self.assertNotIn("2026-08-26", complete)
+        self.assertIn("2026-08-25", complete)
+        eco = build_economics(
+            {"fees": {"total_24h_usd": 14_490_000}},
+            {"derived": {"network_fees_sol": 9000, "network_fees_date": "2026-08-26",
+                         "network_fees_source": "solana.com/data Fees"}},
+            {"usd": 100},
+            jito_daily=self._jito_daily(),
+        )
+        self.assertFalse(eco.get("rev_complete"))
+        self.assertIsNone(eco.get("rev_24h_usd"))
+        self.assertIn("INCOMPLETE", eco.get("rev_kind") or "")
+
+    def test_refuse_mixed_utc_dates(self):
+        # Fees on Aug 24, complete Jito available for Aug 25 only in this cut.
+        eco = build_economics(
+            {"fees": {"total_24h_usd": 14_490_000}},
+            {"derived": {"network_fees_sol": 9000, "network_fees_date": "2026-08-24",
+                         "network_fees_source": "solana.com/data Fees"}},
+            {"usd": 100},
+            jito_daily={
+                "ok": True, "utc_today": "2026-08-26",
+                "rows": [{"day": "2026-08-25 00:00:00.000 UTC",
+                          "jito_tips": 113.294, "validator_tips": 2152.587}],
+            },
+        )
+        self.assertIsNone(aligned_rev_date("2026-08-24", complete_jito_days(
+            [{"day": "2026-08-25", "jito_tips": 1, "validator_tips": 19}], "2026-08-26")))
+        self.assertFalse(eco.get("rev_complete"))
+        self.assertIsNone(eco.get("rev_24h_usd"))
+        # Must not silently add Aug 25 Jito to Aug 24 fees
+        self.assertNotAlmostEqual((eco.get("rev_24h_usd") or 0), 900_000 + 2265.881 * 100)
+
+    def test_aligned_complete_rev_sums_fees_and_gross_tips(self):
+        llama = 14_490_000
+        floor = 1e-5 * 2000 * 86400 * 100  # $172,800
+        eco = build_economics(
+            {"fees": {"total_24h_usd": llama}},
+            {"derived": {"network_fees_sol": 9000, "network_fees_date": "2026-08-25",
+                         "network_fees_source": "solana.com/data Fees (Allium)"}},
+            {"usd": 100},
+            tx_fees={"ok": True, "p50_sol": 0.00001, "sampled_runrate_24h_sol": 9100},
+            jito={"ok": True, "landed_p50_sol": 1e-5, "landed_p95_sol": 4e-5},
+            cluster={"tps_nonvote": 2000},
+            jito_daily=self._jito_daily(),
+        )
+        gross = 113.294 + 2152.587
+        self.assertTrue(eco.get("rev_complete"))
+        self.assertEqual(eco.get("rev_utc_day"), "2026-08-25")
+        self.assertAlmostEqual(eco.get("rev_24h_sol"), 9000 + gross)
+        self.assertAlmostEqual(eco.get("rev_24h_usd"), 900_000 + gross * 100)
+        self.assertAlmostEqual(eco.get("total_rev_usd"), 900_000 + gross * 100)
+        # Llama app fees and tip-floor product are not in REV
+        self.assertNotAlmostEqual(eco.get("rev_24h_usd"), llama)
+        self.assertNotAlmostEqual(eco.get("rev_24h_usd"), 900_000 + llama)
+        self.assertNotAlmostEqual(eco.get("rev_24h_usd"), 900_000 + floor)
+        self.assertLess(eco.get("rev_24h_usd"), llama)
+        jr = eco.get("jito_runrate_not_rev") or {}
+        self.assertFalse(jr.get("included_in_headline"))
+        self.assertTrue(eco.get("protocol_fees_excluded_from_rev"))
+        self.assertEqual(eco.get("protocol_fees_usd"), llama)
+        ids = {c["id"]: c for c in eco.get("rev_components") or []}
+        self.assertTrue(ids["jito_mev_tips"].get("included_in_headline"))
+        self.assertFalse(ids["jito_tips_floor_runrate"].get("included_in_headline"))
+        from htmlout import render_html
+        html = render_html({
+            "meta": {"version": "1.5.1", "generated_at_utc": "2026-08-26T03:00:00Z",
+                     "generated_at_pt": "2026-08-25 20:00:00 PT"},
+            "cluster": {"health": "ok", "slot_time_sec": 0.365, "tps_total": 4000},
+            "brief": {"network_health": "HEALTHY", "ecosystem_activity": "SURGE",
+                      "verdict": "HEALTHY", "biggest_positive": "DEX",
+                      "biggest_risk": "None — no isolated adverse network or market print this run.",
+                      "score": 100, "what_changed": "x", "why_it_matters": "y"},
+            "health_score": {"score": 100, "formula": "25x"},
+            "economics": eco,
+        })
+        self.assertIn("2026-08-25", html)
+        self.assertIn("Solana REV", html)
+        # The REV tile should show a dollar figure, not the word incomplete as the value
+        self.assertIn("UTC calendar day 2026-08-25", html)
 
 class InsightBriefTests(unittest.TestCase):
     def _surge_fixture(self):

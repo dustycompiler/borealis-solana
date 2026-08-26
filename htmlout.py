@@ -441,12 +441,13 @@ def render_html(snap: dict) -> str:
              ghost=eco.get("network_fees_usd_24h") is None,
              source=(eco.get("network_fees_source") or "solana.com/data Fees") + " MEASURED; NOT DeFiLlama protocol fees",
              conf="HIGH" if eco.get("network_fees_usd_24h") is not None else "LOW", extra=age),
-        tile("Full REV",
-             "incomplete",
-             "Jito 24h aggregate unavailable; tip-floor is a bundle percentile, not a tape",
-             ghost=True,
-             source=(eco.get("rev_kind") or "INCOMPLETE — no 24h Jito tip tape on zero-key sources"),
-             conf="LOW", extra=age),
+        tile("Solana REV",
+             (usd(eco.get("rev_24h_usd")) if eco.get("rev_complete") and eco.get("rev_24h_usd") is not None else "incomplete"),
+             (f"UTC calendar day {e(eco.get('rev_utc_day'))} · in-protocol fees + gross Jito MEV (jito_tips + validator_tips; not rolling 24h)"
+              if eco.get("rev_complete") else (eco.get("rev_kind") or "incomplete — no same-UTC-day Jito daily tape")),
+             ghost=not eco.get("rev_complete"),
+             source=(eco.get("rev_kind") or eco.get("rev_definition") or ""),
+             conf=("HIGH" if eco.get("rev_complete") else "LOW"), extra=age),
         tile("TVL", usd(d.get("tvl_usd")) if not tvl_ghost else "—",
              "DeFiLlama chain TVL", chip=d.get("tvl_change_1d_pct"), ghost=tvl_ghost, spark=tvl_spark,
              source="api.llama.fi/v2/chains", conf="HIGH", extra=age),
@@ -717,13 +718,16 @@ def render_html(snap: dict) -> str:
         jito_cell = e(jt.get("reason") or "omitted")
     jr = eco.get("jito_runrate_not_rev") or {}
     eco_box = (
-        f'<div class="panel"><h2>In-protocol fees 24h · Full REV incomplete</h2>'
-        f'<p class="val">{usd(eco.get("network_fees_usd_24h"))}</p>'
-        f'<p class="sub">MEASURED in-protocol network fees · Full REV: incomplete</p>'
+        f'<div class="panel"><h2>Solana REV · UTC calendar day {e(eco.get("rev_utc_day") or "unaligned")}</h2>'
+        f'<p class="val">{usd(eco.get("rev_24h_usd")) if eco.get("rev_complete") else "incomplete"}</p>'
+        f'<p class="sub">{e(eco.get("rev_kind") or "")}</p>'
         f'<table><tbody>'
-        f'<tr><td>In-protocol network fees 24h</td><td class="right">{nfmt(eco.get("network_fees_sol_24h"), 1)} SOL'
-        f' ({usd(eco.get("network_fees_usd_24h"))}) · MEASURED</td></tr>'
-        f'<tr><td>Full REV</td><td class="right">incomplete · {e(eco.get("rev_kind") or "")}</td></tr>'
+        f'<tr><td>In-protocol network fees</td><td class="right">{nfmt(eco.get("network_fees_sol_24h"), 1)} SOL'
+        f' ({usd(eco.get("network_fees_usd_24h"))}) · MEASURED · date {e(eco.get("network_fees_date"))}</td></tr>'
+        f'<tr><td>Jito gross MEV tips</td><td class="right">{nfmt((eco.get("jito_daily") or {}).get("gross_tips_sol"), 1)} SOL'
+        f' ({usd((eco.get("jito_daily") or {}).get("gross_tips_usd"))}) · jito_tips + validator_tips · UTC {e((eco.get("jito_daily") or {}).get("day") or eco.get("rev_utc_day"))}</td></tr>'
+        f'<tr><td>Solana REV</td><td class="right">{usd(eco.get("rev_24h_usd")) if eco.get("rev_complete") else "incomplete"}'
+        f' · {e(eco.get("rev_window") or "")}</td></tr>'
         f'<tr><td>Jito tip-floor run-rate (NOT REV)</td><td class="right">{usd(jr.get("runrate_24h_usd"))}'
         f' · INVALID as a 24h aggregate · included_in_headline=false</td></tr>'
         f'<tr><td>Jito sensitivity p50 vs p95</td><td class="right">{e((eco.get("jito") or {}).get("sensitivity") or eco.get("rev_sensitivity") or "p95 omitted")}</td></tr>'
