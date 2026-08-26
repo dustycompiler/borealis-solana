@@ -28,6 +28,7 @@ from generate import (  # noqa: E402
     classify_network_health,
     classify_news_items,
     complete_jito_days,
+    daily_sol_usd,
     compute_health,
     detect_anomalies,
     editorial_block,
@@ -343,7 +344,6 @@ class EconomicsHonestyTests(unittest.TestCase):
         row = {"jito_tips": 113.294, "validator_tips": 2152.587}
         gross = jito_gross_tips_sol(row)
         self.assertAlmostEqual(gross, 2265.881)
-        self.assertAlmostEqual(113.294 / gross, 0.05, places=5)
         self.assertNotEqual(gross, 113.294)
         self.assertNotEqual(gross, 2152.587)
         self.assertIsNone(jito_gross_tips_sol({"jito_tips": 113.294}))
@@ -390,8 +390,10 @@ class EconomicsHonestyTests(unittest.TestCase):
         eco = build_economics(
             {"fees": {"total_24h_usd": llama}},
             {"derived": {"network_fees_sol": 9000, "network_fees_date": "2026-08-25",
-                         "network_fees_source": "solana.com/data Fees (Allium)"}},
-            {"usd": 100},
+                         "network_fees_source": "solana.com/data Fees (Allium)",
+                         "sol_price_30d_provider": "DexPaprika",
+                         "sol_price_30d": [{"date": "2026-08-25", "value": 100.0}]}},
+            {"usd": 97},
             tx_fees={"ok": True, "p50_sol": 0.00001, "sampled_runrate_24h_sol": 9100},
             jito={"ok": True, "landed_p50_sol": 1e-5, "landed_p95_sol": 4e-5},
             cluster={"tps_nonvote": 2000},
@@ -403,6 +405,11 @@ class EconomicsHonestyTests(unittest.TestCase):
         self.assertAlmostEqual(eco.get("rev_24h_sol"), 9000 + gross)
         self.assertAlmostEqual(eco.get("rev_24h_usd"), 900_000 + gross * 100)
         self.assertAlmostEqual(eco.get("total_rev_usd"), 900_000 + gross * 100)
+        self.assertEqual(eco.get("rev_usd_price_date"), eco.get("rev_utc_day"))
+        self.assertEqual(eco.get("rev_usd_price_date"), "2026-08-25")
+        self.assertAlmostEqual(eco.get("rev_sol_usd"), 100)
+        # snapshot 97 must not be the REV USD converter
+        self.assertNotAlmostEqual(eco.get("rev_24h_usd"), (9000 + gross) * 97)
         # Llama app fees and tip-floor product are not in REV
         self.assertNotAlmostEqual(eco.get("rev_24h_usd"), llama)
         self.assertNotAlmostEqual(eco.get("rev_24h_usd"), 900_000 + llama)
@@ -431,6 +438,57 @@ class EconomicsHonestyTests(unittest.TestCase):
         self.assertIn("Solana REV", html)
         # The REV tile should show a dollar figure, not the word incomplete as the value
         self.assertIn("UTC calendar day 2026-08-25", html)
+
+
+    def test_rev_usd_uses_same_utc_day_sol_price_not_snapshot(self):
+        # Aug-24 fees + Aug-24 Jito, snapshot $97, daily $95.40
+        eco = build_economics(
+            {"fees": {"total_24h_usd": 14_490_000}},
+            {"derived": {
+                "network_fees_sol": 9162.05,
+                "network_fees_date": "2026-08-24",
+                "network_fees_source": "solana.com/data Fees (Allium)",
+                "sol_price_30d_provider": "DexPaprika",
+                "sol_price_30d": [
+                    {"date": "2026-08-23", "value": 90.0},
+                    {"date": "2026-08-24", "value": 95.40},
+                    {"date": "2026-08-25", "value": 96.00},
+                ],
+            }},
+            {"usd": 97.09},
+            jito_daily=self._jito_daily(),
+        )
+        gross = 88.961 + 1690.259
+        rev_sol = 9162.05 + gross
+        self.assertTrue(eco.get("rev_complete"))
+        self.assertEqual(eco.get("rev_utc_day"), "2026-08-24")
+        self.assertEqual(eco.get("rev_usd_price_date"), "2026-08-24")
+        self.assertEqual(eco.get("rev_usd_price_date"), eco.get("rev_utc_day"))
+        self.assertAlmostEqual(eco.get("rev_24h_sol"), rev_sol)
+        self.assertAlmostEqual(eco.get("rev_sol_usd"), 95.40)
+        self.assertAlmostEqual(eco.get("rev_24h_usd"), rev_sol * 95.40)
+        self.assertNotAlmostEqual(eco.get("rev_24h_usd"), rev_sol * 97.09)
+        px, d, src = daily_sol_usd(
+            {"sol_price_30d": [{"date": "2026-08-24", "value": 95.40}],
+             "sol_price_30d_provider": "DexPaprika"},
+            "2026-08-24",
+        )
+        self.assertAlmostEqual(px, 95.40)
+        self.assertEqual(d, "2026-08-24")
+        self.assertIn("2026-08-24", src)
+
+    def test_rev_usd_omitted_without_same_day_price(self):
+        eco = build_economics(
+            {"fees": {"total_24h_usd": 1e6}},
+            {"derived": {"network_fees_sol": 9000, "network_fees_date": "2026-08-25",
+                         "sol_price_30d": [{"date": "2026-08-24", "value": 95.40}]}},
+            {"usd": 100},
+            jito_daily=self._jito_daily(),
+        )
+        self.assertTrue(eco.get("rev_complete"))
+        self.assertIsNone(eco.get("rev_24h_usd"))
+        self.assertIsNone(eco.get("rev_usd_price_date"))
+        self.assertAlmostEqual(eco.get("rev_24h_sol"), 9000 + 113.294 + 2152.587)
 
 class InsightBriefTests(unittest.TestCase):
     def _surge_fixture(self):

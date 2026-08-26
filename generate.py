@@ -37,7 +37,7 @@ from zoneinfo import ZoneInfo
 
 from htmlout import render_html
 
-VERSION = "1.5.1"
+VERSION = "1.5.2"
 PRODUCT = "Borealis"
 LAMPORTS = 1_000_000_000
 PT = ZoneInfo("America/Vancouver")
@@ -47,7 +47,7 @@ PRIMARY_RPC = "https://api.mainnet-beta.solana.com"
 FALLBACK_RPC = "https://solana-rpc.publicnode.com"
 
 USER_AGENT = (
-    "BorealisReport/1.5.1 (Solana ecosystem dashboard; stdlib urllib; no API key)"
+    "BorealisReport/1.5.2 (Solana ecosystem dashboard; stdlib urllib; no API key)"
 )
 
 # Official Solana burn address, cited from Solana Foundation (not guessed):
@@ -1661,9 +1661,10 @@ def jito_day_key(day: Any) -> str | None:
 def jito_gross_tips_sol(row: dict[str, Any] | None) -> float | None:
     """Gross user-paid MEV tips = jito_tips + validator_tips.
 
-    Empirically jito_tips / (jito_tips+validator_tips) == 0.05 every day
-    (TipRouter protocol fee vs remainder to validators). Fields are
-    components, not inclusive. None if either field missing.
+    Endpoint reports two separate amounts (Jito-paid/retained vs
+    validator-distributed). They are components, not inclusive.
+    None if either field is missing. Do not interpret the split as a
+    TipRouter protocol-fee rate.
     """
     if not isinstance(row, dict):
         return None
@@ -1693,6 +1694,31 @@ def aligned_rev_date(fee_date: Any, jito_complete: dict[str, dict[str, Any]]) ->
     return None
 
 
+
+def daily_sol_usd(derived: dict[str, Any] | None, day: Any) -> tuple[float | None, str | None, str | None]:
+    """SOL/USD for a UTC calendar day from solana.com/data SOL Price 30d series.
+
+    Returns (price, YYYY-MM-DD, source). None if that day is missing.
+    Never silently fall back to the live snapshot price.
+    """
+    d = jito_day_key(day)
+    if not d:
+        return None, None, None
+    derived = derived or {}
+    prov = derived.get("sol_price_30d_provider") or "vendor"
+    for row in derived.get("sol_price_30d") or []:
+        if not isinstance(row, dict):
+            continue
+        if jito_day_key(row.get("date")) != d:
+            continue
+        v = fnum(row.get("value"))
+        if v is None:
+            continue
+        src = f"solana.com/data SOL Price ({prov}) UTC {d}"
+        return v, d, src
+    return None, None, None
+
+
 def fetch_jito_daily_mev(http: Http) -> dict[str, Any]:
     """Public no-key Jito daily MEV tape. UTC calendar days, not rolling 24h."""
     url = JITO_DAILY_MEV_URL
@@ -1703,8 +1729,8 @@ def fetch_jito_daily_mev(http: Http) -> dict[str, Any]:
         "utc_today": today, "rows": [], "complete": {},
         "accounting": (
             "gross_mev_tips_sol = jito_tips + validator_tips "
-            "(jito_tips is the ~5% TipRouter protocol fee; validator_tips is the remainder; "
-            "not inclusive of each other)"
+            "(jito_tips = Jito-paid/retained; validator_tips = validator-distributed; "
+            "separate components, not inclusive; split is not a TipRouter protocol-fee rate)"
         ),
     }
     if not rec.get("ok") or not isinstance(data, list):
@@ -3433,8 +3459,10 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None, 
         gross_jito_sol = fnum(jito_row.get("gross_tips_sol"))
         if gross_jito_sol is None:
             gross_jito_sol = jito_gross_tips_sol(jito_row)
-        if gross_jito_sol is not None and sol is not None:
-            gross_jito_usd = gross_jito_sol * sol
+    rev_px, rev_px_date, rev_px_src = daily_sol_usd(derived, rev_date)
+    if gross_jito_sol is not None and rev_px is not None:
+        gross_jito_usd = gross_jito_sol * rev_px
+    net_usd_rev = (net_sol * rev_px) if (net_sol is not None and rev_px is not None) else None
 
     routes_tried = [
         {"route": "solana.com/data Fees (Allium/Dune/Blockworks)", "role": "measured in-protocol 24h (headline_primary)",
@@ -3466,10 +3494,16 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None, 
     rev_complete = False
     if net_sol is not None and gross_jito_sol is not None and rev_date:
         rev_sol = net_sol + gross_jito_sol
-        rev_usd = ((net_usd or 0) + (gross_jito_usd or 0)) if (net_usd is not None or gross_jito_usd is not None) else None
+        if rev_px is not None and rev_px_date == rev_date:
+            rev_usd = rev_sol * rev_px
+        extra_usd = (
+            f"; USD uses {rev_px_src}"
+            if rev_usd is not None else
+            "; USD omitted (no same-UTC-day SOL price)"
+        )
         rev_kind = (
             f"MEASURED UTC calendar day {rev_date}: in-protocol fees + gross Jito MEV tips "
-            f"(jito_tips + validator_tips; not a rolling 24h)"
+            f"(jito_tips + validator_tips; not a rolling 24h){extra_usd}"
         )
         rev_complete = True
     elif net_sol is not None:
@@ -3484,9 +3518,11 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None, 
         "Full network REV (Blockworks/Helius) is in-protocol transaction fees "
         "(vote + base + priority) plus out-of-protocol Jito MEV tips. "
         "Jito tape: GET kobe.mainnet.jito.network/api/v1/daily_mev_rewards (no key). "
-        "Gross tips = jito_tips + validator_tips (components: ~5% TipRouter fee + remainder; "
-        "not inclusive). UTC calendar day, aligned to solana.com/data Fees date. "
-        "Never mix dates. tip_floor × TPS is NOT REV. DeFiLlama protocol/application fees are NOT REV."
+        "Gross tips = jito_tips + validator_tips (Jito-paid/retained vs validator-distributed; "
+        "not inclusive; split is not a TipRouter fee rate). UTC calendar day, aligned to "
+        "solana.com/data Fees date. REV USD uses that same day's solana.com/data SOL Price, "
+        "not the live snapshot. Never mix dates. tip_floor × TPS is NOT REV. "
+        "DeFiLlama protocol/application fees are NOT REV."
     )
     headline_primary = {
         "label": "in-protocol network fees 24h",
@@ -3563,12 +3599,14 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None, 
         "rev_jito_is_ledger": bool(rev_complete),
         "rev_components": [
             {"id": "in_protocol_fees", "label": "In-protocol network fees 24h",
-             "sol": net_sol, "usd": net_usd, "kind": "MEASURED",
-             "source": derived.get("network_fees_source"), "included_in_headline": True},
+             "sol": net_sol, "usd": (net_usd_rev if rev_usd is not None else net_usd), "kind": "MEASURED",
+             "source": derived.get("network_fees_source"), "included_in_headline": True,
+             "usd_price_date": rev_px_date if rev_usd is not None else None},
             {"id": "jito_mev_tips", "label": "Jito gross MEV tips (jito_tips + validator_tips)",
              "sol": gross_jito_sol, "usd": gross_jito_usd, "kind": "MEASURED" if gross_jito_sol is not None else None,
              "day": rev_date, "included_in_headline": bool(rev_complete),
-             "source": JITO_DAILY_MEV_URL},
+             "source": JITO_DAILY_MEV_URL,
+             "usd_price_date": rev_px_date if rev_usd is not None else None},
             {"id": "jito_tips_floor_runrate", "label": "Jito tip-floor run-rate (NOT REV)",
              "sol": jito_invalid_runrate_sol, "usd": jito_invalid_runrate_usd, "kind": jito_kind,
              "source": jito_note, "included_in_headline": False, "not_a_24h_aggregate": True},
@@ -3581,6 +3619,15 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None, 
         ),
         "rev_proxy_usd": None,
         "rev_utc_day": rev_date,
+        "rev_sol_usd": rev_px,
+        "rev_usd_price_date": rev_px_date if rev_usd is not None else None,
+        "rev_usd_price_source": rev_px_src if rev_usd is not None else None,
+        "rev_spot_usd": (rev_sol * sol) if (rev_sol is not None and sol is not None) else None,
+        "rev_spot_sol_usd": sol,
+        "rev_spot_note": (
+            "spot equivalent at this run SOL-USD; not the headline REV USD"
+            if rev_sol is not None else None
+        ),
         "jito_daily": {
             "ok": bool(jito_daily.get("ok")),
             "url": jito_daily.get("url") or JITO_DAILY_MEV_URL,
@@ -3590,7 +3637,7 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None, 
             "gross_tips_sol": gross_jito_sol,
             "gross_tips_usd": gross_jito_usd,
             "accounting": jito_daily.get("accounting") or (
-                "gross = jito_tips + validator_tips (5% protocol + remainder)"
+                "gross = jito_tips + validator_tips (Jito-paid/retained vs validator-distributed)"
             ),
             "latest_complete_day": jito_daily.get("latest_complete_day"),
         },
@@ -4077,7 +4124,7 @@ TPS = `numTransactions / samplePeriodSecs`. Slot time = `samplePeriodSecs / numS
 | Metric | Value | Source |
 | --- | ---: | --- |
 | **In-protocol fees 24h** | **{fmt_usd(eco.get('network_fees_usd_24h'))}** ({fmt_num(eco.get('network_fees_sol_24h'), 1)} SOL) | {eco.get('network_fees_source') or '—'} MEASURED |
-| **Solana REV** | **{fmt_usd(eco.get('rev_24h_usd')) if eco.get('rev_complete') else 'incomplete'}** | {eco.get('rev_kind') or eco.get('rev_label')} · UTC day {eco.get('rev_utc_day') or '—'} |
+| **Solana REV** | **{fmt_num(eco.get('rev_24h_sol'), 1) + ' SOL' if eco.get('rev_complete') else 'incomplete'}** / **{fmt_usd(eco.get('rev_24h_usd')) if eco.get('rev_24h_usd') is not None else 'USD omitted'}** | {eco.get('rev_kind') or eco.get('rev_label')} · UTC day {eco.get('rev_utc_day') or '—'} · SOL-USD date {eco.get('rev_usd_price_date') or '—'} |
 | Jito tip-floor run-rate (NOT REV) | {fmt_usd((eco.get('jito_runrate_not_rev') or dict()).get('runrate_24h_usd'))} | INVALID as a 24h aggregate · included_in_headline=false · {(eco.get('jito') or dict()).get('sensitivity') or eco.get('rev_sensitivity') or 'tip_floor × nv TPS × 86400'} |
 | Protocol fees 24h | {fmt_usd(eco.get('protocol_fees_usd'))} | EXCLUDED from REV — {eco.get('protocol_fees_label')} |
 | Median tx fee p50 | {fmt_num(eco.get('median_tx_fee_sol'), 6)} SOL ({fmt_usd(eco.get('median_tx_fee_usd'), 4)}) | NOT a 24h census · {eco.get('median_tx_fee_window_label') or 'stratified sample'} · n_tx={eco.get('median_tx_fee_n')} window_seconds={eco.get('median_tx_fee_window_seconds')} |

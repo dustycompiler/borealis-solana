@@ -1,28 +1,28 @@
-# Borealis 1.5.1 — official Superteam rubric
+# Borealis 1.5.2 — official Superteam rubric
 
-Scored 2026-08-25 **20:56 PT** against the 1.5.1 snapshot
-(`meta.version` **1.5.1**, `generated_at_utc` **2026-08-26T03:56:06Z**). Not a judge ranking. Do not inflate.
+Scored 2026-08-25 **21:29 PT** against the 1.5.2 snapshot
+(`meta.version` **1.5.2**, `generated_at_utc` **2026-08-26T04:29:36Z**). Not a judge ranking. Do not inflate.
 
 Official listing criteria only (earn.superteam.fun, listing token SIMD-525). Scale 0.0–5.0.
 If uncertain, score lower. A 5.0 would survive a hostile grep with no remaining P0/P1.
 
 | Criterion | Score / 5 | Why | What prevents 5.0 |
 |---|---:|---|---|
-| Comprehensiveness | 4.8 | Live page covers TPS, slot, height, epoch, active/delinquent validators, stake, commissions, delinquency alerts, news + public X/Nitter RSS, SOL 24h, stables, DEX (24h and 7d totals with correct Llama semantics), **measured Solana REV on the latest common complete UTC day** (in-protocol fees + gross Jito MEV `jito_tips + validator_tips`), median tx fee (stratified getBlock, labeled not a census), tokenized-equity **volume** (Jupiter xStocks subset), DAA (Allium via solana.com/data), Alpenglow SIMD-0326, SIMD-525, anomalies, HTML+MD+JSON, 15-min Action, live demo. This run: **$1.06M REV, UTC 2026-08-24** ($889k fees + $173k Jito). | REV is a UTC **calendar day**, not rolling 24h; solana.com Fees can lag so the common day may be T-2. xStocks mcap is 80 of 715 names. 7d equity volume does not exist on no-key Jupiter/Llama. Dune is an external embed, not a Borealis query. |
-| Automation & Maintainability | 4.8 | `python3 generate.py`, stdlib-only, no secrets. GitHub Actions every 15 minutes (tests.yml then update). Pages tracks main. Failure of CoinGecko 429 is expected-unavailable, not a crash. | GitHub cron drifts; do not claim hard realtime. CoinGecko 429 from shared IPs is a standing external. Screenshot step is best-effort Chrome. |
-| Clarity & Presentation | 4.8 | 30-second hero: Network Health separate from Ecosystem Activity. Solana REV tile shows **$1.06M · UTC calendar day 2026-08-24**, not a ghost "incomplete". DEX line labels Llama `change_7d` as 24h vs 24h from 7d ago. Multipliers are live `?network=Solana`. | Headline confidence is **MED** (CoinGecko 429 → Coinbase) and cannot be HIGH while xStocks mcap is 80/715. Charts still mix a short local tape with upstream 30d/90d — labeled, but easy to misread. |
-| Innovation | 4.7 | Network-vs-ecosystem classifier; biggest-risk bound to the same model; evidence-linked insights; source provenance; live xStocks currentMultiplier (capital-S `network=Solana`); **public no-key Jito daily MEV tape** (`kobe.mainnet.jito.network/api/v1/daily_mev_rewards`) with explicit 5%/95% component accounting instead of a fake tip-floor product. | Intelligence is rule-based, not a deep multi-source causal model. No original Dune query (API is 401 without a key). |
-| Technical Implementation | 4.8 | 49 stdlib unittests (gross = jito+validator, skip incomplete today, refuse mixed dates, Llama and tip-floor excluded from REV, WATCH+delinquency is the risk, multiplier route fetched, DEX labels). RPC 429→publicnode. Escaping of feed text. `write_outputs` is the HTML/MD/JSON sink. | Full generate.py is still network-bound; e2e is fixture-backed via `write_outputs`, not a recorded RPC cassette of every source. JSON schema_version is not a separate product field. |
-| Originality | 4.8 | First-party generator, not a restyle of Orbit/Pulse/Heliostat. Pulse still labels Llama app fees as REV — Borealis does not. Dune iframe is labeled public embed, not our query. README states the SolPulse *idea* inspiration. | Third-party Dune dashboard is still on the Sources tab; must stay External Reference. |
+| Comprehensiveness | 4.8 | Same coverage as 1.5.1 plus **REV USD on the same UTC day as the SOL legs**. This run: **10,941.3 SOL / $1.05M, UTC 2026-08-24**, SOL-USD **$96.18** from `solana.com/data` SOL Price (DexPaprika) that day — not the $97.07 snapshot. Gross Jito = `jito_tips + validator_tips` (Jito-paid/retained vs validator-distributed). | REV is a UTC **calendar day**, not rolling 24h; Fees can lag to T-2. xStocks mcap is 80 of 715. 7d equity volume does not exist no-key. Dune is an external embed. |
+| Automation & Maintainability | 4.8 | `python3 generate.py`, stdlib-only, no secrets. GitHub Actions every 15 minutes. Pages tracks main. CoinGecko 429 is expected-unavailable. | GitHub cron drifts. CoinGecko 429 from shared IPs is standing. Screenshot step is best-effort Chrome. |
+| Clarity & Presentation | 4.8 | Tile: **$1.05M · 10,941.3 SOL · UTC 2026-08-24 · SOL-USD 96.18 on 2026-08-24**. Spot equivalent at run price is labeled not-headline. Network Health separate from Ecosystem Activity. | Headline confidence cannot be HIGH while xStocks mcap is 80/715. Charts mix a short local tape with upstream 30d/90d — labeled. |
+| Innovation | 4.7 | Network-vs-ecosystem classifier; live xStocks `currentMultiplier`; public no-key Jito daily MEV tape; same-day SOL-USD for REV; refuses a TipRouter fee-rate story the API does not prove. | Rule-based intelligence. No original Dune query. |
+| Technical Implementation | 4.8 | 51 stdlib unittests including **REV USD price date equals `rev_utc_day`**, snapshot price rejected, skip incomplete today, refuse mixed dates, Llama and tip-floor excluded. | Full generate.py is network-bound; e2e is fixture-backed. |
+| Originality | 4.8 | First-party generator. Pulse still labels Llama app fees as REV — Borealis does not. Dune iframe is External Reference. | Third-party Dune dashboard remains on Sources. |
 
 Mean: **4.78 / 5**. Categories below 4.5: **none**.
 
 ## External blockers (not laziness)
 
-1. **solana.com Fees lag** — this run aligned to UTC 2026-08-24 even though Jito already published a complete 2026-08-25 row. Mixing those dates is forbidden. Label the day.
-2. **xStocks HTTP budget** — 715 unique catalog names with a Solana mint; pricing 80 is a labeled lower bound.
-3. **Dune API** — results/CSV 401 without a key. Core architecture stays zero-key.
+1. **solana.com Fees lag** — this run aligned to UTC 2026-08-24 even though Jito had a complete 2026-08-25 row.
+2. **xStocks HTTP budget** — 715 catalog names; 80 priced is a labeled lower bound.
+3. **Dune API** — 401 without a key. Core stays zero-key.
 
-## This cycle vs 1.5.0
+## This cycle vs 1.5.1
 
-1.5.0 refused a REV product because only `tip_floor` was wired. 1.5.1 uses Jito's public daily MEV tape. Gross user-paid tips = `jito_tips + validator_tips` (empirically 5% + 95%). Today's incomplete Jito row is skipped. Llama `/overview/fees/Solana` stays excluded. Tip-floor × nvTPS × 86400 stays `jito_runrate_not_rev` with `included_in_headline=false`.
+1.5.1 converted Aug-24 SOL REV with the live snapshot (~$97). 1.5.2 uses that UTC day's `solana.com/data` SOL Price (DexPaprika $96.18 here). Headline SOL total is first-class. Spot equivalent is separate. Jito field copy is neutral: no "~5% TipRouter protocol fee" claim.

@@ -1,4 +1,4 @@
-# Official requirement matrix — Borealis 1.5.1
+# Official requirement matrix — Borealis 1.5.2
 
 Source: live Superteam Canada listing
 https://earn.superteam.fun/listing/develop-solana-ecosystem-auto-updating-report-and-interactive-dashboard
@@ -23,7 +23,7 @@ Green = implemented as specified. Partial = related metric present, limitation n
 | SOL price movements | yes | last/open 24h % | Coinbase (Gecko 429 → Coinbase) | yes | yes | yes | yes | Gecko 429 expected-unavailable. |
 | Stablecoin supply | yes | Solana circulating USD | stablecoins.llama.fi | yes | yes | yes | helper | |
 | DEX volume | yes | 24h, 7d total, change_1d, change_7d (24h vs 7d-ago), change_7dover7d | DeFiLlama /overview/dexs/Solana | yes | yes | yes | yes | Labels distinguish change_7d vs 7d-total. |
-| Real Economic Value (REV) | yes | Same completed UTC day: in-protocol fees + gross Jito MEV (`jito_tips + validator_tips`) | solana.com/data Fees + kobe.mainnet.jito.network/api/v1/daily_mev_rewards | yes | yes | yes | yes | UTC calendar day, not rolling 24h. Dates never mixed. Today's Jito row skipped. Llama app fees excluded. Tip-floor × TPS is not REV. |
+| Real Economic Value (REV) | yes | Same completed UTC day: in-protocol fees + gross Jito MEV (`jito_tips + validator_tips`); USD at that day's solana.com/data SOL Price | solana.com/data Fees + SOL Price + kobe.mainnet.jito.network/api/v1/daily_mev_rewards | yes | yes | yes | yes | UTC calendar day, not rolling 24h. Dates never mixed. Today's Jito row skipped. Llama app fees excluded. Tip-floor × TPS is not REV. Split is not a TipRouter fee rate. |
 | Median transaction fees | yes | getBlock meta.fee p50, time-stratified ~2–3h | RPC getBlock | yes | yes | yes | yes | Not a 24h census; window_seconds labeled. |
 | Tokenized asset volumes (equities) | yes | Jupiter stats24h buy+sell on matched xStock mints | lite-api.jup.ag | yes | yes | yes | helper | Subset, not all 715, not all Solana DEX. |
 | Daily active addresses | yes | Allium series via solana.com/data | solana.com/api/databricks | yes | yes | yes | helper | Vendors disagree; not averaged. |

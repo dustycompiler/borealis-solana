@@ -442,12 +442,13 @@ def render_html(snap: dict) -> str:
              source=(eco.get("network_fees_source") or "solana.com/data Fees") + " MEASURED; NOT DeFiLlama protocol fees",
              conf="HIGH" if eco.get("network_fees_usd_24h") is not None else "LOW", extra=age),
         tile("Solana REV",
-             (usd(eco.get("rev_24h_usd")) if eco.get("rev_complete") and eco.get("rev_24h_usd") is not None else "incomplete"),
-             (f"UTC calendar day {e(eco.get('rev_utc_day'))} · in-protocol fees + gross Jito MEV (jito_tips + validator_tips; not rolling 24h)"
+             (usd(eco.get("rev_24h_usd")) if eco.get("rev_24h_usd") is not None else (
+                 (nfmt(eco.get("rev_24h_sol"), 1) + " SOL") if eco.get("rev_complete") else "incomplete")),
+             (f"{nfmt(eco.get('rev_24h_sol'), 1)} SOL · UTC calendar day {e(eco.get('rev_utc_day'))} · SOL-USD {nfmt(eco.get('rev_sol_usd'), 2)} on {e(eco.get('rev_usd_price_date'))} · jito_tips + validator_tips (not rolling 24h)"
               if eco.get("rev_complete") else (eco.get("rev_kind") or "incomplete — no same-UTC-day Jito daily tape")),
              ghost=not eco.get("rev_complete"),
-             source=(eco.get("rev_kind") or eco.get("rev_definition") or ""),
-             conf=("HIGH" if eco.get("rev_complete") else "LOW"), extra=age),
+             source=(eco.get("rev_usd_price_source") or eco.get("rev_kind") or eco.get("rev_definition") or ""),
+             conf=("HIGH" if eco.get("rev_24h_usd") is not None else ("MED" if eco.get("rev_complete") else "LOW")), extra=age),
         tile("TVL", usd(d.get("tvl_usd")) if not tvl_ghost else "—",
              "DeFiLlama chain TVL", chip=d.get("tvl_change_1d_pct"), ghost=tvl_ghost, spark=tvl_spark,
              source="api.llama.fi/v2/chains", conf="HIGH", extra=age),
@@ -719,15 +720,18 @@ def render_html(snap: dict) -> str:
     jr = eco.get("jito_runrate_not_rev") or {}
     eco_box = (
         f'<div class="panel"><h2>Solana REV · UTC calendar day {e(eco.get("rev_utc_day") or "unaligned")}</h2>'
-        f'<p class="val">{usd(eco.get("rev_24h_usd")) if eco.get("rev_complete") else "incomplete"}</p>'
-        f'<p class="sub">{e(eco.get("rev_kind") or "")}</p>'
+        f'<p class="val">{usd(eco.get("rev_24h_usd")) if eco.get("rev_24h_usd") is not None else ("incomplete" if not eco.get("rev_complete") else nfmt(eco.get("rev_24h_sol"), 1)+" SOL")}</p>'
+        f'<p class="sub">{nfmt(eco.get("rev_24h_sol"), 1)} SOL · {e(eco.get("rev_kind") or "")}</p>'
         f'<table><tbody>'
         f'<tr><td>In-protocol network fees</td><td class="right">{nfmt(eco.get("network_fees_sol_24h"), 1)} SOL'
-        f' ({usd(eco.get("network_fees_usd_24h"))}) · MEASURED · date {e(eco.get("network_fees_date"))}</td></tr>'
+        f' ({usd(next((c.get("usd") for c in (eco.get("rev_components") or []) if c.get("id")=="in_protocol_fees"), eco.get("network_fees_usd_24h")))})'
+        f' · MEASURED · date {e(eco.get("network_fees_date"))} · USD at {e(eco.get("rev_usd_price_date") or "run SOL-USD")}</td></tr>'
         f'<tr><td>Jito gross MEV tips</td><td class="right">{nfmt((eco.get("jito_daily") or {}).get("gross_tips_sol"), 1)} SOL'
         f' ({usd((eco.get("jito_daily") or {}).get("gross_tips_usd"))}) · jito_tips + validator_tips · UTC {e((eco.get("jito_daily") or {}).get("day") or eco.get("rev_utc_day"))}</td></tr>'
-        f'<tr><td>Solana REV</td><td class="right">{usd(eco.get("rev_24h_usd")) if eco.get("rev_complete") else "incomplete"}'
-        f' · {e(eco.get("rev_window") or "")}</td></tr>'
+        f'<tr><td>Solana REV SOL</td><td class="right">{nfmt(eco.get("rev_24h_sol"), 1)} SOL · UTC {e(eco.get("rev_utc_day") or "")}</td></tr>'
+        f'<tr><td>Solana REV USD</td><td class="right">{usd(eco.get("rev_24h_usd")) if eco.get("rev_24h_usd") is not None else "omitted"}'
+        f' · SOL-USD {nfmt(eco.get("rev_sol_usd"), 2)} on {e(eco.get("rev_usd_price_date") or "—")}</td></tr>'
+        f'<tr><td>Spot equivalent (not headline)</td><td class="right">{usd(eco.get("rev_spot_usd"))} at run SOL-USD {nfmt(eco.get("rev_spot_sol_usd"), 2)}</td></tr>'
         f'<tr><td>Jito tip-floor run-rate (NOT REV)</td><td class="right">{usd(jr.get("runrate_24h_usd"))}'
         f' · INVALID as a 24h aggregate · included_in_headline=false</td></tr>'
         f'<tr><td>Jito sensitivity p50 vs p95</td><td class="right">{e((eco.get("jito") or {}).get("sensitivity") or eco.get("rev_sensitivity") or "p95 omitted")}</td></tr>'
