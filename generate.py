@@ -23,11 +23,13 @@ import re
 import shutil
 import statistics
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -35,7 +37,7 @@ from zoneinfo import ZoneInfo
 
 from htmlout import render_html
 
-VERSION = "1.4.0"
+VERSION = "1.4.1"
 PRODUCT = "Borealis"
 LAMPORTS = 1_000_000_000
 PT = ZoneInfo("America/Vancouver")
@@ -45,7 +47,7 @@ PRIMARY_RPC = "https://api.mainnet-beta.solana.com"
 FALLBACK_RPC = "https://solana-rpc.publicnode.com"
 
 USER_AGENT = (
-    "BorealisReport/1.4 (Solana ecosystem dashboard; stdlib urllib; no API key)"
+    "BorealisReport/1.4.1 (Solana ecosystem dashboard; stdlib urllib; no API key)"
 )
 
 # Official Solana burn address, cited from Solana Foundation (not guessed):
@@ -63,17 +65,25 @@ DUNE_EMBED_LABEL = "public Dune embed, not our query"
 
 RSS_MAX_AGE_DAYS = 45
 NEWS_CURRENT_DAYS = 14
-FEE_SPOT_BLOCKS = 6
-FEE_HOUR_BLOCKS = 12
-FEE_BLOCK_TARGET = 18  # spot + hourly cap; kept for tests/compat
-FEE_SLOT_WALK = 30
+FEE_SPOT_BLOCKS = 2  # fewer consecutive tip blocks
+FEE_STRAT_BLOCKS = 12  # slots spread over FEE_WINDOW_TARGET_SEC
+FEE_HOUR_BLOCKS = FEE_STRAT_BLOCKS  # alias
+FEE_BLOCK_TARGET = 14  # spot + stratified
+FEE_SLOT_WALK = 16
+FEE_TX_PER_BLOCK = 160  # subsample within each sampled slot
+FEE_WINDOW_TARGET_SEC = 10800  # ~3h wall-clock target
 VOTE_PROGRAM = "Vote111111111111111111111111111111111111111"
 XSTOCKS_HOSTS = (
     "https://api.backed.fi/api/v2",
     "https://api.xstocks.fi/api/v2",
 )
-XSTOCKS_PRICE_CAP = 24
+XSTOCKS_PRICE_CAP = 80  # try >24; still a priced subset of ~715, never a census
+XSTOCKS_PRICE_CONCURRENCY = 8  # stdlib ThreadPoolExecutor; urllib only
 XSTOCKS_DOCS = "https://docs.xstocks.fi/developers"
+XSTOCKS_MULT_SKIPPED = (
+    "public /multiplier is not fetched (historically HTTP 400). "
+    "mcap uses multiplier=1.0 on circulating-supply as returned."
+)
 JUPITER_TOKEN_SEARCH = "https://lite-api.jup.ag/tokens/v2/search"
 LLAMA_XSTOCKS_PROTOCOL = "https://api.llama.fi/protocol/xstocks"
 SIMD0525_RAW = (
@@ -85,6 +95,8 @@ SIMD0525_GH = (
     "blob/main/proposals/0525-reduce-slot-times.md"
 )
 SIMD0525_SOLANA = "https://solana.com/upgrades/reduced-slot-times"
+SIMD0525_NEWS = "https://solana.com/news/lowering-slot-time-and-validators-economic"
+SIMD0525_NEWS_TITLE = "Lowering Slot Time and Validators Economic"
 SIMD0525_STAGES = (
     {"target_ms": 400, "feature": None, "gate": None},
     {"target_ms": 350, "feature": "iBRL5RuWhw4yqaAZu96RUULHckHTZAoe2b77qaV38JZ",
@@ -280,6 +292,8 @@ def is_vote_tx(tx: Any) -> bool:
     raw = tx.get("transaction")
     msg = raw.get("message") if isinstance(raw, dict) else None
     keys = (msg or {}).get("accountKeys") or []
+    if not keys and isinstance(raw, dict):
+        keys = raw.get("accountKeys") or []
     for k in keys:
         pk = k if isinstance(k, str) else (k.get("pubkey") if isinstance(k, dict) else None)
         if pk == VOTE_PROGRAM:
@@ -336,10 +350,15 @@ def infer_simd0525_stage(slot_ms: Any) -> dict[str, Any]:
             if inferred is not None else "unmapped"
         ),
         "stages": stages,
-        "method": "observed mean slot time vs SIMD-0525 targets; feature accounts not probed",
+        "method": (
+            "INFERRED from observed mean slot time vs SIMD-0525 targets. "
+            "Corroboration only — not a feature-gate RPC."
+        ),
+        "kind": "INFERRED",
         "disclaimer": (
-            "Stage inference from slot time, not from on-chain feature-gate activation. "
-            "A 365 ms mean is consistent with the 350 ms first step, not proof the gate is live."
+            "Observed slot time is corroboration of the SIMD-525 listing, labeled inferred. "
+            "Not a feature-gate / activation-slot RPC. A ~365 ms mean is consistent with the "
+            "350 ms first step, not proof the gate is live."
         ),
     }
 
@@ -671,9 +690,11 @@ def nakamoto(stakes: list[int], threshold: float) -> int | None:
 class Http:
     def __init__(self) -> None:
         self.log: list[dict[str, Any]] = []
+        self._lock = threading.Lock()
 
     def _record(self, **kw: Any) -> dict[str, Any]:
-        self.log.append(kw)
+        with self._lock:
+            self.log.append(kw)
         return kw
 
     def request(
@@ -934,14 +955,29 @@ def fetch_cluster(http: Http) -> dict[str, Any]:
 
 
 
-def _extract_block_fees(block: dict[str, Any]) -> tuple[list[int], list[int], list[int]]:
-    """Return (all_fees, nonvote_fees, priority_est) from a getBlock payload."""
+def _subsample_txs(txs: list[Any], cap: int) -> list[Any]:
+    """Systematic sample across a block so we do not bias the first N txs."""
+    if not cap or len(txs) <= cap:
+        return txs
+    n = len(txs)
+    return [txs[int(i * n / cap)] for i in range(cap)]
+
+
+def _extract_block_fees(
+    block: dict[str, Any], tx_cap: int | None = None,
+) -> tuple[list[int], list[int], list[int], int]:
+    """Return (all_fees, nonvote_fees, priority_est, n_raw_tx) from a getBlock payload.
+
+    tx_cap subsamples within the slot so RPC budget goes to more wall-clock
+    spread (2–3h) instead of more consecutive full blocks.
+    """
     fees: list[int] = []
     nv: list[int] = []
     prios: list[int] = []
-    for tx in block.get("transactions") or []:
-        if not isinstance(tx, dict):
-            continue
+    raw_txs = [tx for tx in (block.get("transactions") or []) if isinstance(tx, dict)]
+    n_raw = len(raw_txs)
+    txs = _subsample_txs(raw_txs, tx_cap or 0)
+    for tx in txs:
         meta = tx.get("meta") or {}
         fee = meta.get("fee")
         if not isinstance(fee, (int, float)):
@@ -961,39 +997,36 @@ def _extract_block_fees(block: dict[str, Any]) -> tuple[list[int], list[int], li
             prio = fee_i - 5000 * nsig
             if prio >= 0:
                 prios.append(prio)
-    return fees, nv, prios
+    return fees, nv, prios, n_raw
+
+
+def _pick_strat_slots(tip_slot: int, cluster: dict[str, Any] | None) -> list[int]:
+    """Slots spread over ~2–3h. getRecentPerformanceSamples only covers ~1h."""
+    slot_sec = fnum((cluster or {}).get("slot_time_sec")) or 0.4
+    slot_sec = max(0.2, min(float(slot_sec), 1.0))
+    span = int(FEE_WINDOW_TARGET_SEC / slot_sec)
+    n = FEE_STRAT_BLOCKS
+    step = max(1, span // (n + 1))
+    slots: list[int] = []
+    cur = tip_slot - step
+    while cur > 0 and len(slots) < n:
+        slots.append(int(cur))
+        cur -= step
+    return sorted(set(slots))
 
 
 def _pick_hour_slots(tip_slot: int, cluster: dict[str, Any] | None) -> list[int]:
-    """Slots spread over ~1 hour via getRecentPerformanceSamples, else every ~40 slots."""
-    samples = (cluster or {}).get("tps_samples") or []
-    slots: list[int] = []
-    sample_slots = [r.get("slot") for r in samples if isinstance(r, dict) and isinstance(r.get("slot"), int)]
-    # samples are newest-first; take every 5th across the 60 × ~60s window (~1 hour).
-    if len(sample_slots) >= 8:
-        step = max(1, len(sample_slots) // FEE_HOUR_BLOCKS)
-        picked = sample_slots[::step][:FEE_HOUR_BLOCKS]
-        slots = sorted(set(int(s) for s in picked))
-        return slots
-    # fallback: walk back ~1 hour at ~400ms → ~9000 slots, sample every ~40
-    approx_slots_per_hour = 9000
-    step = 40
-    start = max(0, tip_slot - approx_slots_per_hour)
-    cur = start
-    while cur < tip_slot and len(slots) < FEE_HOUR_BLOCKS:
-        slots.append(int(cur))
-        cur += step * (approx_slots_per_hour // (FEE_HOUR_BLOCKS * step) or 1)
-    if not slots:
-        slots = list(range(max(0, tip_slot - FEE_HOUR_BLOCKS * 40), tip_slot, 40))[:FEE_HOUR_BLOCKS]
-    return slots
+    """Compat alias — stratified 2–3h walk-back, not a 1h sample-tape."""
+    return _pick_strat_slots(tip_slot, cluster)
 
 
 def fetch_tx_fees(http: Http, tip_slot: Any, cluster: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Time-stratified getBlock fee sample: recent spot PLUS ~1 hour spread.
+    """Time-stratified getBlock fee sample: few tip blocks PLUS ~2–3h spread.
 
-    Adjacent-only blocks cover seconds. Spot = last N finalized blocks; hourly =
-    slots taken from getRecentPerformanceSamples (~60s each, 60 samples ≈ 1 hour).
-    Labels window_seconds, n_blocks, n_tx, all-tx vs non-vote.
+    Adjacent-only blocks cover seconds. Spot = last N finalized blocks; stratified
+    = slots walked back over FEE_WINDOW_TARGET_SEC. Each sampled slot contributes
+    at most FEE_TX_PER_BLOCK txs (systematic). Labels window_seconds, n_blocks,
+    n_tx, not_24h_census. NEVER a 24h ledger census.
     """
     out: dict[str, Any] = {
         "ok": False,
@@ -1003,12 +1036,15 @@ def fetch_tx_fees(http: Http, tip_slot: Any, cluster: dict[str, Any] | None = No
         "n_blocks": 0, "n_fees": 0, "n_tx": 0, "n_nonvote": 0, "skipped_slots": 0,
         "slot_lo": None, "slot_hi": None,
         "window_seconds": None,
-        "spot_n_blocks": 0, "hour_n_blocks": 0,
+        "spot_n_blocks": 0, "hour_n_blocks": 0, "strat_n_blocks": 0,
         "p50_lamports": None, "p90_lamports": None, "p99_lamports": None,
         "mean_lamports": None, "p50_sol": None, "p90_sol": None, "p99_sol": None,
         "priority_p50_lamports": None, "priority_note": None,
         "source": "Solana RPC getBlock meta.fee (finalized, time-stratified sample)",
         "population": "all_tx_and_nonvote",
+        "not_24h_census": True,
+        "tx_cap_per_block": FEE_TX_PER_BLOCK,
+        "window_target_seconds": FEE_WINDOW_TARGET_SEC,
     }
     if not isinstance(tip_slot, int) or tip_slot <= 0:
         out["error"] = "no tip slot"
@@ -1020,17 +1056,16 @@ def fetch_tx_fees(http: Http, tip_slot: Any, cluster: dict[str, Any] | None = No
         spot_slots = [int(x) for x in found if isinstance(x, int)][-FEE_SPOT_BLOCKS:]
     else:
         spot_slots = list(range(tip_slot, max(0, tip_slot - FEE_SLOT_WALK), -1))[:FEE_SPOT_BLOCKS]
-    hour_slots = _pick_hour_slots(tip_slot, cluster)
-    # de-dupe, keep spot tagged
+    strat_slots = _pick_strat_slots(tip_slot, cluster)
     ordered: list[tuple[str, int]] = []
     seen: set[int] = set()
     for sl in spot_slots:
         if sl not in seen:
             ordered.append(("spot", sl))
             seen.add(sl)
-    for sl in hour_slots:
+    for sl in strat_slots:
         if sl not in seen:
-            ordered.append(("hour", sl))
+            ordered.append(("strat", sl))
             seen.add(sl)
     cfg = {
         "encoding": "json",
@@ -1046,6 +1081,7 @@ def fetch_tx_fees(http: Http, tip_slot: Any, cluster: dict[str, Any] | None = No
     hour_ok: list[int] = []
     block_times: dict[int, int] = {}
     sum_fees = 0
+    n_raw_tx = 0
     for kind, sl in ordered:
         block, rec = http.rpc("getBlock", [sl, cfg], timeout=25)
         if not isinstance(block, dict):
@@ -1054,7 +1090,8 @@ def fetch_tx_fees(http: Http, tip_slot: Any, cluster: dict[str, Any] | None = No
         bt = block.get("blockTime")
         if isinstance(bt, (int, float)):
             block_times[sl] = int(bt)
-        fa, fn, pr = _extract_block_fees(block)
+        fa, fn, pr, nraw = _extract_block_fees(block, tx_cap=FEE_TX_PER_BLOCK)
+        n_raw_tx += nraw
         if not fa:
             out["skipped_slots"] += 1
             continue
@@ -1067,7 +1104,7 @@ def fetch_tx_fees(http: Http, tip_slot: Any, cluster: dict[str, Any] | None = No
             spot_ok.append(sl)
         else:
             hour_ok.append(sl)
-        if len(ok_slots) >= FEE_SPOT_BLOCKS + FEE_HOUR_BLOCKS:
+        if len(ok_slots) >= FEE_SPOT_BLOCKS + FEE_STRAT_BLOCKS:
             break
     stats_all = fee_stats_from_lamports(fees_all)
     stats_nv = fee_stats_from_lamports(fees_nv)
@@ -1076,10 +1113,13 @@ def fetch_tx_fees(http: Http, tip_slot: Any, cluster: dict[str, Any] | None = No
     out["n_fees"] = len(fees_all)
     out["n_tx"] = len(fees_all)
     out["n_nonvote"] = len(fees_nv)
+    out["n_raw_tx_in_sampled_slots"] = n_raw_tx
     out["spot_n_blocks"] = len(spot_ok)
     out["hour_n_blocks"] = len(hour_ok)
+    out["strat_n_blocks"] = len(hour_ok)
     out["spot_slots"] = spot_ok
     out["hour_slots"] = hour_ok
+    out["strat_slots"] = hour_ok
     if ok_slots:
         out["ok"] = True
         out["slot_lo"] = min(ok_slots)
@@ -1093,8 +1133,8 @@ def fetch_tx_fees(http: Http, tip_slot: Any, cluster: dict[str, Any] | None = No
         out["window_t_lo"] = tmin
         out["window_t_hi"] = tmax
     elif cluster and cluster.get("performance_window_sec") and hour_ok:
-        out["window_seconds"] = int(cluster.get("performance_window_sec") or 0) or None
-        out["window_seconds_source"] = "getRecentPerformanceSamples period sum (blockTime missing)"
+        out["window_seconds"] = int(FEE_WINDOW_TARGET_SEC)
+        out["window_seconds_source"] = "FEE_WINDOW_TARGET_SEC (blockTime missing)"
     if stats_nv.get("n"):
         out["nonvote"] = {
             "n": stats_nv.get("n"),
@@ -1109,9 +1149,13 @@ def fetch_tx_fees(http: Http, tip_slot: Any, cluster: dict[str, Any] | None = No
         out["priority_n"] = len(prios)
         out["priority_note"] = (
             "priority est. = meta.fee − 5000×n_signatures (base fee 5000 lamports/sig). "
-            "Sampled, not a 24h ledger sum."
+            "Sampled, NOT a 24h census."
         )
     win = out.get("window_seconds")
+    hours = (win / 3600.0) if isinstance(win, (int, float)) and win else None
+    hour_lab = f"~{hours:.1f}h" if hours else "~2–3h target"
+    out["window_hours_label"] = hour_lab
+    out["not_24h_census"] = True
     if win and fees_all:
         out["sampled_runrate_24h_sol"] = (sum_fees / LAMPORTS) / win * 86400.0
         out["sampled_runrate_kind"] = "ESTIMATED"
@@ -1120,12 +1164,13 @@ def fetch_tx_fees(http: Http, tip_slot: Any, cluster: dict[str, Any] | None = No
             "ESTIMATED 24h in-protocol fees from the stratified sample, not a ledger."
         )
     out["note"] = (
-        f"Time-stratified getBlock sample: {out['spot_n_blocks']} adjacent tip blocks "
-        f"(spot) + {out['hour_n_blocks']} slots spread over ~1h "
-        f"(from getRecentPerformanceSamples). n_tx={out['n_tx']} all-tx, "
-        f"n_nonvote={out['n_nonvote']}, window_seconds={out.get('window_seconds')}. "
+        f"NOT a 24h census. Time-stratified getBlock sample: {out['spot_n_blocks']} adjacent "
+        f"tip blocks (spot) + {out['strat_n_blocks']} slots spread over a {hour_lab} window "
+        f"(target {FEE_WINDOW_TARGET_SEC}s; ≤{FEE_TX_PER_BLOCK} txs/slot subsampled). "
+        f"n_tx={out['n_tx']} all-tx, n_nonvote={out['n_nonvote']}, "
+        f"window_seconds={out.get('window_seconds')}. "
         f"p50 is all-tx meta.fee; non-vote p50 is separate. Do not read n={out['n_tx']} "
-        f"as a 24h census — the wall-clock window is {out.get('window_seconds') or 'unknown'}s."
+        f"as a 24h ledger — wall-clock window is {out.get('window_seconds') or 'unknown'}s."
     )
     return out
 
@@ -1229,17 +1274,23 @@ def fetch_xstocks(http: Http) -> dict[str, Any]:
     to_price = ordered[:XSTOCKS_PRICE_CAP]
     if len(solana_assets) > XSTOCKS_PRICE_CAP:
         out["omitted"].append(
-            f"priced {XSTOCKS_PRICE_CAP} of {len(solana_assets)} Solana-deployed symbols to cap RPC/HTTP"
+            f"priced up to {XSTOCKS_PRICE_CAP} of {len(solana_assets)} Solana-deployed symbols "
+            "(HTTP budget). Priced-subset lower bound, not a census."
         )
+    out["multiplier_route"] = "skipped"
+    out["multiplier_note"] = XSTOCKS_MULT_SKIPPED
+    out["price_cap"] = XSTOCKS_PRICE_CAP
+    out["price_concurrency"] = XSTOCKS_PRICE_CONCURRENCY
 
-    priced = []
-    mcap_sum = 0.0
-    mcap_n = 0
-    for asset in to_price:
-        sym = asset.get("symbol")
+    pinned = (host_used,) if host_used else None
+    priced_lock = threading.Lock()
+    omitted_local: list[str] = []
+
+    def _price_one(asset: dict[str, Any]) -> dict[str, Any]:
+        row = dict(asset)
+        sym = row.get("symbol")
         if not sym:
-            continue
-        pinned = (host_used,) if host_used else None
+            return row
         price_j, prec, _ = _xstocks_get(
             http, f"/public/assets/{sym}/price-data",
             source_id=f"xstocks.price.{sym}", timeout=12, hosts=pinned,
@@ -1253,10 +1304,7 @@ def fetch_xstocks(http: Http) -> dict[str, Any]:
                 http, f"/public/assets/{sym}/circulating-supply",
                 source_id=f"xstocks.circ.{sym}.raw", timeout=12, hosts=pinned,
             )
-        mult_j, mrec, _ = _xstocks_get(
-            http, f"/public/assets/{sym}/multiplier",
-            source_id=f"xstocks.mult.{sym}", timeout=12, hosts=pinned,
-        )
+        # NEVER fetch /multiplier — that public route 400s every run.
         quote = None
         if isinstance(price_j, dict):
             quote = fnum(
@@ -1287,44 +1335,57 @@ def fetch_xstocks(http: Http) -> dict[str, Any]:
         elif isinstance(circ_j, (int, float, str)):
             circ = fnum(circ_j)
         if circ is None and crec.get("status") == 404:
-            asset["circ_omitted"] = "circulating-supply 404"
-            out["omitted"].append(f"{sym} circulating-supply 404 — mcap omitted")
+            row["circ_omitted"] = "circulating-supply 404"
+            with priced_lock:
+                omitted_local.append(f"{sym} circulating-supply 404 — mcap omitted")
         mult = 1.0
-        if isinstance(mult_j, dict):
-            mult = fnum(mult_j.get("current") or mult_j.get("multiplier") or mult_j.get("value")) or 1.0
-            asset["multiplier_pending"] = mult_j.get("pending")
-        elif mrec.get("status") == 404:
-            out.setdefault("omitted", []).append(f"{sym} multiplier 404 — using 1.0")
         mcap = equity_mcap(quote, circ, mult)
-        asset.update({
+        row.update({
             "quote": quote, "circulating": circ, "multiplier": mult,
+            "multiplier_source": "assumed 1.0 (public /multiplier never fetched)",
             "mcap_usd": mcap,
             "price_ok": quote is not None, "circ_ok": circ is not None,
         })
         if quote is None and prec.get("status") == 404:
-            out["omitted"].append(f"{sym} price-data 404")
-        if mcap is not None:
-            mcap_sum += mcap
-            mcap_n += 1
-        priced.append(asset)
+            with priced_lock:
+                omitted_local.append(f"{sym} price-data 404")
+        return row
+
+    priced: list[dict[str, Any]] = []
+    workers = max(1, min(XSTOCKS_PRICE_CONCURRENCY, len(to_price) or 1))
+    if to_price:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futs = [pool.submit(_price_one, a) for a in to_price]
+            for fut in as_completed(futs):
+                try:
+                    priced.append(fut.result())
+                except Exception as exc:  # noqa: BLE001 — isolate one-symbol failures
+                    omitted_local.append(f"price worker error: {type(exc).__name__}")
+    out["omitted"].extend(omitted_local)
 
     priced.sort(key=lambda r: float(r.get("mcap_usd") or 0), reverse=True)
     out["assets"] = priced
+    mcap_n = sum(1 for r in priced if r.get("mcap_usd") is not None)
+    mcap_sum = sum(float(r.get("mcap_usd") or 0) for r in priced if r.get("mcap_usd") is not None)
     out["count_priced"] = mcap_n
+    out["count_attempted"] = len(to_price)
     out["top"] = priced[:12]
     if mcap_n:
         out["ok"] = True
         out["market_cap_usd"] = mcap_sum
         out["mcap_note"] = (
-            f"Priced-subset lower bound: quote × circulating × multiplier over {mcap_n} of "
-            f"{out['count_solana']} Solana-deployed listed symbols "
-            f"({out.get('count_unique_underlying')} unique underlyings). Not a 715-name volume, "
-            "and not a census of every tokenized equity on Solana."
+            f"Priced-subset lower bound: quote × circulating × multiplier(assumed 1.0) over "
+            f"{mcap_n} of {out['count_solana']} Solana-deployed listed symbols "
+            f"({out.get('count_unique_underlying')} unique underlyings; attempted {len(to_price)}). "
+            "Not a 715-name census, and not a census of every tokenized equity on Solana. "
+            + XSTOCKS_MULT_SKIPPED
         )
+        out["mcap_is_census"] = False
     elif solana_assets:
         out["ok"] = True
         out["assets"] = solana_assets[:20]
         out["omitted"].append("price and/or circulating-supply missing — market cap omitted")
+        out["mcap_is_census"] = False
     return out
 
 
@@ -1385,7 +1446,8 @@ def fetch_tokenized_volume(http: Http, xstocks: dict[str, Any]) -> dict[str, Any
     jup_rows = []
     jup_sum = 0.0
     seen_id: set[str] = set()
-    queries = list(dict.fromkeys(symbols[:XSTOCKS_PRICE_CAP] + ["xStock"]))
+    # Jupiter search is 1 request per symbol; keep a small query cap even if we priced more.
+    queries = list(dict.fromkeys(symbols[:24] + ["xStock"]))
     for q in queries:
         data, rec = http.json(
             f"{JUPITER_TOKEN_SEARCH}?query={urllib.parse.quote(str(q))}",
@@ -1463,7 +1525,12 @@ def fetch_tokenized_volume(http: Http, xstocks: dict[str, Any]) -> dict[str, Any
         out["source"] = "lite-api.jup.ag/tokens/v2/search stats24h"
         out["kind"] = "MEASURED 24h tokenized-equity DEX volume (Jupiter public, subset)"
         out["volume_7d_usd"] = None
-        out["volume_7d_note"] = "No no-key 7d xStock volume series answered this run."
+        out["volume_7d_kind"] = None
+        out["volume_7d_note"] = (
+            "7d omitted: Jupiter lite-api exposes stats5m/1h/6h/24h, not 7d. "
+            "DeFiLlama protocol/xstocks has TVL (liquidity), not a volume series. "
+            "No no-key 7d tokenized-equity volume answered this run — not invented."
+        )
 
     # 2) DeFiLlama DEX name filter — record even if empty so the audit trail is complete.
     return out
@@ -2533,7 +2600,7 @@ def fetch_news(http: Http) -> dict[str, Any]:
 
 def editorial_block(generated: datetime, cluster: dict[str, Any] | None = None,
                     simd_live: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Dated editorial. SIMD-0525 staged slot-time tracker + Alpenglow. Not SIMD-025."""
+    """Dated editorial. SIMD-525 listing token from solana.com/news. Observed slot is inferred."""
     slot_ms = (fnum((cluster or {}).get("slot_time_sec")) or 0) * 1000.0
     stage = infer_simd0525_stage(slot_ms if slot_ms else None)
     simd_status = None
@@ -2542,29 +2609,41 @@ def editorial_block(generated: datetime, cluster: dict[str, Any] | None = None,
     stages_txt = ", ".join(
         f"{s['target_ms']}ms={s['status']}" for s in (stage.get("stages") or [])
     )
+    obs = stage.get("observed_slot_ms")
+    obs_bit = (
+        f"Observed mean slot ~{obs:.0f} ms is corroboration, labeled inferred — not a feature-gate RPC."
+        if isinstance(obs, (int, float)) else
+        "Observed slot time unavailable this run (inference omitted)."
+    )
     return {
         "kind": "editorial",
-        "title": "SIMD-525 (SIMD-0525) reduced slot times + Alpenglow (SIMD-0326)",
+        "title": "SIMD-525 reduced slot times + Alpenglow (SIMD-0326)",
         "as_of": iso(generated)[:10],
         "as_of_pt": iso_pt(generated),
-        "correction": (
-            "Bounty text cites Alpenglow and SIMD-525. SIMD-0525 (also written SIMD-525) is "
-            "the staged slot-time reduction 400→350→300→250→200 ms (Anza / Solana Foundation). "
-            "Alpenglow consensus is SIMD-0326. This dashboard does not treat SIMD-025 as a live proposal."
-        ),
+        "correction": "Listing token SIMD-525 is SIMD-0525. Not SIMD-025.",
+        "primary_source": {
+            "title": SIMD0525_NEWS_TITLE,
+            "url": SIMD0525_NEWS,
+            "role": "primary source for the SIMD-525 listing token",
+        },
         "simd0525": {
             "id": "SIMD-0525",
+            "listing_token": "SIMD-525",
             "name": "Reduce Slot Times",
             "authors": "Brennan Watt (Anza)",
             "path": "400 → 350 → 300 → 250 → 200 ms",
-            "primary_sources": [SIMD0525_GH, SIMD0525_SOLANA],
+            "primary_source": SIMD0525_NEWS,
+            "primary_source_title": SIMD0525_NEWS_TITLE,
+            "primary_sources": [SIMD0525_NEWS, SIMD0525_SOLANA, SIMD0525_GH],
             "live_status_header": simd_status,
             "observed": stage,
+            "observed_kind": "INFERRED corroboration",
             "stages_line": stages_txt,
         },
         "summary": (
-            f"SIMD-0525 stages target slot time down from 400 ms to 200 ms in 50 ms steps. "
-            f"{stage.get('inferred_status') or ''} "
+            f"Primary source for the listing token SIMD-525: solana.com/news "
+            f"“{SIMD0525_NEWS_TITLE}” (SIMD-0525 staged 400→350→300→250→200 ms). "
+            f"{obs_bit} "
             "Alpenglow (SIMD-0326) remains the consensus rewrite (Votor / Rotor); it is a "
             "separate track from the slot-time feature gates."
         ),
@@ -2577,12 +2656,19 @@ def editorial_block(generated: datetime, cluster: dict[str, Any] | None = None,
             {"id": "SIMD-0387", "name": "BLS Pubkey Management in Vote Account"},
         ],
         "timeline_public": [
+            {"date": "source", "item": (
+                f"solana.com/news “{SIMD0525_NEWS_TITLE}” is the primary public write-up "
+                "for the SIMD-525 listing token (SIMD-0525)."
+            )},
             {"date": "2026-05-01", "item": "SIMD-0525 created (Anza). Four feature gates: 350/300/250/200 ms."},
             {"date": "2026-Q3", "item": (
                 "Agave v4.2 schedule targeted the four SIMD-0525 steps on mainnet one epoch "
                 "apart; schedule is tentative. First step is 400→350 ms."
             )},
-            {"date": "observed", "item": stage.get("inferred_status") or "slot time unavailable this run."},
+            {"date": "observed", "item": (
+                (stage.get("inferred_status") or "slot time unavailable this run.")
+                + " INFERRED corroboration, not a feature-gate RPC."
+            )},
             {"date": "2026-07-08", "item": "SIMD-0387 (BLS pubkey in vote account) activated on mainnet."},
             {"date": "2026-07-22", "item": (
                 "SIMD-0357 VAT activated. VAT does not itself turn on Alpenglow consensus."
@@ -2595,15 +2681,16 @@ def editorial_block(generated: datetime, cluster: dict[str, Any] | None = None,
             "Firedancer / Frankendancer Votor parity before a full Alpenswitch.",
         ],
         "sources": [
-            SIMD0525_GH,
+            SIMD0525_NEWS,
             SIMD0525_SOLANA,
+            SIMD0525_GH,
             "https://solana.com/upgrades/alpenglow",
             "https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0326-alpenglow.md",
         ],
         "disclaimer": (
-            "Editorial. SIMD-0525 stage is inferred from observed slot time against published "
-            "targets, not from a feature-gate RPC. Activation dates move. None of this is a "
-            "live consensus metric."
+            "Editorial. Listing token SIMD-525 cites solana.com/news "
+            f"“{SIMD0525_NEWS_TITLE}”. Observed slot time is INFERRED corroboration, "
+            "not a feature-gate RPC. Activation dates move. None of this is a live consensus metric."
         ),
     }
 
@@ -3102,10 +3189,14 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None) 
     proto = fnum(fees.get("total_24h_usd"))
     nv_tps = fnum(cluster.get("tps_nonvote"))
     jito_p50 = fnum(jito.get("landed_p50_sol")) if jito.get("ok") else None
+    jito_p95 = fnum(jito.get("landed_p95_sol")) if jito.get("ok") else None
     jito_tips_sol = None
     jito_tips_usd = None
     jito_kind = None
     jito_note = None
+    jito_tips_p95_sol = None
+    jito_tips_p95_usd = None
+    jito_sensitivity = None
     if jito_p50 is not None and nv_tps is not None and nv_tps > 0:
         jito_tips_sol = jito_p50 * nv_tps * 86400.0
         jito_tips_usd = (jito_tips_sol * sol) if sol is not None else None
@@ -3116,6 +3207,17 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None) 
             f"p50 floor — an upper-ish bound on floor-priced tips, not a Jito ledger. "
             "Not added from DeFiLlama."
         )
+        if jito_p95 is not None:
+            jito_tips_p95_sol = jito_p95 * nv_tps * 86400.0
+            jito_tips_p95_usd = (jito_tips_p95_sol * sol) if sol is not None else None
+            jito_sensitivity = (
+                f"sensitivity (not a Jito ledger): tips at p50 floor → "
+                f"{jito_tips_usd:.0f} USD; at p95 floor → "
+                f"{(jito_tips_p95_usd if jito_tips_p95_usd is not None else 0):.0f} USD. "
+                "Headline REV uses p50."
+                if jito_tips_usd is not None else
+                "sensitivity: p50 vs p95 tip-floor run-rates; headline uses p50."
+            )
     sampled_24h = fnum(tx_fees.get("sampled_runrate_24h_sol"))
     sampled_24h_usd = (sampled_24h * sol) if sampled_24h is not None and sol is not None else None
 
@@ -3126,8 +3228,12 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None) 
          "role": "ESTIMATED in-protocol cross-check, not added (would double-count solana.com Fees)",
          "ok": sampled_24h is not None, "sol": sampled_24h, "usd": sampled_24h_usd},
         {"route": "bundles.jito.wtf tip_floor p50 × non-vote TPS × 86400",
-         "role": "ESTIMATED Jito tips 24h", "ok": jito_tips_sol is not None,
+         "role": "ESTIMATED Jito tips 24h (headline)", "ok": jito_tips_sol is not None,
          "sol": jito_tips_sol, "usd": jito_tips_usd},
+        {"route": "bundles.jito.wtf tip_floor p95 × non-vote TPS × 86400",
+         "role": "ESTIMATED sensitivity only, not summed into headline REV",
+         "ok": jito_tips_p95_sol is not None,
+         "sol": jito_tips_p95_sol, "usd": jito_tips_p95_usd, "included": False},
         {"route": "DeFiLlama /overview/fees/Solana total24h",
          "role": "EXCLUDED — application/protocol fees, not network REV",
          "ok": proto is not None, "usd": proto, "included": False},
@@ -3177,7 +3283,11 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None) 
         "median_tx_fee_n": tx_fees.get("n_fees") or tx_fees.get("n"),
         "median_tx_fee_slots": (tx_fees.get("slot_lo"), tx_fees.get("slot_hi")),
         "median_tx_fee_window_seconds": tx_fees.get("window_seconds"),
-        "median_tx_fee_note": tx_fees.get("note"),
+        "median_tx_fee_not_24h_census": True,
+        "median_tx_fee_window_label": tx_fees.get("window_hours_label"),
+        "median_tx_fee_note": tx_fees.get("note") or (
+            "NOT a 24h census — time-stratified getBlock sample."
+        ),
         "priority_p50_sol": prio,
         "priority_p50_usd": prio_usd,
         "priority_note": tx_fees.get("priority_note"),
@@ -3195,6 +3305,10 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None) 
             "tips_24h_usd": jito_tips_usd,
             "tips_24h_kind": jito_kind,
             "tips_24h_note": jito_note,
+            "tips_24h_p95_sol": jito_tips_p95_sol,
+            "tips_24h_p95_usd": jito_tips_p95_usd,
+            "sensitivity": jito_sensitivity,
+            "sensitivity_note": jito_sensitivity,
         },
         "app_revenue_usd": derived.get("app_revenue_usd"),
         "app_revenue_source": (
@@ -3209,6 +3323,8 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None) 
         "rev_kind": rev_kind,
         "rev_complete": rev_complete,
         "rev_window": "24h (solana.com Fees date = network_fees_date; Jito is a 24h run-rate from the live floor)",
+        "rev_sensitivity": jito_sensitivity,
+        "rev_jito_is_ledger": False,
         "rev_components": [
             {"id": "in_protocol_fees", "label": "In-protocol network fees 24h",
              "sol": net_sol, "usd": net_usd, "kind": "MEASURED",
@@ -3439,8 +3555,7 @@ def _expected_unavailable(s: dict[str, Any]) -> bool:
     sid = str(s.get("id") or "")
     st = s.get("status")
     err = str(s.get("error") or "")
-    if sid.startswith("xstocks.mult") and st in (400, 404):
-        return True
+    # xstocks.mult is never requested; a row would be a bug, not expected-unavailable.
     if sid.startswith("rss.") and (st in (403, 404) or "gated" in err.lower() or "empty" in err.lower()):
         return True
     if sid == "coingecko.simple_price" and st == 429:
@@ -3467,7 +3582,7 @@ def build_data_health(sources: list[dict[str, Any]], market, cluster) -> dict[st
     notes = [
         "CoinGecko 429 — Coinbase 24h used" if gecko_fail else None,
         f"{len(fallbacks)} RPC fallbacks" if fallbacks else None,
-        f"{len(expected)} expected misses (xStocks multiplier 400/404, gated RSS, CoinGecko 429)" if expected else None,
+        f"{len(expected)} expected misses (gated RSS, CoinGecko 429, Jupiter search 429/404)" if expected else None,
     ]
     return {
         "ok": required_ok,
@@ -3686,9 +3801,9 @@ TPS = `numTransactions / samplePeriodSecs`. Slot time = `samplePeriodSecs / numS
 | --- | ---: | --- |
 | **Borealis REV 24h** | **{fmt_usd(eco.get('rev_24h_usd'))}** ({fmt_num(eco.get('rev_24h_sol'), 1)} SOL) | {eco.get('rev_kind') or eco.get('rev_label')} |
 | In-protocol network fees 24h | {fmt_num(eco.get('network_fees_sol_24h'), 1)} SOL ({fmt_usd(eco.get('network_fees_usd_24h'))}) | {eco.get('network_fees_source') or '—'} MEASURED |
-| Jito tips 24h | {fmt_usd((eco.get('jito') or {{}}).get('tips_24h_usd'))} | {(eco.get('jito') or {{}}).get('tips_24h_kind') or 'omitted'} |
+| Jito tips 24h | {fmt_usd((eco.get('jito') or {{}}).get('tips_24h_usd'))} | {(eco.get('jito') or {{}}).get('tips_24h_kind') or 'omitted'} · {(eco.get('jito') or {{}}).get('sensitivity') or eco.get('rev_sensitivity') or 'not a Jito ledger'} |
 | Protocol fees 24h | {fmt_usd(eco.get('protocol_fees_usd'))} | EXCLUDED from REV — {eco.get('protocol_fees_label')} |
-| Median tx fee p50 | {fmt_num(eco.get('median_tx_fee_sol'), 6)} SOL ({fmt_usd(eco.get('median_tx_fee_usd'), 4)}) | getBlock n_tx={eco.get('median_tx_fee_n')} window_seconds={eco.get('median_tx_fee_window_seconds')} |
+| Median tx fee p50 | {fmt_num(eco.get('median_tx_fee_sol'), 6)} SOL ({fmt_usd(eco.get('median_tx_fee_usd'), 4)}) | NOT a 24h census · {eco.get('median_tx_fee_window_label') or 'stratified sample'} · n_tx={eco.get('median_tx_fee_n')} window_seconds={eco.get('median_tx_fee_window_seconds')} |
 | p90 / p99 | {fmt_num(eco.get('median_tx_fee_p90_sol'), 6)} / {fmt_num(eco.get('median_tx_fee_p99_sol'), 6)} SOL | same sample |
 | Burned SOL | {fmt_num(inc.get('sol'), 2) if inc.get('ok') else '—'} SOL | incinerator getBalance |
 
@@ -3731,9 +3846,10 @@ Solana circulating pegged-USD: **{fmt_usd(st.get('circulating_usd'))}**
 ## Tokenized equities (xStocks)
 
 {xs.get('mcap_note') or xs.get('error') or ''}
-Listed {fmt_num(xs.get('count_listed'))} · Solana deployments {fmt_num(xs.get('count_solana'))} · priced-subset mcap {fmt_usd(xs.get('market_cap_usd'))} (lower bound, not a 715 census).
+Listed {fmt_num(xs.get('count_listed'))} · Solana deployments {fmt_num(xs.get('count_solana'))} · priced {fmt_num(xs.get('count_priced'))} · priced-subset mcap {fmt_usd(xs.get('market_cap_usd'))} (lower bound, not a census).
+24h volume {fmt_usd(xs.get('volume_24h_usd'))} · 7d volume {fmt_usd(xs.get('volume_7d_usd')) if xs.get('volume_7d_usd') is not None else 'omitted (no no-key Jupiter/DeFiLlama series)'}.
 DeFiLlama protocol/xstocks Solana TVL {fmt_usd(xs.get('llama_solana_tvl_usd'))} — liquidity census, not mcap, not 24h volume.
-Formula: `{xs.get('mcap_formula') or 'quote * circulating * multiplier'}`. {xs.get('solana_share_label') or ''}
+Formula: `{xs.get('mcap_formula') or 'quote * circulating * multiplier'}` with multiplier assumed 1.0 ({xs.get('multiplier_note') or 'public /multiplier never fetched'}). {xs.get('solana_share_label') or ''}
 
 ## Real-world assets
 
@@ -3782,9 +3898,9 @@ Recency is applied **after** RSS merge. Historic status.solana.com incidents (20
 
 _As of {ed.get('as_of')} ({ed.get('as_of_pt')}). {ed.get('disclaimer')}_
 
-{ed.get('correction')}
-
 {ed.get('summary')}
+
+_{ed.get('correction')}_
 
 {chr(10).join(simd_lines)}
 
@@ -3932,6 +4048,8 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
         xstocks["llama"] = llama_xs
         xstocks["volume_24h_usd"] = tok_vol.get("volume_24h_usd")
         xstocks["volume_7d_usd"] = tok_vol.get("volume_7d_usd")
+        xstocks["volume_7d_note"] = tok_vol.get("volume_7d_note")
+        xstocks["volume_7d_kind"] = tok_vol.get("volume_7d_kind")
         xstocks["volume_source"] = tok_vol.get("source")
         xstocks["volume_kind"] = tok_vol.get("kind")
         xstocks["volume_coverage"] = tok_vol.get("coverage")

@@ -431,15 +431,16 @@ def render_html(snap: dict) -> str:
              extra=age),
         tile("Median tx fee",
              ((nfmt(eco.get("median_tx_fee_sol"), 6) + " SOL") if eco.get("median_tx_fee_sol") is not None else "—"),
-             (f"p90 {nfmt(eco.get('median_tx_fee_p90_sol'), 6)} · n_tx={nfmt(eco.get('median_tx_fee_n'))} · window_seconds={nfmt(eco.get('median_tx_fee_window_seconds'))}"
+             (f"NOT a 24h census · {e(eco.get('median_tx_fee_window_label') or '~2–3h stratified sample')} · window_seconds={nfmt(eco.get('median_tx_fee_window_seconds'))} · n_tx={nfmt(eco.get('median_tx_fee_n'))}"
               if eco.get("median_tx_fee_sol") is not None else "getBlock sample omitted"),
              ghost=eco.get("median_tx_fee_sol") is None,
-             source="RPC getBlock meta.fee time-stratified", conf=fee_conf, extra=age),
+             source="RPC getBlock meta.fee · time-stratified sample, NOT a 24h census", conf=fee_conf, extra=age),
         tile("Borealis REV 24h",
              usd(eco.get("rev_24h_usd")) if eco.get("rev_24h_usd") is not None else "—",
-             (eco.get("rev_kind") or eco.get("rev_label") or "in-protocol fees + Jito tips"),
+             ((eco.get("rev_kind") or eco.get("rev_label") or "in-protocol fees + Jito tips")
+              + ((" · " + str(eco.get("rev_sensitivity"))) if eco.get("rev_sensitivity") else "")),
              ghost=eco.get("rev_24h_usd") is None,
-             source="solana.com Fees + Jito tip-floor estimate; NOT DeFiLlama protocol fees",
+             source="solana.com Fees MEASURED + Jito tip-floor ESTIMATED; NOT a Jito ledger; NOT DeFiLlama protocol fees",
              conf="MED", extra=age),
         tile("TVL", usd(d.get("tvl_usd")) if not tvl_ghost else "—",
              "DeFiLlama chain TVL", chip=d.get("tvl_change_1d_pct"), ghost=tvl_ghost, spark=tvl_spark,
@@ -456,14 +457,15 @@ def render_html(snap: dict) -> str:
              source="DeFiLlama RWA category TVL", conf="MED", extra=age),
         tile("xStocks vol 24h",
              usd(xs.get("volume_24h_usd")) if xs.get("volume_24h_usd") is not None else "—",
-             (xs.get("volume_kind") or "tokenized-equity DEX volume, priced subset"),
+             ((xs.get("volume_kind") or "tokenized-equity DEX volume, priced subset")
+              + (" · 7d omitted (no no-key series)" if xs.get("volume_7d_usd") is None else f" · 7d {usd(xs.get('volume_7d_usd'))}")),
              ghost=xs.get("volume_24h_usd") is None,
-             source=xs.get("volume_source") or "Jupiter lite-api stats24h", conf="MED", extra=age),
+             source=xs.get("volume_source") or "Jupiter lite-api stats24h (no 7d series)", conf="MED", extra=age),
         tile("xStocks mcap",
              usd(xs.get("market_cap_usd")) if xs.get("market_cap_usd") is not None else "—",
-             f"priced {nfmt(xs.get('count_priced'))} of {nfmt(xs.get('count_solana'))} Solana listings · lower bound",
+             f"priced {nfmt(xs.get('count_priced'))} of {nfmt(xs.get('count_solana'))} Solana listings · lower bound, not a census",
              ghost=xs.get("market_cap_usd") is None,
-             source="xStocks public API · quote × circulating × multiplier (not a 715 census)", conf=xs_conf, extra=age),
+             source="xStocks public API · quote × circulating × multiplier=1.0 assumed (/multiplier never fetched; not a 715 census)", conf=xs_conf, extra=age),
         tile("xStocks protocol TVL",
              usd(xs.get("llama_solana_tvl_usd")) if xs.get("llama_solana_tvl_usd") is not None else "—",
              "DeFiLlama protocol/xstocks · liquidity, not mcap",
@@ -690,8 +692,11 @@ def render_html(snap: dict) -> str:
         f'<div class="panel"><h2>Sampled tx fees (getBlock meta.fee)</h2>'
         f'<p class="val">{nfmt(eco.get("median_tx_fee_sol"), 6)} SOL'
         f' <span class="muted">p50</span> · {usd(eco.get("median_tx_fee_usd"), 4)}</p>'
-        f'<p class="sub">p90 {nfmt(eco.get("median_tx_fee_p90_sol"), 6)} · p99 {nfmt(eco.get("median_tx_fee_p99_sol"), 6)} SOL'
-        f' · n_tx={nfmt(eco.get("median_tx_fee_n"))} · window_seconds={nfmt(eco.get("median_tx_fee_window_seconds"))}'
+        f'<p class="sub"><b>NOT a 24h census</b> · {e(eco.get("median_tx_fee_window_label") or "~2–3h stratified sample")}'
+        f' · window_seconds={nfmt(eco.get("median_tx_fee_window_seconds"))}'
+        f' · n_tx={nfmt(eco.get("median_tx_fee_n"))}'
+        f' · not_24h_census={e(eco.get("median_tx_fee_not_24h_census"))}'
+        f' · p90 {nfmt(eco.get("median_tx_fee_p90_sol"), 6)} · p99 {nfmt(eco.get("median_tx_fee_p99_sol"), 6)} SOL'
         f' · slots {e(eco.get("median_tx_fee_slots"))}</p>'
         f'<p class="tiny muted">{e(eco.get("median_tx_fee_note"))}</p>'
         f'<p class="tiny muted">Priority p50 {nfmt(eco.get("priority_p50_sol"), 6)} SOL · {e(eco.get("priority_note"))}</p>'
@@ -710,20 +715,26 @@ def render_html(snap: dict) -> str:
         f'<tr><td>In-protocol network fees 24h</td><td class="right">{nfmt(eco.get("network_fees_sol_24h"), 1)} SOL'
         f' ({usd(eco.get("network_fees_usd_24h"))}) · MEASURED</td></tr>'
         f'<tr><td>Jito tips 24h</td><td class="right">{usd((eco.get("jito") or {}).get("tips_24h_usd"))}'
-        f' · {e((eco.get("jito") or {}).get("tips_24h_kind") or "omitted")}</td></tr>'
+        f' · {e((eco.get("jito") or {}).get("tips_24h_kind") or "omitted")} · not a Jito ledger</td></tr>'
+        f'<tr><td>Jito sensitivity p50 vs p95</td><td class="right">{e((eco.get("jito") or {}).get("sensitivity") or eco.get("rev_sensitivity") or "p95 omitted")}</td></tr>'
         f'<tr><td>Protocol fees 24h</td><td class="right">{usd(eco.get("protocol_fees_usd"))} · EXCLUDED</td></tr>'
         f'<tr><td>Jito tip floor</td><td class="right">{jito_cell}</td></tr>'
         f'</tbody></table>'
         f'<p class="tiny muted">{e(eco.get("rev_definition") or "")} '
-        f'Protocol fees are DeFiLlama application fees and are not summed into REV.</p></div>'
+        f'Protocol fees are DeFiLlama application fees and are not summed into REV. '
+        f'{e(eco.get("rev_sensitivity") or "")}</p></div>'
     )
     xs_box = (
         f'<div class="panel"><h2>Tokenized equities · xStocks</h2>'
-        f'<p>24h volume {usd(xs.get("volume_24h_usd"))} · priced-subset mcap {usd(xs.get("market_cap_usd"))}'
+        f'<p>24h volume {usd(xs.get("volume_24h_usd"))}'
+        f' · 7d volume {usd(xs.get("volume_7d_usd")) if xs.get("volume_7d_usd") is not None else "omitted (no no-key series)"}'
+        f' · priced-subset mcap {usd(xs.get("market_cap_usd"))} (lower bound, not a census)'
         f' · DeFiLlama protocol TVL {usd(xs.get("llama_solana_tvl_usd"))} (liquidity, not mcap)</p>'
         f'<p class="tiny muted">{e(xs.get("count_meaning") or "")} Priced {nfmt(xs.get("count_priced"))} of '
         f'{nfmt(xs.get("count_solana"))} Solana listings ({nfmt(xs.get("count_unique_underlying"))} unique underlyings). '
         f'{e(xs.get("volume_coverage") or xs.get("mcap_note") or "")} '
+        f'{e(xs.get("volume_7d_note") or "")} '
+        f'{e(xs.get("multiplier_note") or "")} '
         f'DeFiLlama protocol/xstocks Solana TVL is a liquidity census, not the priced-subset mcap and not 24h volume.</p>'
         f'<table><thead><tr><th>Sym</th><th>Name</th><th class="right">Quote</th>'
         f'<th class="right">Circ</th><th class="right">Mult</th><th class="right">Mcap</th></tr></thead>'
@@ -894,8 +905,8 @@ def render_html(snap: dict) -> str:
     <div class="panel ed" style="margin-top:10px">
       <h2>Editorial · {e(ed.get("title"))}</h2>
       <p class="tiny muted">As of {e(ed.get("as_of"))} ({e(ed.get("as_of_pt"))}). {e(ed.get("disclaimer"))}</p>
-      <p class="warnish">{e(ed.get("correction"))}</p>
       <p>{e(ed.get("summary"))}</p>
+      <p class="tiny muted">{e(ed.get("correction"))}</p>
       <ul>{simd}</ul>
       <h2>Public timeline</h2>
       <ul>{tl}</ul>

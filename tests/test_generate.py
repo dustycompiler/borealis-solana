@@ -30,6 +30,7 @@ from generate import (  # noqa: E402
     editorial_block,
     equity_mcap,
     fee_stats_from_lamports,
+    fetch_xstocks,
     filter_rss_by_recency,
     infer_simd0525_stage,
     pct_24h,
@@ -367,6 +368,7 @@ class FeeWindowTests(unittest.TestCase):
                      "note": "Time-stratified getBlock sample"},
         )
         self.assertEqual(eco.get("median_tx_fee_window_seconds"), 3480)
+        self.assertTrue(eco.get("median_tx_fee_not_24h_census"))
 
 
 class NewsRecencyTests(unittest.TestCase):
@@ -404,6 +406,9 @@ class Simd525Tests(unittest.TestCase):
         self.assertIn("SIMD-525", blob)
         self.assertIn("400", blob)
         self.assertIn("200", blob)
+        self.assertIn("lowering-slot-time-and-validators-economic", blob)
+        self.assertLessEqual(blob.lower().count("simd-025"), 1)
+        self.assertIn("INFERRED", blob)
         html = render_html({
             "meta": {"version": "1.4.0", "generated_at_utc": "2026-08-26T00:00:00Z",
                      "generated_at_pt": "2026-08-25 17:00:00 PT"},
@@ -522,7 +527,7 @@ class FailureFixtureTests(unittest.TestCase):
                 "headline": "required sources 10/10 OK · 3 expected unavailable",
                 "headline_confidence": "HIGH",
                 "expected_unavailable": 3,
-                "notes": ["3 expected misses (xStocks multiplier 400/404, gated RSS, CoinGecko 429)"],
+                "notes": ["3 expected misses (gated RSS, CoinGecko 429, Jupiter search 429/404)"],
                 "failures": [],
             },
         })
@@ -540,6 +545,87 @@ class FailureFixtureTests(unittest.TestCase):
         self.assertIn("$1.00M", html)
         self.assertNotIn("$14.00M", html.split("Borealis REV 24h")[1].split("Protocol fees")[0]
                          if "Borealis REV 24h" in html else html)
+
+
+
+class MultiplierSkipTests(unittest.TestCase):
+    def test_xstocks_never_fetches_multiplier_route(self):
+        assets = json.dumps({
+            "nodes": [{
+                "name": "Tesla xStock", "symbol": "TSLAx", "underlyingSymbol": "TSLA",
+                "isTradingHalted": False,
+                "deployments": [{"network": "Solana", "address": "SoLtsla111", "solanaTokenProgram": "spl"}],
+            }],
+            "page": {"hasNextPage": False, "currentPage": 0},
+        }).encode()
+        price = json.dumps({"quote": 10}).encode()
+        circ = json.dumps({"value": 100}).encode()
+        http = ScriptedHttp([
+            ("/public/assets?pageSize", 200, assets),
+            ("/price-data", 200, price),
+            ("circulating-supply", 200, circ),
+            ("/multiplier", 400, None),
+        ])
+        xs = fetch_xstocks(http)
+        urls = [str(r.get("url") or "") for r in http.log]
+        ids = [str(r.get("id") or "") for r in http.log]
+        self.assertFalse(any("/multiplier" in u for u in urls))
+        self.assertFalse(any(i.startswith("xstocks.mult") for i in ids))
+        self.assertEqual(xs.get("multiplier_route"), "skipped")
+        self.assertTrue(xs.get("ok"))
+        self.assertAlmostEqual(xs.get("market_cap_usd"), 1000.0)
+        self.assertFalse(xs.get("mcap_is_census"))
+        dh = build_data_health(http.log, {"usd": 100}, {"tps_total": 4000})
+        self.assertFalse(any(str(s.get("id") or "").startswith("xstocks.mult") for s in http.log))
+        self.assertEqual(dh["ok"], dh["total"])
+
+
+class FeeCensusLabelTests(unittest.TestCase):
+    def test_fee_json_and_tile_scream_not_24h_census(self):
+        eco = build_economics(
+            {}, {"derived": {"network_fees_sol": 1}}, {"usd": 100},
+            tx_fees={"ok": True, "p50_sol": 5e-6, "p90_sol": 1e-5, "n_tx": 4000, "n_fees": 4000,
+                     "window_seconds": 9800, "window_hours_label": "~2.7h",
+                     "not_24h_census": True,
+                     "note": "NOT a 24h census. Time-stratified getBlock sample."},
+        )
+        self.assertEqual(eco.get("median_tx_fee_window_seconds"), 9800)
+        self.assertTrue(eco.get("median_tx_fee_not_24h_census"))
+        html = render_html({
+            "meta": {"version": "1.4.1", "generated_at_utc": "2026-08-26T00:00:00Z",
+                     "generated_at_pt": "2026-08-25 17:00:00 PT"},
+            "cluster": {"health": "ok", "slot_time_sec": 0.365, "tps_total": 4000},
+            "brief": {"network_health": "HEALTHY", "ecosystem_activity": "SURGE",
+                      "verdict": "HEALTHY", "biggest_positive": "DEX",
+                      "biggest_risk": "None — no isolated adverse network or market print this run.",
+                      "score": 100, "what_changed": "x", "why_it_matters": "y"},
+            "health_score": {"score": 100, "formula": "25x"},
+            "economics": eco,
+        })
+        self.assertIn("NOT a 24h census", html)
+        self.assertIn("window_seconds", html)
+        self.assertTrue("9800" in html or "9,800" in html)
+        self.assertTrue(eco.get("median_tx_fee_not_24h_census"))
+
+    def test_jito_sensitivity_p50_vs_p95_not_a_ledger(self):
+        eco = build_economics(
+            {"fees": {"total_24h_usd": 14_490_000}},
+            {"derived": {"network_fees_sol": 9000}},
+            {"usd": 100},
+            tx_fees={"ok": True, "p50_sol": 0.00001, "window_seconds": 9000, "not_24h_census": True},
+            jito={"ok": True, "landed_p50_sol": 1e-5, "landed_p95_sol": 4e-5},
+            cluster={"tps_nonvote": 2000},
+        )
+        tips_p50 = 1e-5 * 2000 * 86400 * 100
+        tips_p95 = 4e-5 * 2000 * 86400 * 100
+        self.assertAlmostEqual(eco.get("rev_24h_usd"), 900_000 + tips_p50)
+        self.assertNotAlmostEqual(eco.get("rev_24h_usd"), 900_000 + tips_p95)
+        self.assertIn("p50", (eco.get("rev_sensitivity") or "").lower())
+        self.assertIn("p95", (eco.get("rev_sensitivity") or "").lower())
+        self.assertFalse(eco.get("rev_jito_is_ledger"))
+        self.assertEqual(eco.get("jito", {}).get("tips_24h_kind"), "ESTIMATED")
+
+
 
 
 if __name__ == "__main__":
