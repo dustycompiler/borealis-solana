@@ -70,7 +70,7 @@ Live JSON-RPC against `https://api.mainnet-beta.solana.com`, falling back to `ht
 | `getVoteAccounts` | Active vs delinquent, stake, commission, lag |
 | `getSupply` | Circulating / total SOL (also used for derived market cap) |
 | `getBalance` | Native SOL at the Foundation-documented incinerator |
-| `getSlot` + `getBlocks` + `getBlock` | Median tx fee: walk ~30 finalized slots, sample `meta.fee` lamports (`encoding: json`, `transactionDetails: full`, `rewards: false`, `maxSupportedTransactionVersion: 0`). Skip missing blocks. p50/p90/p99 + n + slot range. publicnode fallback. Never invented. |
+| `getSlot` + `getBlocks` + `getBlock` | Median tx fee, **time-stratified**: last ~6 consecutive finalized blocks (spot) plus ~12 blocks sampled from `getRecentPerformanceSamples` (~1h). `meta.fee` lamports. All-tx and non-vote p50. Labels `window_seconds`, `n_blocks`, `n_tx`. publicnode fallback. Never invented. |
 
 **Derived (not fetched as a named RPC field):**
 
@@ -94,9 +94,9 @@ Live JSON-RPC against `https://api.mainnet-beta.solana.com`, falling back to `ht
 - **stablecoins.llama.fi** chain circulating + per-asset Solana supply + 90-day chart
 - **RWA** = sum of `chainTvls.Solana` for protocols whose DeFiLlama category is `RWA` or `RWA Lending`. Labeled protocol TVL, **not** a tokenized-equities census (those Llama routes are Pro-only). Shown separately from xStocks.
 
-**Tokenized equities (xStocks)** — public no-key API (`api.backed.fi` then `api.xstocks.fi`, 15s timeout, paginate `page.hasNextPage`). Per Solana-deployed symbol: name, symbol, underlyingSymbol, deployments (Solana filter), multiplier, circulating-supply. **Market cap formula (labeled on the tile):** `quote × circulating × multiplier`. 404 on circulating-supply → that symbol's mcap is omitted, never invented.
+**Tokenized equities (xStocks)** — public no-key API (`api.backed.fi` then `api.xstocks.fi`). Per Solana-deployed symbol: name, symbol, unique underlyings, multiplier, circulating-supply. **Market cap formula (labeled):** `quote × circulating × multiplier`, **priced N of M · lower bound — not a 715 census**. **24h volume** from Jupiter `lite-api.jup.ag/tokens/v2/search` `stats24h` buy+sell (no key). DeFiLlama `protocol/xstocks` Solana TVL is shown separately when it answers. Missing quotes are omitted, never invented.
 
-**Economics (not REV):** sampled median/p90/p99 tx fee from `getBlock` `meta.fee`; network fees 24h from solana.com/data; DeFiLlama Solana fees labeled **protocol fees, not REV**. Jito/MEV only if a public no-key tip-floor JSON answers in <3s (else omitted). No REV total unless every component is sourced — it is not.
+**Borealis REV 24h (Blockworks/Helius definition):** in-protocol transaction fees (vote + base + priority) **plus** out-of-protocol Jito tips. Measured leg = `solana.com/data` Fees (Allium/Dune/Blockworks) × SOL-USD. Tips leg = ESTIMATED `jito tip_floor p50 × non-vote TPS × 86400` when the public no-key floor answers in <3s. **DeFiLlama `/overview/fees/Solana` protocol/application fees are listed separately and NEVER summed into REV** (that ~$14M print is app fees, not network REV). Sampled `getBlock` run-rate is a cross-check only (would double-count the measured Fees series). The tile shows a dollar number **and** the definition.
 
 **Burned SOL** is `getBalance` of the Solana Foundation burn address `1nc1nerator11111111111111111111111111111111` (solana.com news, footnote 4). Native SOL in an inaccessible account, not an SPL mint-supply burn.
 
@@ -120,7 +120,7 @@ Probes live public RSS and keeps what works:
 
 Labeled **public X/Nitter-style RSS, not the official Twitter API**. Lightweight keyword tags (`upgrade`, `outage`, `incident`, `mainnet`, `halt`) — not ML.
 
-Items older than 45 days are dropped by the RSS recency filter (missing dates are kept).
+Items older than 45 days are dropped by the RSS recency filter (`_parse_pub` accepts RFC2822 **and ISO-8601**, so `status.solana.com` `2022-06-01T21:06:03Z` dates parse). Remaining items are bucketed: **active incidents** / **recently resolved** (14d) / **current news** (14d) / **archive**. 2022–2024 status.solana.com outages are not shown as current.
 
 ---
 
@@ -143,6 +143,8 @@ Shown in the hero. Not a mystery number.
 | TPS | 20 | current mean TPS vs 30d median from solana.com/data `Transaction Count / 86400`; falls back to the in-window sample median |
 
 Covered by `tests/test_generate.py`.
+
+**Network Health vs Ecosystem Activity.** The exec verdict is **network** health only: RPC, slot cadence, TPS vs baseline, delinquency, status.solana.com. Labels: `HEALTHY` / `WATCH` / `DEGRADED` / `CRITICAL`. DEX/TVL/DAA moves are **Ecosystem Activity** (`QUIET` / `NORMAL` / `ELEVATED` / `SURGE` / `CONTRACTION`) and cannot paint the network WATCH. A DEX +103% print is SURGE + HEALTHY when slots and delinquency are quiet. Biggest risk is blank (`None — …`) unless an item is actually adverse.
 
 ---
 
@@ -172,11 +174,11 @@ Useful **on run 1** (no history.jsonl required). Empty strip copy:
 
 ---
 
-## Editorial: Alpenglow / SIMD numbering
+## Editorial: SIMD-525 (slot-time reduction) + Alpenglow
 
-The bounty brief mentioned “Alpenglow / SIMD-025”. **Current public documents name the consensus rewrite Alpenglow, specified as SIMD-0326.** SIMD-0256 (2025) raised the block compute-unit limit 50M → 60M and is a different proposal.
+The Superteam listing asks for **Alpenglow, SIMD-525**. SIMD-525 is SIMD-0525 — Anza/Foundation staged slot-time reduction **400 → 350 → 300 → 250 → 200 ms**. Primary sources: [proposal 0525](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0525-reduce-slot-times.md) and [solana.com/upgrades/reduced-slot-times](https://solana.com/upgrades/reduced-slot-times). Observed mean slot ~365 ms is labeled consistent with the first 350 ms step. **Alpenglow consensus is SIMD-0326** (separate track). This dashboard does **not** treat SIMD-025 as the headline.
 
-The Overview tab carries a dated, sourced editorial (VAT / BLS activation dates, Agave 4.3 window). It is **not** a live metric. See `editorial` in `report.json`.
+The Overview tab carries a dated upgrade tracker with the exact listing token `SIMD-525`. Stage is inferred from observed slot time vs published targets, not a feature-gate RPC. See `editorial` in `report.json`.
 
 ---
 
@@ -216,7 +218,7 @@ See `crontab.example` (`*/15 * * * *`).
 - No API keys, no scraping of authenticated dashboards.
 - If a source 429s or 5xxs after retries, the tile is omitted and `omissions[]` explains why.
 - Every fetch is logged in `report.json` → `sources[]` with URL, HTTP status, bytes, milliseconds, UTC timestamp — including failures.
-- User-Agent: `BorealisReport/1.3 (Solana ecosystem dashboard; stdlib urllib; no API key)`.
+- User-Agent: `BorealisReport/1.4 (Solana ecosystem dashboard; stdlib urllib; no API key)`.
 
 ## Layout
 
@@ -237,7 +239,7 @@ Stdlib unittest. No pip, no network.
 
     python3 -m unittest
 
-Covers health-score formula, 24h percent (last-open)/open, anomaly flags on synthetic series, RSS recency filter, fee percentiles, xStocks mcap formula, honest economics (no REV headline), and deterministic insights.
+Covers health-score formula, 24h percent (last-open)/open, anomaly flags on synthetic series, RSS recency (ISO + RFC2822; 2022 incidents not current), fee percentiles + `window_seconds`, xStocks mcap formula, REV (llama protocol fees excluded; Jito estimate added), SIMD-525 editorial token, and DEX surge → HEALTHY + SURGE not WATCH.
 
 ---
 
@@ -249,10 +251,11 @@ Covers health-score formula, 24h percent (last-open)/open, anomaly flags on synt
 | SOL 24h | `(last − open) / open` | Coinbase stats, Kraken fallback, CoinGecko first | SOL tile | `Pct24hTests` |
 | Health score 0–100 | published 25/30/25/20 formula | RPC + 30d TPS baseline | Hero + Overview | `HealthScoreTests` |
 | Anomalies on run 1 | Llama 1d/7d + 30d medians + z-scores | DeFiLlama, solana.com/data, RPC samples | Anomaly strip | `AnomalyTests` |
-| Median tx fee | walk ~30 finalized slots, `getBlock` `meta.fee`, p50/p90/p99 | Solana RPC | Median tx fee tile + Economics panel | `FeeStatsTests` |
-| Tokenized equities | xStocks public assets + price-data + circulating-supply + multiplier | api.backed.fi / api.xstocks.fi | xStocks tile + table | `EquityMcapTests` |
-| Honest economics | protocol fees labeled not REV; Jito omit if >3s; no invented total | DeFiLlama fees, solana.com/data, getBlock | Economics panel | `EconomicsHonestyTests` |
-| Exec view | HEALTHY / WATCH / DEGRADED + what/why/positive/risk | derived from cluster, validators, flags | Top of dashboard | `InsightBriefTests` |
+| Median tx fee | time-stratified getBlock (spot + ~1h samples), `window_seconds` labeled | Solana RPC | Median tx fee tile + Economics panel | `FeeStatsTests`, `FeeWindowTests` |
+| Tokenized equities | xStocks public assets + Jupiter `stats24h` volume; mcap = quote × circ × mult, priced N of M | api.backed.fi / jup.ag lite-api | xStocks vol + mcap tiles | `EquityMcapTests` |
+| Borealis REV 24h | in-protocol Fees + ESTIMATED Jito tips; llama protocol fees EXCLUDED | solana.com/data, jito tip_floor | REV tile + Economics panel (number + definition) | `EconomicsHonestyTests` |
+| Exec view | Network HEALTHY/WATCH/DEGRADED/CRITICAL **separate from** Ecosystem QUIET/NORMAL/ELEVATED/SURGE; risk only if adverse | RPC + validators vs DEX/TVL | Top of dashboard | `InsightBriefTests` |
+| SIMD-525 tracker | listing token + staged 400→200 ms vs observed slot | SIMD-0525 GH + solana.com/upgrades | Overview editorial | `Simd525Tests` |
 | Intelligence | 3–6 evidence-linked lines, no LLM | same snapshot | Intelligence panel | `InsightBriefTests` |
 | Charts 24h/7d/30d/90d | SVG + range buttons; seed from Llama 90d + solana.com 30d | history.jsonl + public historical | Trends | generate.py live |
 | Source · age · confidence | every headline tile | `sources[]` + snapshot time | KPI meta-line | htmlout provenance |

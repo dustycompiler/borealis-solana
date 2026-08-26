@@ -250,13 +250,16 @@ CSS += """
   font-family:"IBM Plex Mono", ui-monospace, monospace; margin-top:4px; }
 .dune-frame { width:100%; min-height:560px; border:1px solid var(--line); border-radius:12px; background:#0b0f14; }
 .burn-note { font-size:11px; color:var(--faint); margin-top:6px; word-break:break-all; }
-.brief { display:grid; grid-template-columns:160px 1fr 1fr 1fr; gap:10px; margin:14px 0 8px;
+.brief { display:grid; grid-template-columns:140px 140px 1fr 1fr; gap:10px; margin:14px 0 8px;
   padding:12px 14px; border:1px solid var(--line2); border-radius:14px;
   background:linear-gradient(180deg,#121a14,#0c1017); }
-.brief .verdict { font-size:22px; font-weight:650; letter-spacing:.06em; }
+.brief .verdict { font-size:20px; font-weight:650; letter-spacing:.06em; }
 .brief .verdict.HEALTHY { color:var(--teal); }
 .brief .verdict.WATCH { color:var(--amber); }
-.brief .verdict.DEGRADED { color:var(--rose); }
+.brief .verdict.DEGRADED, .brief .verdict.CRITICAL { color:var(--rose); }
+.brief .verdict.SURGE, .brief .verdict.ELEVATED, .brief .verdict.FIRM { color:var(--teal); }
+.brief .verdict.CONTRACTION, .brief .verdict.SOFT { color:var(--rose); }
+.brief .verdict.QUIET, .brief .verdict.NORMAL, .brief .verdict.MIXED { color:var(--blue); }
 .brief dl { margin:0; }
 .brief dt { color:var(--faint); font-size:10px; letter-spacing:.1em; text-transform:uppercase; }
 .brief dd { margin:2px 0 8px; font-size:13px; }
@@ -428,10 +431,16 @@ def render_html(snap: dict) -> str:
              extra=age),
         tile("Median tx fee",
              ((nfmt(eco.get("median_tx_fee_sol"), 6) + " SOL") if eco.get("median_tx_fee_sol") is not None else "—"),
-             (f"p90 {nfmt(eco.get('median_tx_fee_p90_sol'), 6)} · n={nfmt(eco.get('median_tx_fee_n'))} txs · getBlock"
+             (f"p90 {nfmt(eco.get('median_tx_fee_p90_sol'), 6)} · n_tx={nfmt(eco.get('median_tx_fee_n'))} · window_seconds={nfmt(eco.get('median_tx_fee_window_seconds'))}"
               if eco.get("median_tx_fee_sol") is not None else "getBlock sample omitted"),
              ghost=eco.get("median_tx_fee_sol") is None,
-             source="RPC getBlock meta.fee", conf=fee_conf, extra=age),
+             source="RPC getBlock meta.fee time-stratified", conf=fee_conf, extra=age),
+        tile("Borealis REV 24h",
+             usd(eco.get("rev_24h_usd")) if eco.get("rev_24h_usd") is not None else "—",
+             (eco.get("rev_kind") or eco.get("rev_label") or "in-protocol fees + Jito tips"),
+             ghost=eco.get("rev_24h_usd") is None,
+             source="solana.com Fees + Jito tip-floor estimate; NOT DeFiLlama protocol fees",
+             conf="MED", extra=age),
         tile("TVL", usd(d.get("tvl_usd")) if not tvl_ghost else "—",
              "DeFiLlama chain TVL", chip=d.get("tvl_change_1d_pct"), ghost=tvl_ghost, spark=tvl_spark,
              source="api.llama.fi/v2/chains", conf="HIGH", extra=age),
@@ -445,10 +454,16 @@ def render_html(snap: dict) -> str:
         tile("RWA TVL", usd(rwa.get("tvl_usd")) if not rwa_ghost else "—",
              f"{nfmt(rwa.get('protocol_count'))} RWA protocols on Solana (DeFiLlama, not equities)", ghost=rwa_ghost,
              source="DeFiLlama RWA category TVL", conf="MED", extra=age),
-        tile("xStocks", usd(xs.get("market_cap_usd")) if xs.get("market_cap_usd") is not None else "—",
-             f"{nfmt(xs.get('count_solana'))} Solana-deployed · quote*circ*mult",
+        tile("xStocks vol 24h",
+             usd(xs.get("volume_24h_usd")) if xs.get("volume_24h_usd") is not None else "—",
+             (xs.get("volume_kind") or "tokenized-equity DEX volume, priced subset"),
+             ghost=xs.get("volume_24h_usd") is None,
+             source=xs.get("volume_source") or "Jupiter lite-api stats24h", conf="MED", extra=age),
+        tile("xStocks mcap",
+             usd(xs.get("market_cap_usd")) if xs.get("market_cap_usd") is not None else "—",
+             f"priced {nfmt(xs.get('count_priced'))} of {nfmt(xs.get('count_solana'))} Solana listings · lower bound",
              ghost=xs.get("market_cap_usd") is None,
-             source="xStocks public API · quote × circulating × multiplier", conf=xs_conf, extra=age),
+             source="xStocks public API · quote × circulating × multiplier (not a 715 census)", conf=xs_conf, extra=age),
         tile("Active addrs", nfmt(daa.get("headline_value")) if not daa_ghost else "—",
              daa_sub, ghost=daa_ghost,
              source="solana.com/data Active Addresses", conf="MED", extra=age),
@@ -545,8 +560,17 @@ def render_html(snap: dict) -> str:
     tw_lis = "".join(news_li(n) for n in (news.get("twitter") or [])[:10]) or (
         '<li class="omit">No public X/Nitter-style RSS this run (403/gated skipped).</li>'
     )
-    news_lis = "".join(news_li(n) for n in (news.get("official") or news.get("items") or [])[:12]) or (
-        '<li class="omit">No RSS items parsed.</li>'
+    news_lis = "".join(news_li(n) for n in (news.get("current_news") or news.get("official") or [])[:12]) or (
+        '<li class="omit">No current RSS items this run.</li>'
+    )
+    active_lis = "".join(news_li(n) for n in (news.get("active_incidents") or [])[:8]) or (
+        '<li class="omit">No open incidents.</li>'
+    )
+    resolved_lis = "".join(news_li(n) for n in (news.get("recent_resolved") or [])[:8]) or (
+        '<li class="omit">No recently resolved incidents in the recency window.</li>'
+    )
+    archive_lis = "".join(news_li(n) for n in (news.get("archive") or [])[:6]) or (
+        '<li class="omit">No archive items.</li>'
     )
 
     comps = "".join(
@@ -625,20 +649,20 @@ def render_html(snap: dict) -> str:
         )
 
 
-    vrd = e(brief.get("verdict") or "WATCH")
+    vrd = e(brief.get("network_health") or brief.get("verdict") or "WATCH")
+    actl = e(brief.get("ecosystem_activity") or "NORMAL")
     brief_html = (
         f'<section class="brief" aria-label="executive view">'
-        f'<div><div class="tiny muted">SOLANA</div>'
+        f'<div><div class="tiny muted">NETWORK HEALTH</div>'
         f'<div class="verdict {vrd}">{vrd}</div>'
-        f'<div class="tiny muted">score {e(brief.get("score"))}</div></div>'
+        f'<div class="tiny muted">score {e(brief.get("score"))} · RPC/slot/TPS/delinquency</div></div>'
+        f'<div><div class="tiny muted">ECOSYSTEM</div>'
+        f'<div class="verdict {actl}">{actl}</div>'
+        f'<div class="tiny muted">DEX/TVL/DAA · {e(brief.get("market_posture") or "")}</div></div>'
         f'<dl><dt>What changed</dt><dd>{e(brief.get("what_changed"))}</dd>'
         f'<dt>Why it matters</dt><dd>{e(brief.get("why_it_matters"))}</dd></dl>'
         f'<dl><dt>Biggest positive</dt><dd>{e(brief.get("biggest_positive"))}</dd>'
         f'<dt>Biggest risk</dt><dd>{e(brief.get("biggest_risk"))}</dd></dl>'
-        f'<dl><dt>Network</dt><dd>{e(brief.get("network"))}</dd>'
-        f'<dt>Capital</dt><dd>{e(brief.get("capital"))}</dd>'
-        f'<dt>Usage</dt><dd>{e(brief.get("usage"))}</dd>'
-        f'<dt>Decentralization</dt><dd>{e(brief.get("decentralization"))}</dd></dl>'
         f'</section>'
     )
     ins_bits = []
@@ -662,7 +686,8 @@ def render_html(snap: dict) -> str:
         f'<p class="val">{nfmt(eco.get("median_tx_fee_sol"), 6)} SOL'
         f' <span class="muted">p50</span> · {usd(eco.get("median_tx_fee_usd"), 4)}</p>'
         f'<p class="sub">p90 {nfmt(eco.get("median_tx_fee_p90_sol"), 6)} · p99 {nfmt(eco.get("median_tx_fee_p99_sol"), 6)} SOL'
-        f' · n={nfmt(eco.get("median_tx_fee_n"))} · slots {e(eco.get("median_tx_fee_slots"))}</p>'
+        f' · n_tx={nfmt(eco.get("median_tx_fee_n"))} · window_seconds={nfmt(eco.get("median_tx_fee_window_seconds"))}'
+        f' · slots {e(eco.get("median_tx_fee_slots"))}</p>'
         f'<p class="tiny muted">{e(eco.get("median_tx_fee_note"))}</p>'
         f'<p class="tiny muted">Priority p50 {nfmt(eco.get("priority_p50_sol"), 6)} SOL · {e(eco.get("priority_note"))}</p>'
         f'</div>'
@@ -673,23 +698,26 @@ def render_html(snap: dict) -> str:
     else:
         jito_cell = e(jt.get("reason") or "omitted")
     eco_box = (
-        f'<div class="panel"><h2>Economic value (not REV)</h2>'
+        f'<div class="panel"><h2>Borealis REV 24h</h2>'
+        f'<p class="val">{usd(eco.get("rev_24h_usd"))}</p>'
+        f'<p class="sub">{e(eco.get("rev_kind") or "")}</p>'
         f'<table><tbody>'
-        f'<tr><td>Network fees 24h</td><td class="right">{nfmt(eco.get("network_fees_sol_24h"), 1)} SOL'
-        f' ({usd(eco.get("network_fees_usd_24h"))})</td></tr>'
-        f'<tr><td>Protocol fees 24h</td><td class="right">{usd(eco.get("protocol_fees_usd"))}</td></tr>'
-        f'<tr><td>Jito/MEV tip floor</td><td class="right">{jito_cell}</td></tr>'
-        f'<tr><td>REV total</td><td class="right">— · {e(eco.get("total_rev_note"))}</td></tr>'
+        f'<tr><td>In-protocol network fees 24h</td><td class="right">{nfmt(eco.get("network_fees_sol_24h"), 1)} SOL'
+        f' ({usd(eco.get("network_fees_usd_24h"))}) · MEASURED</td></tr>'
+        f'<tr><td>Jito tips 24h</td><td class="right">{usd((eco.get("jito") or {}).get("tips_24h_usd"))}'
+        f' · {e((eco.get("jito") or {}).get("tips_24h_kind") or "omitted")}</td></tr>'
+        f'<tr><td>Protocol fees 24h</td><td class="right">{usd(eco.get("protocol_fees_usd"))} · EXCLUDED</td></tr>'
+        f'<tr><td>Jito tip floor</td><td class="right">{jito_cell}</td></tr>'
         f'</tbody></table>'
-        f'<p class="tiny muted">Protocol fees are DeFiLlama Solana fees, labeled as protocol fees, not REV. '
-        f'Network fees from solana.com/data. Sampled p50 is a getBlock distribution, not a 24h sum.</p></div>'
+        f'<p class="tiny muted">{e(eco.get("rev_definition") or "")} '
+        f'Protocol fees are DeFiLlama application fees and are not summed into REV.</p></div>'
     )
     xs_box = (
         f'<div class="panel"><h2>Tokenized equities · xStocks</h2>'
-        f'<p>{nfmt(xs.get("count_solana"))} Solana-deployed of {nfmt(xs.get("count_listed"))} listed · '
-        f'priced mcap {usd(xs.get("market_cap_usd"))}</p>'
-        f'<p class="tiny muted">{e(xs.get("mcap_note") or xs.get("error") or "")} Formula: {e(xs.get("mcap_formula"))}. '
-        f'{e(xs.get("solana_share_label") or "")}</p>'
+        f'<p>24h volume {usd(xs.get("volume_24h_usd"))} · priced-subset mcap {usd(xs.get("market_cap_usd"))}</p>'
+        f'<p class="tiny muted">{e(xs.get("count_meaning") or "")} Priced {nfmt(xs.get("count_priced"))} of '
+        f'{nfmt(xs.get("count_solana"))} Solana listings ({nfmt(xs.get("count_unique_underlying"))} unique underlyings). '
+        f'{e(xs.get("volume_coverage") or xs.get("mcap_note") or "")}</p>'
         f'<table><thead><tr><th>Sym</th><th>Name</th><th class="right">Quote</th>'
         f'<th class="right">Circ</th><th class="right">Mult</th><th class="right">Mcap</th></tr></thead>'
         f'<tbody>{xs_rows or "<tr><td colspan=6 class=omit>No priced xStocks this run.</td></tr>"}</tbody></table></div>'
@@ -700,7 +728,7 @@ def render_html(snap: dict) -> str:
     )
     dh_html = (
         f'<div class="panel" style="margin-top:10px"><h2>Data health</h2>'
-        f'<p>sources {nfmt(dh.get("ok"))}/{nfmt(dh.get("total"))} · headline confidence {e(dh.get("headline_confidence"))}</p>'
+        f'<p>{e(dh.get("headline") or ("sources " + str(dh.get("ok")) + "/" + str(dh.get("total"))))} · headline confidence {e(dh.get("headline_confidence"))}</p>'
         f'<ul>{dh_fail or "<li>No fetch failures this run.</li>"}</ul></div>'
     )
 
@@ -710,6 +738,7 @@ def render_html(snap: dict) -> str:
         return pts[-n:] if n and len(pts) > n else pts
     daily = trends.get("daily") or {}
     runp = trends.get("run") or {}
+    has_90d = len(daily.get("tvl") or []) >= 60
     range_sets = {
         "24h": (runp.get("tps") or _tail(daily.get("tps"), 2),
                 runp.get("tvl") or _tail(daily.get("tvl"), 2),
@@ -719,9 +748,10 @@ def render_html(snap: dict) -> str:
                "daily seed 7d"),
         "30d": (_tail(daily.get("tps"), 30), _tail(daily.get("tvl"), 30), _tail(daily.get("sol"), 30),
                 "daily seed 30d"),
-        "90d": (_tail(daily.get("tps"), 90), _tail(daily.get("tvl"), 90), _tail(daily.get("sol"), 90),
-                "daily seed 90d (TVL) / available TPS-SOL"),
     }
+    if has_90d:
+        range_sets["90d"] = (_tail(daily.get("tps"), 90), _tail(daily.get("tvl"), 90), _tail(daily.get("sol"), 90),
+                             "90d where the series exists (TVL llama); TPS/SOL public feeds are 30d")
     range_bits = []
     for key, (tp, tv, so, lab) in range_sets.items():
         hide = "" if key == "30d" else " hidden"
@@ -812,7 +842,7 @@ def render_html(snap: dict) -> str:
         <button class="linkish" type="button" data-range="24h">24h</button>
         <button class="linkish" type="button" data-range="7d">7d</button>
         <button class="linkish on" type="button" data-range="30d">30d</button>
-        <button class="linkish" type="button" data-range="90d">90d</button>
+        {('<button class="linkish" type="button" data-range="90d">90d</button>' if has_90d else "")}
       </div>
       {range_html}
     </div>
@@ -926,18 +956,26 @@ def render_html(snap: dict) -> str:
     <div class="panel">
       <h2>status.solana.com · {e(status.get("description") or "—")}</h2>
       <div class="status-row">{comps}</div>
+      <p class="tiny muted">{e(news.get("recency_note") or "Recency applied after RSS merge. 2022–2024 incidents are archive, not current.")}</p>
     </div>
     <div class="grid2" style="margin-top:10px">
       <div class="panel">
-        <h2>X announcements (public Nitter-style RSS)</h2>
+        <h2>Active incidents</h2>
+        <ul class="news">{active_lis}</ul>
+        <h2 style="margin-top:14px">Recently resolved</h2>
+        <ul class="news">{resolved_lis}</ul>
+      </div>
+      <div class="panel">
+        <h2>Current news</h2>
+        <ul class="news">{news_lis}</ul>
+        <h2 style="margin-top:14px">X announcements (public Nitter-style RSS)</h2>
         <ul class="news">{tw_lis}</ul>
         <p class="tiny muted">{e(news.get("twitter_note") or "Not the official Twitter API. 403/gated routes skipped.")}</p>
       </div>
-      <div class="panel">
-        <h2>Foundation / Anza RSS</h2>
-        <ul class="news">{news_lis}</ul>
-        <p class="tiny muted">status.solana.com/history.atom · solana.com/news/rss.xml · medium.com/feed/anza-xyz</p>
-      </div>
+    </div>
+    <div class="panel" style="margin-top:10px">
+      <h2>Archive (not current)</h2>
+      <ul class="news">{archive_lis}</ul>
     </div>
   </section>
 

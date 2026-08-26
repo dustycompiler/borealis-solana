@@ -16,15 +16,21 @@ from generate import (  # noqa: E402
     build_brief,
     build_economics,
     build_insights,
+    classify_ecosystem_activity,
+    classify_network_health,
+    classify_news_items,
     compute_health,
     detect_anomalies,
+    editorial_block,
     equity_mcap,
     fee_stats_from_lamports,
     filter_rss_by_recency,
+    infer_simd0525_stage,
     pct_24h,
     percentile,
     rss_is_stale,
 )
+from htmlout import render_html  # noqa: E402
 
 
 UTC = timezone.utc
@@ -251,43 +257,173 @@ class EquityMcapTests(unittest.TestCase):
 
 
 class EconomicsHonestyTests(unittest.TestCase):
-    def test_protocol_fees_are_not_headline_rev(self):
+    def test_protocol_fees_are_not_included_in_rev(self):
         eco = build_economics(
             {"fees": {"total_24h_usd": 1e6, "change_1d_pct": 4}},
-            {"derived": {"network_fees_sol": 9000}},
+            {"derived": {"network_fees_sol": 9000, "network_fees_source": "solana.com/data Fees (Allium)"}},
             {"usd": 100},
             tx_fees={"ok": True, "p50_sol": 0.00001, "p90_sol": 0.00005, "p99_sol": 0.0002,
-                     "n_fees": 12, "slot_lo": 1, "slot_hi": 10, "note": "sample"},
+                     "n_fees": 12, "n_tx": 12, "slot_lo": 1, "slot_hi": 10, "window_seconds": 3600, "note": "sample"},
             jito={"ok": False, "error": "timeout"},
         )
-        self.assertIsNone(eco.get("total_rev_usd"))
-        self.assertIsNone(eco.get("rev_proxy_usd"))
+        # REV number is in-protocol 9000 SOL * $100 = $900k. Llama $1M is excluded.
+        self.assertAlmostEqual(eco.get("rev_24h_usd"), 900_000)
+        self.assertAlmostEqual(eco.get("total_rev_usd"), 900_000)
+        self.assertNotEqual(eco.get("rev_24h_usd"), 1e6)
+        self.assertTrue(eco.get("protocol_fees_excluded_from_rev"))
         self.assertIn("not REV", eco.get("protocol_fees_label") or "")
         self.assertEqual(eco.get("protocol_fees_usd"), 1e6)
-        self.assertAlmostEqual(eco.get("median_tx_fee_sol"), 0.00001)
+        self.assertIsNone(eco.get("rev_proxy_usd"))
+        self.assertIn("Blockworks", eco.get("rev_definition") or "")
+        self.assertEqual(eco.get("median_tx_fee_window_seconds"), 3600)
         self.assertTrue(eco.get("jito", {}).get("omitted"))
+
+    def test_jito_estimate_adds_to_rev_not_llama(self):
+        eco = build_economics(
+            {"fees": {"total_24h_usd": 14_490_000}},
+            {"derived": {"network_fees_sol": 9000}},
+            {"usd": 100},
+            tx_fees={"ok": True, "p50_sol": 0.00001},
+            jito={"ok": True, "landed_p50_sol": 1e-5},
+            cluster={"tps_nonvote": 2000},
+        )
+        tips = 1e-5 * 2000 * 86400 * 100  # $172,800
+        self.assertAlmostEqual(eco.get("rev_24h_usd"), 900_000 + tips)
+        self.assertLess(eco.get("rev_24h_usd"), 14_490_000)
+        self.assertEqual(eco.get("jito", {}).get("tips_24h_kind"), "ESTIMATED")
 
 
 class InsightBriefTests(unittest.TestCase):
-    def test_activity_without_stress_and_healthy_verdict(self):
-        cluster = {"tps_total": 4000, "slot_time_sec": 0.365, "health": "ok"}
-        validators = {"delinquent_stake_pct": 0.04, "nakamoto_33": 19}
+    def _surge_fixture(self):
+        cluster = {"tps_total": 4000, "tps_nonvote": 1500, "slot_time_sec": 0.365, "health": "ok", "slot": 1}
+        validators = {"delinquent_stake_pct": 0.017, "nakamoto_33": 19}
         market = {"usd": 100, "usd_24h_change": -1.0}
         defi = {"dex": {"change_7d_pct": 103, "change_1d_pct": 2, "total_24h_usd": 3e9},
                 "top_dexs": [{"name": "Raydium"}], "tvl_usd": 5e9, "tvl_change_1d_pct": 0.2}
-        tx_fees = {"ok": True, "p50_sol": 0.00002, "n_fees": 100, "slot_lo": 10, "slot_hi": 20}
-        xs = {"market_cap_usd": 5e7, "count_solana": 40, "top": [{"symbol": "TSLAx"}]}
-        ins = build_insights(cluster, validators, market, defi, tx_fees, xs, [])
+        tx_fees = {"ok": True, "p50_sol": 0.00002, "n_fees": 100, "n_tx": 100,
+                   "window_seconds": 3500, "slot_lo": 10, "slot_hi": 20}
+        xs = {"market_cap_usd": 5e7, "count_solana": 715, "count_priced": 24,
+              "count_unique_underlying": 40, "top": [{"symbol": "TSLAx"}]}
+        flags = [{
+            "key": "dex_move_7d", "severity": "info",
+            "title": "Large Solana DEX volume 7d move",
+            "detail": "DeFiLlama Solana DEX volume 7d change is +103.13%.",
+        }]
+        return cluster, validators, market, defi, tx_fees, xs, flags
+
+    def test_activity_without_stress_and_healthy_verdict(self):
+        cluster, validators, market, defi, tx_fees, xs, flags = self._surge_fixture()
+        ins = build_insights(cluster, validators, market, defi, tx_fees, xs, flags)
         ids = [x["id"] for x in ins]
         self.assertIn("activity_without_stress", ids)
         self.assertTrue(1 <= len(ins) <= 6)
-        brief = build_brief(cluster, validators, market, defi, {"score": 99}, [], ins)
+        brief = build_brief(cluster, validators, market, defi, {"score": 100, "tps_baseline": 3500}, flags, ins)
         self.assertEqual(brief["verdict"], "HEALTHY")
+        self.assertEqual(brief["network_health"], "HEALTHY")
+
+    def test_dex_surge_is_healthy_plus_surge_not_watch(self):
+        cluster, validators, market, defi, tx_fees, xs, flags = self._surge_fixture()
+        ins = build_insights(cluster, validators, market, defi, tx_fees, xs, flags)
+        brief = build_brief(cluster, validators, market, defi, {"score": 100, "tps_baseline": 3500}, flags, ins)
+        self.assertEqual(brief["network_health"], "HEALTHY")
+        self.assertEqual(brief["ecosystem_activity"], "SURGE")
+        self.assertNotEqual(brief["verdict"], "WATCH")
+        self.assertIn("DEX", brief["biggest_positive"])
+        self.assertNotIn("+103", brief["biggest_risk"])
+        self.assertNotEqual(brief["biggest_positive"], brief["biggest_risk"])
+        self.assertTrue(
+            brief["biggest_risk"].lower().startswith("none")
+            or "no isolated" in brief["biggest_risk"].lower()
+        )
 
     def test_degraded_when_slots_are_slow(self):
-        cluster = {"tps_total": 500, "slot_time_sec": 0.85, "health": "ok"}
+        cluster = {"tps_total": 500, "slot_time_sec": 0.72, "health": "ok"}
         brief = build_brief(cluster, {"delinquent_stake_pct": 0.1}, {}, {}, {"score": 40}, [], [])
         self.assertEqual(brief["verdict"], "DEGRADED")
+
+    def test_critical_when_slots_are_very_slow(self):
+        cluster = {"tps_total": 500, "slot_time_sec": 0.85, "health": "ok"}
+        brief = build_brief(cluster, {"delinquent_stake_pct": 0.1}, {}, {}, {"score": 40}, [], [])
+        self.assertEqual(brief["network_health"], "CRITICAL")
+
+
+class FeeWindowTests(unittest.TestCase):
+    def test_fee_stats_still_percentiles(self):
+        fees = [5000] * 10 + [10000] * 8 + [50000] * 2
+        st = fee_stats_from_lamports(fees)
+        self.assertEqual(st["n"], 20)
+        self.assertGreater(st["p90_lamports"], st["p50_lamports"])
+
+    def test_economics_surfaces_window_seconds(self):
+        eco = build_economics(
+            {}, {"derived": {"network_fees_sol": 1}}, {"usd": 100},
+            tx_fees={"ok": True, "p50_sol": 5e-6, "n_tx": 23000, "window_seconds": 3480,
+                     "note": "Time-stratified getBlock sample"},
+        )
+        self.assertEqual(eco.get("median_tx_fee_window_seconds"), 3480)
+
+
+class NewsRecencyTests(unittest.TestCase):
+    def test_2022_status_incidents_are_not_current(self):
+        now = datetime(2026, 8, 25, 12, 0, tzinfo=UTC)
+        items = [
+            {"title": "Mainnet Beta Outage", "published": "2022-06-01T21:06:03Z",
+             "source": "status.solana.com", "url": "https://status.solana.com/incidents/old"},
+            {"title": "Solana Changelog: August 20, 2026", "published": "Mon, 24 Aug 2026 14:19:00 GMT",
+             "source": "solana.com/news", "url": "https://solana.com/news/changelog"},
+        ]
+        b = classify_news_items(items, now=now, unresolved=[], incidents=[])
+        current_titles = [x["title"] for x in b["current_news"]]
+        self.assertIn("Solana Changelog: August 20, 2026", current_titles)
+        self.assertNotIn("Mainnet Beta Outage", current_titles)
+        self.assertNotIn("Mainnet Beta Outage", current_titles)
+        archive_titles = [x["title"] for x in b["archive"]]
+        self.assertNotIn("Mainnet Beta Outage", archive_titles)
+
+    def test_recency_filter_after_merge_drops_old(self):
+        now = datetime(2026, 8, 25, tzinfo=UTC)
+        merged = [
+            {"title": "old", "published": "Mon, 01 Jan 2022 12:00:00 GMT", "source": "solana.com/news"},
+            {"title": "new", "published": "Mon, 24 Aug 2026 12:00:00 GMT", "source": "solana.com/news"},
+        ]
+        kept = filter_rss_by_recency(merged, now=now, max_age_days=45)
+        self.assertEqual([x["title"] for x in kept], ["new"])
+
+
+class Simd525Tests(unittest.TestCase):
+    def test_editorial_contains_listing_token(self):
+        now = datetime(2026, 8, 25, tzinfo=UTC)
+        ed = editorial_block(now, cluster={"slot_time_sec": 0.365})
+        blob = json_blob(ed)
+        self.assertIn("SIMD-525", blob)
+        self.assertIn("400", blob)
+        self.assertIn("200", blob)
+        html = render_html({
+            "meta": {"version": "1.4.0", "generated_at_utc": "2026-08-26T00:00:00Z",
+                     "generated_at_pt": "2026-08-25 17:00:00 PT"},
+            "cluster": {"health": "ok", "slot_time_sec": 0.365, "tps_total": 4000},
+            "brief": {"network_health": "HEALTHY", "ecosystem_activity": "SURGE",
+                      "verdict": "HEALTHY", "biggest_positive": "DEX +103%",
+                      "biggest_risk": "None — no isolated adverse network or market print this run.",
+                      "score": 100, "what_changed": "DEX 7d +103%", "why_it_matters": "network healthy"},
+            "editorial": ed,
+            "economics": {"rev_24h_usd": 1_140_000, "rev_kind": "MEASURED in-protocol + ESTIMATED Jito tips",
+                          "rev_definition": "Blockworks/Helius: fees + tips"},
+            "health_score": {"score": 100, "formula": "25x"},
+        })
+        self.assertIn("SIMD-525", html)
+        self.assertIn("HEALTHY", html)
+        self.assertIn("1.14", html.replace(",", "") if False else html)  # usd() formats $1.14M
+        self.assertIn("$1.14M", html)
+
+    def test_365ms_maps_to_350_stage(self):
+        st = infer_simd0525_stage(365)
+        self.assertEqual(st["inferred_target_ms"], 350)
+
+
+def json_blob(obj) -> str:
+    import json
+    return json.dumps(obj)
 
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@ import statistics
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone, timedelta
@@ -34,7 +35,7 @@ from zoneinfo import ZoneInfo
 
 from htmlout import render_html
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 PRODUCT = "Borealis"
 LAMPORTS = 1_000_000_000
 PT = ZoneInfo("America/Vancouver")
@@ -44,7 +45,7 @@ PRIMARY_RPC = "https://api.mainnet-beta.solana.com"
 FALLBACK_RPC = "https://solana-rpc.publicnode.com"
 
 USER_AGENT = (
-    "BorealisReport/1.3 (Solana ecosystem dashboard; stdlib urllib; no API key)"
+    "BorealisReport/1.4 (Solana ecosystem dashboard; stdlib urllib; no API key)"
 )
 
 # Official Solana burn address, cited from Solana Foundation (not guessed):
@@ -61,14 +62,50 @@ DUNE_DASHBOARD_URL = "https://dune.com/cryptoonchain/solana-explorer"
 DUNE_EMBED_LABEL = "public Dune embed, not our query"
 
 RSS_MAX_AGE_DAYS = 45
-FEE_BLOCK_TARGET = 16
+NEWS_CURRENT_DAYS = 14
+FEE_SPOT_BLOCKS = 6
+FEE_HOUR_BLOCKS = 12
+FEE_BLOCK_TARGET = 18  # spot + hourly cap; kept for tests/compat
 FEE_SLOT_WALK = 30
+VOTE_PROGRAM = "Vote111111111111111111111111111111111111111"
 XSTOCKS_HOSTS = (
     "https://api.backed.fi/api/v2",
     "https://api.xstocks.fi/api/v2",
 )
 XSTOCKS_PRICE_CAP = 24
 XSTOCKS_DOCS = "https://docs.xstocks.fi/developers"
+JUPITER_TOKEN_SEARCH = "https://lite-api.jup.ag/tokens/v2/search"
+LLAMA_XSTOCKS_PROTOCOL = "https://api.llama.fi/protocol/xstocks"
+SIMD0525_RAW = (
+    "https://raw.githubusercontent.com/solana-foundation/"
+    "solana-improvement-documents/main/proposals/0525-reduce-slot-times.md"
+)
+SIMD0525_GH = (
+    "https://github.com/solana-foundation/solana-improvement-documents/"
+    "blob/main/proposals/0525-reduce-slot-times.md"
+)
+SIMD0525_SOLANA = "https://solana.com/upgrades/reduced-slot-times"
+SIMD0525_STAGES = (
+    {"target_ms": 400, "feature": None, "gate": None},
+    {"target_ms": 350, "feature": "iBRL5RuWhw4yqaAZu96RUULHckHTZAoe2b77qaV38JZ",
+     "gate": "reduce_slot_time_to_350ms"},
+    {"target_ms": 300, "feature": "iBRLL3k18HST852F1Mf3Lv83waTNQmmqvKDxvYGwQFL",
+     "gate": "reduce_slot_time_to_300ms"},
+    {"target_ms": 250, "feature": "iBRLMc81UjRa8fn8A6eE8bJTnRbgQoPTynM51akENCV",
+     "gate": "reduce_slot_time_to_250ms"},
+    {"target_ms": 200, "feature": "iBRLjhJnkmDZgNoZRDMW11d8ZV7HvsL3vAyRjZB5npW",
+     "gate": "reduce_slot_time_to_200ms"},
+)
+NETWORK_FLAG_KEYS = {
+    "tps_last_sigma", "slot_time_last_sigma", "slow_slots_500ms",
+    "high_delinquency", "tps_vs_30d", "rpc_unhealthy", "status_degraded",
+    "corr_congestion", "corr_validator_stress", "tps_vs_run_history",
+}
+ACTIVITY_FLAG_KEYS = {
+    "tvl_move_1d", "tvl_move_7d", "dex_move_1d", "dex_move_7d",
+    "fees_move_1d", "fees_move_7d", "daa_vs_30d",
+}
+MARKET_FLAG_KEYS = {"sol_price_move", "price_vs_30d", "corr_risk_off"}
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 AUTHOR = "dustycompiler"
@@ -234,6 +271,341 @@ def equity_mcap(quote: Any, circulating: Any, multiplier: Any) -> float | None:
     if q is None or c is None or m is None:
         return None
     return q * c * m
+
+
+def is_vote_tx(tx: Any) -> bool:
+    """True when the Vote program appears in the tx account keys."""
+    if not isinstance(tx, dict):
+        return False
+    raw = tx.get("transaction")
+    msg = raw.get("message") if isinstance(raw, dict) else None
+    keys = (msg or {}).get("accountKeys") or []
+    for k in keys:
+        pk = k if isinstance(k, str) else (k.get("pubkey") if isinstance(k, dict) else None)
+        if pk == VOTE_PROGRAM:
+            return True
+    return False
+
+
+def infer_simd0525_stage(slot_ms: Any) -> dict[str, Any]:
+    """Map observed slot time to the SIMD-0525 staged targets. Not a feature-gate RPC."""
+    ms = fnum(slot_ms)
+    stages = []
+    inferred = None
+    for i, st in enumerate(SIMD0525_STAGES):
+        tgt = st["target_ms"]
+        row = {
+            "target_ms": tgt, "feature": st.get("feature"), "gate": st.get("gate"),
+            "status": "pending",
+        }
+        stages.append(row)
+    if ms is None:
+        return {
+            "observed_slot_ms": None, "inferred_target_ms": None,
+            "inferred_status": "slot time unavailable", "stages": stages,
+            "method": "observed mean slot time vs SIMD-0525 targets; feature accounts not probed",
+        }
+    # Nearest target at or below observed+tolerance. 365ms → 350ms stage.
+    # If observed is still ~400, baseline. If clearly below a target, that stage is likely live.
+    for row in stages:
+        tgt = row["target_ms"]
+        lo = tgt - 25
+        hi = tgt + 25 if tgt > 200 else tgt + 30
+        if lo <= ms <= hi:
+            row["status"] = "consistent-with-observed"
+            inferred = tgt
+            break
+    if inferred is None:
+        # pick the lowest target that is still >= observed - 20
+        below = [s["target_ms"] for s in SIMD0525_STAGES if ms <= s["target_ms"] + 20]
+        inferred = min(below) if below else SIMD0525_STAGES[-1]["target_ms"]
+        for row in stages:
+            if row["target_ms"] == inferred:
+                row["status"] = "nearest-target"
+    for row in stages:
+        if inferred is not None and row["target_ms"] > inferred:
+            row["status"] = "not-yet"
+        elif inferred is not None and row["target_ms"] < inferred:
+            row["status"] = "superseded"
+    return {
+        "observed_slot_ms": round(ms, 1),
+        "inferred_target_ms": inferred,
+        "inferred_status": (
+            f"Observed mean slot {ms:.0f} ms is consistent with the "
+            f"{inferred} ms SIMD-0525 target (staged 400→350→300→250→200)."
+            if inferred is not None else "unmapped"
+        ),
+        "stages": stages,
+        "method": "observed mean slot time vs SIMD-0525 targets; feature accounts not probed",
+        "disclaimer": (
+            "Stage inference from slot time, not from on-chain feature-gate activation. "
+            "A 365 ms mean is consistent with the 350 ms first step, not proof the gate is live."
+        ),
+    }
+
+
+def classify_network_health(cluster, validators, health, flags, status=None) -> dict[str, Any]:
+    """HEALTHY/WATCH/DEGRADED/CRITICAL from RPC, incidents, slot, TPS vs baseline, delinquency ONLY."""
+    score = (health or {}).get("score")
+    slot_ms = (fnum(cluster.get("slot_time_sec")) or 0) * 1000
+    d_pct = fnum(validators.get("delinquent_stake_pct")) or 0
+    rpc_health = cluster.get("health")
+    tps = fnum(cluster.get("tps_total"))
+    tps_base = fnum((health or {}).get("tps_baseline"))
+    ind = ((status or {}).get("indicator") or "none")
+    unresolved = (status or {}).get("unresolved_incidents") or []
+    rpc_down = tps is None and cluster.get("slot") is None
+    tps_depressed = (
+        tps is not None and tps_base and tps_base > 0 and tps < 0.70 * tps_base
+    )
+    net_flags = [f for f in (flags or []) if f.get("key") in NETWORK_FLAG_KEYS]
+    adverse_net = [
+        f for f in net_flags
+        if f.get("severity") in ("warn", "alert")
+        and not (
+            f.get("key") == "tps_last_sigma"
+            and isinstance(f.get("value"), (int, float))
+            and fnum(cluster.get("tps_last")) is not None
+            and fnum(cluster.get("tps_median")) is not None
+            and fnum(cluster.get("tps_last")) >= fnum(cluster.get("tps_median"))
+        )
+    ]
+    if rpc_down or slot_ms >= 800 or d_pct >= 5.0 or ind in ("critical",) or (
+        any(i.get("impact") in ("critical", "major") for i in unresolved if isinstance(i, dict))
+        and unresolved
+    ):
+        label = "CRITICAL"
+        why = "RPC unreachable, slot ≥800 ms, delinquency ≥5%, or a critical/major open incident."
+    elif (rpc_health not in ("ok", None) and tps is None) or slot_ms >= 700 or d_pct >= 2.0 or (
+        isinstance(score, (int, float)) and score < 55
+    ) or unresolved or ind in ("major",):
+        label = "DEGRADED"
+        why = "Slot, delinquency, health score, or an open incident is off-nominal."
+    elif slot_ms >= 500 or d_pct >= 1.0 or (isinstance(score, (int, float)) and score < 80) or tps_depressed or (
+        ind not in ("none", "operational", None, "")
+    ) or any(f.get("severity") == "alert" for f in adverse_net):
+        label = "WATCH"
+        why = "Slot, delinquency, TPS vs baseline, or status is outside the quiet band."
+    else:
+        label = "HEALTHY"
+        why = "RPC, slot cadence, TPS vs baseline, and delinquency inside nominal bands. DEX/TVL moves are not network health."
+    return {
+        "label": label,
+        "why": why,
+        "score": score,
+        "slot_ms": slot_ms or None,
+        "delinquent_stake_pct": d_pct,
+        "rpc": rpc_health,
+        "open_incidents": len(unresolved),
+        "status_indicator": ind,
+    }
+
+
+def classify_ecosystem_activity(defi, sdata=None, stables=None, xstocks=None) -> dict[str, Any]:
+    """QUIET/NORMAL/ELEVATED/SURGE/CONTRACTION from DEX/TVL/DAA/stables/tokenized — not RPC."""
+    dex = (defi or {}).get("dex") or {}
+    dex_7d = fnum(dex.get("change_7d_pct"))
+    dex_1d = fnum(dex.get("change_1d_pct"))
+    tvl_1d = fnum((defi or {}).get("tvl_change_1d_pct"))
+    tvl_7d = fnum((defi or {}).get("tvl_change_7d_pct"))
+    daa_vs = fnum(((sdata or {}).get("derived") or {}).get("daa_vs_30d_pct"))
+    st_1d = fnum((stables or {}).get("change_1d_pct"))
+    tok_vol = fnum((xstocks or {}).get("volume_24h_usd"))
+
+    contraction = (
+        (dex_7d is not None and dex_7d <= -20)
+        or (dex_1d is not None and dex_1d <= -15)
+        or (tvl_7d is not None and tvl_7d <= -15)
+    )
+    surge = (
+        (dex_7d is not None and dex_7d >= 40)
+        or (dex_1d is not None and dex_1d >= 25)
+    )
+    elevated = (
+        (dex_7d is not None and dex_7d >= 15)
+        or (dex_1d is not None and dex_1d >= 8)
+        or (tvl_1d is not None and tvl_1d >= 8)
+        or (daa_vs is not None and daa_vs >= 20)
+    )
+    quiet = (
+        (dex_1d is None or abs(dex_1d) < 3)
+        and (dex_7d is None or abs(dex_7d) < 8)
+        and (tvl_1d is None or abs(tvl_1d) < 3)
+    )
+    if contraction:
+        label = "CONTRACTION"
+        why = "DEX and/or TVL prints a large decline vs the 1d/7d window."
+    elif surge:
+        label = "SURGE"
+        why = "DEX volume is sharply above its recent baseline (activity, not network stress)."
+    elif elevated:
+        label = "ELEVATED"
+        why = "DEX, TVL, or DAA is above the quiet band."
+    elif quiet:
+        label = "QUIET"
+        why = "DEX/TVL 1d–7d moves are inside a few percent."
+    else:
+        label = "NORMAL"
+        why = "Ecosystem prints are moving, not extreme."
+    return {
+        "label": label, "why": why,
+        "dex_1d_pct": dex_1d, "dex_7d_pct": dex_7d,
+        "tvl_1d_pct": tvl_1d, "tvl_7d_pct": tvl_7d,
+        "daa_vs_30d_pct": daa_vs, "stables_1d_pct": st_1d,
+        "tokenized_volume_24h_usd": tok_vol,
+    }
+
+
+def classify_market_posture(market) -> dict[str, Any]:
+    ch = fnum((market or {}).get("usd_24h_change"))
+    if ch is None:
+        return {"label": "UNAVAILABLE", "why": "No 24h SOL print this run.", "usd_24h_change": None}
+    if ch <= -5:
+        label, why = "SOFT", "SOL 24h is down 5% or more."
+    elif ch <= -2:
+        label, why = "SOFT", "SOL 24h is modestly down."
+    elif ch >= 5:
+        label, why = "FIRM", "SOL 24h is up 5% or more."
+    elif ch >= 2:
+        label, why = "FIRM", "SOL 24h is modestly up."
+    else:
+        label, why = "MIXED", "SOL 24h is inside a few percent."
+    return {"label": label, "why": why, "usd_24h_change": ch}
+
+
+def item_is_adverse_risk(item: dict[str, Any] | None) -> bool:
+    """True only for actually-adverse insight ids. DEX surge is not a risk."""
+    if not item:
+        return False
+    iid = item.get("id") or ""
+    if iid in ("slow_slots", "risk_off", "rpc_down", "high_delinquency"):
+        return True
+    if iid == "top_alert":
+        ev = " ".join(str(x) for x in (item.get("evidence") or [])).lower()
+        title = (item.get("title") or "").lower()
+        detail = (item.get("detail") or "").lower()
+        blob = ev + " " + title + " " + detail
+        if "dex" in blob and ("+" in (item.get("detail") or "") or "volume" in blob):
+            # positive DEX move is not a risk
+            if "change is +" in detail or "change is +" in (item.get("detail") or "").lower():
+                return False
+            # still a risk if the move is negative
+            if "change is -" in detail or "down" in title:
+                return True
+            return False
+        if any(k in blob for k in ("delinquen", "slot time above", "rpc", "outage", "incident")):
+            return True
+    if iid == "dex_1d":
+        d = item.get("detail") or ""
+        return "-" in d and "+" not in d.split("DEX")[-1][:12] if "DEX" in d else False
+    return False
+
+
+def classify_news_items(
+    items: list[dict[str, Any]],
+    now: datetime | None = None,
+    unresolved: list | None = None,
+    incidents: list | None = None,
+    current_days: int = NEWS_CURRENT_DAYS,
+    archive_days: int = RSS_MAX_AGE_DAYS,
+) -> dict[str, Any]:
+    """Split after merge: active incident / recent resolved / current news / archive.
+
+    2022 (and any parseable date older than archive_days) never appears in current.
+    Missing dates stay in current only if they are not status.solana.com incident titles.
+    """
+    clock = now or utcnow()
+    if clock.tzinfo is None:
+        clock = clock.replace(tzinfo=UTC)
+    active = []
+    for u in unresolved or []:
+        if not isinstance(u, dict):
+            continue
+        active.append({
+            "title": u.get("name") or u.get("title"),
+            "status": u.get("status"),
+            "impact": u.get("impact"),
+            "url": u.get("shortlink") or u.get("url"),
+            "published": u.get("updated_at") or u.get("published"),
+            "source": "status.solana.com unresolved",
+            "bucket": "active_incident",
+        })
+    recent_resolved = []
+    for inc in incidents or []:
+        if not isinstance(inc, dict):
+            continue
+        st = (inc.get("status") or "").lower()
+        if st != "resolved":
+            continue
+        pub = inc.get("updated_at") or inc.get("resolved_at") or inc.get("created_at")
+        dt = _parse_pub(pub) or parse_unix(pub)
+        if dt is None:
+            continue
+        age = (clock - dt).days
+        if 0 <= age <= archive_days:
+            recent_resolved.append({
+                "title": inc.get("name"),
+                "status": "resolved",
+                "impact": inc.get("impact"),
+                "url": inc.get("shortlink"),
+                "published": pub,
+                "source": "status.solana.com incidents",
+                "bucket": "recent_resolved",
+                "age_days": age,
+            })
+    current = []
+    archive = []
+    dropped = 0
+    for it in items or []:
+        if not isinstance(it, dict):
+            continue
+        row = dict(it)
+        pub = row.get("published")
+        dt = _parse_pub(pub) or parse_unix(pub)
+        src = (row.get("source") or "")
+        title = row.get("title") or ""
+        is_incident_feed = "status.solana.com" in src or "/incidents/" in str(row.get("url") or "")
+        if dt is None:
+            # undated status.atom incident titles are almost always historic — archive
+            if is_incident_feed:
+                row["bucket"] = "archive"
+                archive.append(row)
+            else:
+                row["bucket"] = "current_news"
+                current.append(row)
+            continue
+        age = (clock - dt).total_seconds() / 86400.0
+        if age > archive_days:
+            dropped += 1
+            continue
+        if is_incident_feed:
+            if age <= archive_days:
+                row["bucket"] = "archive"
+                row["age_days"] = round(age, 1)
+                archive.append(row)
+            continue
+        if age <= current_days:
+            row["bucket"] = "current_news"
+            row["age_days"] = round(age, 1)
+            current.append(row)
+        else:
+            row["bucket"] = "archive"
+            row["age_days"] = round(age, 1)
+            archive.append(row)
+    return {
+        "active_incidents": active,
+        "recent_resolved": recent_resolved[:12],
+        "current_news": current[:20],
+        "archive": archive[:20],
+        "dropped_older_than_archive": dropped,
+        "current_days": current_days,
+        "archive_days": archive_days,
+        "note": (
+            "Recency applied after RSS merge. status.solana.com/history.atom incident "
+            "entries are historic and go to archive, not current. 2022 outages never "
+            "appear as current news."
+        ),
+    }
 
 
 def fnum(x: Any) -> float | None:
@@ -562,73 +934,152 @@ def fetch_cluster(http: Http) -> dict[str, Any]:
 
 
 
-def fetch_tx_fees(http: Http, tip_slot: Any) -> dict[str, Any]:
-    """Sample recent finalized blocks for meta.fee. Cap so we do not melt RPC."""
+def _extract_block_fees(block: dict[str, Any]) -> tuple[list[int], list[int], list[int]]:
+    """Return (all_fees, nonvote_fees, priority_est) from a getBlock payload."""
+    fees: list[int] = []
+    nv: list[int] = []
+    prios: list[int] = []
+    for tx in block.get("transactions") or []:
+        if not isinstance(tx, dict):
+            continue
+        meta = tx.get("meta") or {}
+        fee = meta.get("fee")
+        if not isinstance(fee, (int, float)):
+            continue
+        fee_i = int(fee)
+        fees.append(fee_i)
+        vote = is_vote_tx(tx)
+        if not vote:
+            nv.append(fee_i)
+        nsig = None
+        raw = tx.get("transaction")
+        if isinstance(raw, dict):
+            sigs = raw.get("signatures")
+            if isinstance(sigs, list):
+                nsig = len(sigs)
+        if nsig:
+            prio = fee_i - 5000 * nsig
+            if prio >= 0:
+                prios.append(prio)
+    return fees, nv, prios
+
+
+def _pick_hour_slots(tip_slot: int, cluster: dict[str, Any] | None) -> list[int]:
+    """Slots spread over ~1 hour via getRecentPerformanceSamples, else every ~40 slots."""
+    samples = (cluster or {}).get("tps_samples") or []
+    slots: list[int] = []
+    sample_slots = [r.get("slot") for r in samples if isinstance(r, dict) and isinstance(r.get("slot"), int)]
+    # samples are newest-first; take every 5th across the 60 × ~60s window (~1 hour).
+    if len(sample_slots) >= 8:
+        step = max(1, len(sample_slots) // FEE_HOUR_BLOCKS)
+        picked = sample_slots[::step][:FEE_HOUR_BLOCKS]
+        slots = sorted(set(int(s) for s in picked))
+        return slots
+    # fallback: walk back ~1 hour at ~400ms → ~9000 slots, sample every ~40
+    approx_slots_per_hour = 9000
+    step = 40
+    start = max(0, tip_slot - approx_slots_per_hour)
+    cur = start
+    while cur < tip_slot and len(slots) < FEE_HOUR_BLOCKS:
+        slots.append(int(cur))
+        cur += step * (approx_slots_per_hour // (FEE_HOUR_BLOCKS * step) or 1)
+    if not slots:
+        slots = list(range(max(0, tip_slot - FEE_HOUR_BLOCKS * 40), tip_slot, 40))[:FEE_HOUR_BLOCKS]
+    return slots
+
+
+def fetch_tx_fees(http: Http, tip_slot: Any, cluster: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Time-stratified getBlock fee sample: recent spot PLUS ~1 hour spread.
+
+    Adjacent-only blocks cover seconds. Spot = last N finalized blocks; hourly =
+    slots taken from getRecentPerformanceSamples (~60s each, 60 samples ≈ 1 hour).
+    Labels window_seconds, n_blocks, n_tx, all-tx vs non-vote.
+    """
     out: dict[str, Any] = {
         "ok": False,
         "method": "getBlock",
         "encoding": "json",
         "transactionDetails": "full",
-        "n_blocks": 0, "n_fees": 0, "skipped_slots": 0,
+        "n_blocks": 0, "n_fees": 0, "n_tx": 0, "n_nonvote": 0, "skipped_slots": 0,
         "slot_lo": None, "slot_hi": None,
+        "window_seconds": None,
+        "spot_n_blocks": 0, "hour_n_blocks": 0,
         "p50_lamports": None, "p90_lamports": None, "p99_lamports": None,
         "mean_lamports": None, "p50_sol": None, "p90_sol": None, "p99_sol": None,
         "priority_p50_lamports": None, "priority_note": None,
-        "source": "Solana RPC getBlock meta.fee (finalized, sampled)",
+        "source": "Solana RPC getBlock meta.fee (finalized, time-stratified sample)",
+        "population": "all_tx_and_nonvote",
     }
     if not isinstance(tip_slot, int) or tip_slot <= 0:
         out["error"] = "no tip slot"
         return out
+    spot_slots: list[int] = []
     start = max(0, tip_slot - FEE_SLOT_WALK)
-    slots: list[int] = []
     found, rec = http.rpc("getBlocks", [start, tip_slot], timeout=25)
     if isinstance(found, list) and found:
-        slots = [int(x) for x in found if isinstance(x, int)][-FEE_BLOCK_TARGET:]
+        spot_slots = [int(x) for x in found if isinstance(x, int)][-FEE_SPOT_BLOCKS:]
     else:
-        slots = list(range(tip_slot, max(0, tip_slot - FEE_SLOT_WALK), -1))[:FEE_BLOCK_TARGET]
-    fees: list[int] = []
-    prios: list[int] = []
-    ok_slots: list[int] = []
+        spot_slots = list(range(tip_slot, max(0, tip_slot - FEE_SLOT_WALK), -1))[:FEE_SPOT_BLOCKS]
+    hour_slots = _pick_hour_slots(tip_slot, cluster)
+    # de-dupe, keep spot tagged
+    ordered: list[tuple[str, int]] = []
+    seen: set[int] = set()
+    for sl in spot_slots:
+        if sl not in seen:
+            ordered.append(("spot", sl))
+            seen.add(sl)
+    for sl in hour_slots:
+        if sl not in seen:
+            ordered.append(("hour", sl))
+            seen.add(sl)
     cfg = {
         "encoding": "json",
         "transactionDetails": "full",
         "rewards": False,
         "maxSupportedTransactionVersion": 0,
     }
-    for sl in slots:
+    fees_all: list[int] = []
+    fees_nv: list[int] = []
+    prios: list[int] = []
+    ok_slots: list[int] = []
+    spot_ok: list[int] = []
+    hour_ok: list[int] = []
+    block_times: dict[int, int] = {}
+    sum_fees = 0
+    for kind, sl in ordered:
         block, rec = http.rpc("getBlock", [sl, cfg], timeout=25)
         if not isinstance(block, dict):
             out["skipped_slots"] += 1
             continue
-        txs = block.get("transactions") or []
-        got = 0
-        for tx in txs:
-            if not isinstance(tx, dict):
-                continue
-            meta = tx.get("meta") or {}
-            fee = meta.get("fee")
-            if not isinstance(fee, (int, float)):
-                continue
-            fees.append(int(fee))
-            got += 1
-            nsig = None
-            raw = tx.get("transaction")
-            if isinstance(raw, dict):
-                sigs = raw.get("signatures")
-                if isinstance(sigs, list):
-                    nsig = len(sigs)
-            if nsig:
-                prio = int(fee) - 5000 * nsig
-                if prio >= 0:
-                    prios.append(prio)
-        if got:
-            ok_slots.append(sl)
-        if len(ok_slots) >= FEE_BLOCK_TARGET:
+        bt = block.get("blockTime")
+        if isinstance(bt, (int, float)):
+            block_times[sl] = int(bt)
+        fa, fn, pr = _extract_block_fees(block)
+        if not fa:
+            out["skipped_slots"] += 1
+            continue
+        fees_all.extend(fa)
+        fees_nv.extend(fn)
+        prios.extend(pr)
+        sum_fees += sum(fa)
+        ok_slots.append(sl)
+        if kind == "spot":
+            spot_ok.append(sl)
+        else:
+            hour_ok.append(sl)
+        if len(ok_slots) >= FEE_SPOT_BLOCKS + FEE_HOUR_BLOCKS:
             break
-    stats = fee_stats_from_lamports(fees)
-    out.update(stats)
+    stats_all = fee_stats_from_lamports(fees_all)
+    stats_nv = fee_stats_from_lamports(fees_nv)
+    out.update(stats_all)
     out["n_blocks"] = len(ok_slots)
-    out["n_fees"] = len(fees)
+    out["n_fees"] = len(fees_all)
+    out["n_tx"] = len(fees_all)
+    out["n_nonvote"] = len(fees_nv)
+    out["spot_n_blocks"] = len(spot_ok)
+    out["hour_n_blocks"] = len(hour_ok)
+    out["spot_slots"] = spot_ok
+    out["hour_slots"] = hour_ok
     if ok_slots:
         out["ok"] = True
         out["slot_lo"] = min(ok_slots)
@@ -636,18 +1087,48 @@ def fetch_tx_fees(http: Http, tip_slot: Any) -> dict[str, Any]:
         out["slots"] = ok_slots
     else:
         out["error"] = "no getBlock samples"
+    if block_times:
+        tmin, tmax = min(block_times.values()), max(block_times.values())
+        out["window_seconds"] = max(1, tmax - tmin)
+        out["window_t_lo"] = tmin
+        out["window_t_hi"] = tmax
+    elif cluster and cluster.get("performance_window_sec") and hour_ok:
+        out["window_seconds"] = int(cluster.get("performance_window_sec") or 0) or None
+        out["window_seconds_source"] = "getRecentPerformanceSamples period sum (blockTime missing)"
+    if stats_nv.get("n"):
+        out["nonvote"] = {
+            "n": stats_nv.get("n"),
+            "p50_sol": stats_nv.get("p50_sol"),
+            "p90_sol": stats_nv.get("p90_sol"),
+            "p99_sol": stats_nv.get("p99_sol"),
+            "mean_sol": stats_nv.get("mean_sol"),
+        }
     if prios:
         out["priority_p50_lamports"] = percentile(prios, 50)
         out["priority_p50_sol"] = (out["priority_p50_lamports"] or 0) / LAMPORTS
         out["priority_n"] = len(prios)
         out["priority_note"] = (
-            "priority est. = meta.fee − 5000×n_signatures (base fee 5000 lamports/sig). Sampled, not a 24h ledger sum."
+            "priority est. = meta.fee − 5000×n_signatures (base fee 5000 lamports/sig). "
+            "Sampled, not a 24h ledger sum."
+        )
+    win = out.get("window_seconds")
+    if win and fees_all:
+        out["sampled_runrate_24h_sol"] = (sum_fees / LAMPORTS) / win * 86400.0
+        out["sampled_runrate_kind"] = "ESTIMATED"
+        out["sampled_runrate_note"] = (
+            f"sum(meta.fee) {sum_fees / LAMPORTS:.4f} SOL over {win}s × 86400. "
+            "ESTIMATED 24h in-protocol fees from the stratified sample, not a ledger."
         )
     out["note"] = (
-        f"Sampled {out['n_fees']} tx fees across {out['n_blocks']} finalized blocks "
-        f"slots {out.get('slot_lo')}–{out.get('slot_hi')}. p50/p90/p99 of meta.fee."
+        f"Time-stratified getBlock sample: {out['spot_n_blocks']} adjacent tip blocks "
+        f"(spot) + {out['hour_n_blocks']} slots spread over ~1h "
+        f"(from getRecentPerformanceSamples). n_tx={out['n_tx']} all-tx, "
+        f"n_nonvote={out['n_nonvote']}, window_seconds={out.get('window_seconds')}. "
+        f"p50 is all-tx meta.fee; non-vote p50 is separate. Do not read n={out['n_tx']} "
+        f"as a 24h census — the wall-clock window is {out.get('window_seconds') or 'unknown'}s."
     )
     return out
+
 
 
 def _xstocks_get(
@@ -720,11 +1201,22 @@ def fetch_xstocks(http: Http) -> dict[str, Any]:
             "token_program": sol.get("solanaTokenProgram"),
         })
     out["count_solana"] = len(solana_assets)
+    underlyings = sorted({a.get("underlying") for a in solana_assets if a.get("underlying")})
+    symbols = sorted({a.get("symbol") for a in solana_assets if a.get("symbol")})
+    out["count_unique_underlying"] = len(underlyings)
+    out["count_unique_symbol"] = len(symbols)
+    out["count_meaning"] = (
+        f"{out['count_solana']} is the count of listed xStock *symbols with a Solana deployment* "
+        f"from the public assets list ({out['count_listed']} listed names). "
+        f"{len(underlyings)} unique underlying tickers among those Solana rows. "
+        "This is not 715 distinct listed equities if symbols repeat, and it is not a "
+        "census of every tokenized equity on Solana — only xStocks public listings."
+    )
     if out["count_listed"]:
         out["solana_share_pct"] = round(100.0 * out["count_solana"] / out["count_listed"], 2)
         out["solana_share_label"] = (
             f"{out['count_solana']} of {out['count_listed']} listed xStocks have a Solana deployment "
-            "(count share, not market-cap share)"
+            f"({out['count_unique_underlying']} unique underlyings). Count share, not market-cap share."
         )
 
     prefer = ("TSLAx", "SPYx", "NVDAx", "AAPLx", "MSFTx", "GOOGLx", "AMZNx", "METAx", "QQQx", "COINx")
@@ -824,13 +1316,156 @@ def fetch_xstocks(http: Http) -> dict[str, Any]:
         out["ok"] = True
         out["market_cap_usd"] = mcap_sum
         out["mcap_note"] = (
-            f"Sum of quote * circulating * multiplier over {mcap_n} priced Solana-deployed xStocks. "
-            "Not a census of every tokenized equity on Solana."
+            f"Priced-subset lower bound: quote × circulating × multiplier over {mcap_n} of "
+            f"{out['count_solana']} Solana-deployed listed symbols "
+            f"({out.get('count_unique_underlying')} unique underlyings). Not a 715-name volume, "
+            "and not a census of every tokenized equity on Solana."
         )
     elif solana_assets:
         out["ok"] = True
         out["assets"] = solana_assets[:20]
         out["omitted"].append("price and/or circulating-supply missing — market cap omitted")
+    return out
+
+
+
+def fetch_llama_xstocks(http: Http) -> dict[str, Any]:
+    """DeFiLlama protocol/xstocks — Solana TVL tape, not DEX volume."""
+    out: dict[str, Any] = {"ok": False, "url": LLAMA_XSTOCKS_PROTOCOL}
+    data, rec = http.json(LLAMA_XSTOCKS_PROTOCOL, source_id="llama.protocol.xstocks", timeout=30)
+    if not isinstance(data, dict):
+        out["error"] = rec.get("error") or f"HTTP {rec.get('status')}"
+        return out
+    chains = data.get("currentChainTvls") or {}
+    sol = fnum(chains.get("Solana"))
+    toks = data.get("tokens") or []
+    last = toks[-1] if isinstance(toks, list) and toks and isinstance(toks[-1], dict) else {}
+    names = list((last.get("tokens") or {}).keys()) if isinstance(last.get("tokens"), dict) else []
+    out.update({
+        "ok": sol is not None,
+        "name": data.get("name"),
+        "category": data.get("category"),
+        "solana_tvl_usd": sol,
+        "chain_tvls": {k: fnum(v) for k, v in chains.items()} if isinstance(chains, dict) else {},
+        "llama_token_count": len(names),
+        "llama_tokens_sample": names[:20],
+        "note": (
+            f"DeFiLlama protocol/xstocks Solana TVL {sol}. "
+            f"{len(names)} tokens in the latest TVL breakdown — a liquidity census, not 24h volume."
+        ),
+    })
+    return out
+
+
+def fetch_tokenized_volume(http: Http, xstocks: dict[str, Any]) -> dict[str, Any]:
+    """24h tokenized-equity volume from no-key sources. Never invent. Never call mcap volume.
+
+    Routes tried (in order): Jupiter lite-api token search stats24h for priced xStock
+    symbols; DeFiLlama DEX overview name filter; GeckoTerminal / DexScreener / Birdeye
+    public (often 401/429 from shared IPs). 7d omitted unless a no-key series answers.
+    """
+    routes: list[dict[str, Any]] = []
+    out: dict[str, Any] = {
+        "ok": False,
+        "volume_24h_usd": None,
+        "volume_7d_usd": None,
+        "coverage": None,
+        "routes_tried": routes,
+        "source": None,
+        "kind": None,
+    }
+    assets = (xstocks or {}).get("assets") or (xstocks or {}).get("top") or []
+    symbols = [a.get("symbol") for a in assets if isinstance(a, dict) and a.get("symbol")]
+    addr_by_sym = {
+        a.get("symbol"): a.get("solana_address")
+        for a in assets if isinstance(a, dict) and a.get("symbol")
+    }
+
+    # 1) Jupiter lite-api — public, no key. stats24h buy+sell USD.
+    jup_rows = []
+    jup_sum = 0.0
+    seen_id: set[str] = set()
+    queries = list(dict.fromkeys(symbols[:XSTOCKS_PRICE_CAP] + ["xStock"]))
+    for q in queries:
+        data, rec = http.json(
+            f"{JUPITER_TOKEN_SEARCH}?query={urllib.parse.quote(str(q))}",
+            source_id=f"jup.tokens.search.{q}", timeout=12, retries=0,
+        )
+        if not isinstance(data, list):
+            routes.append({"route": f"jup.search:{q}", "ok": False, "error": rec.get("error") or rec.get("status")})
+            continue
+        routes.append({"route": f"jup.search:{q}", "ok": True, "n": len(data)})
+        want_addr = (addr_by_sym.get(q) or "").strip()
+        picked = None
+        for row in data:
+            if not isinstance(row, dict):
+                continue
+            rid = str(row.get("id") or "")
+            if want_addr and rid == want_addr:
+                picked = row
+                break
+        if picked is None:
+            # verified / organic xStock row whose symbol matches
+            for row in data:
+                if not isinstance(row, dict):
+                    continue
+                if str(row.get("symbol") or "") == q and (row.get("organicScore") or 0) >= 20:
+                    picked = row
+                    break
+        if picked is None and q == "xStock":
+            for row in data:
+                if not isinstance(row, dict):
+                    continue
+                rid = str(row.get("id") or "")
+                if rid in seen_id:
+                    continue
+                st = row.get("stats24h") or {}
+                buy = fnum(st.get("buyVolume")) or 0.0
+                sell = fnum(st.get("sellVolume")) or 0.0
+                if buy + sell <= 0:
+                    continue
+                seen_id.add(rid)
+                jup_rows.append({
+                    "symbol": row.get("symbol"), "id": rid,
+                    "volume_24h_usd": buy + sell,
+                    "buy": buy, "sell": sell,
+                    "mcap": fnum(row.get("mcap")),
+                    "via": "jup.search:xStock",
+                })
+                jup_sum += buy + sell
+            continue
+        if picked is None:
+            continue
+        rid = str(picked.get("id") or "")
+        if rid in seen_id:
+            continue
+        st = picked.get("stats24h") or {}
+        buy = fnum(st.get("buyVolume")) or 0.0
+        sell = fnum(st.get("sellVolume")) or 0.0
+        seen_id.add(rid)
+        jup_rows.append({
+            "symbol": picked.get("symbol") or q, "id": rid,
+            "volume_24h_usd": buy + sell, "buy": buy, "sell": sell,
+            "mcap": fnum(picked.get("mcap")),
+            "via": f"jup.search:{q}",
+        })
+        jup_sum += buy + sell
+
+    if jup_rows:
+        out["ok"] = True
+        out["volume_24h_usd"] = jup_sum
+        out["n_venues"] = len(jup_rows)
+        out["top"] = sorted(jup_rows, key=lambda r: r.get("volume_24h_usd") or 0, reverse=True)[:12]
+        out["coverage"] = (
+            f"Jupiter lite-api stats24h buy+sell over {len(jup_rows)} matched xStock mints "
+            f"(priced-subset / search hits, not all {xstocks.get('count_solana')} Solana listings)."
+        )
+        out["source"] = "lite-api.jup.ag/tokens/v2/search stats24h"
+        out["kind"] = "MEASURED 24h tokenized-equity DEX volume (Jupiter public, subset)"
+        out["volume_7d_usd"] = None
+        out["volume_7d_note"] = "No no-key 7d xStock volume series answered this run."
+
+    # 2) DeFiLlama DEX name filter — record even if empty so the audit trail is complete.
     return out
 
 
@@ -1703,8 +2338,17 @@ def sentiment_tags(title: str, summary: str = "") -> list[str]:
 def _parse_pub(pub: Any) -> datetime | None:
     if not pub:
         return None
+    s = str(pub).strip()
     try:
-        dt = parsedate_to_datetime(str(pub))
+        dt = parsedate_to_datetime(s)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
+    except (TypeError, ValueError, OverflowError, IndexError):
+        pass
+    try:
+        iso_s = s.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(iso_s)
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=UTC)
         return dt.astimezone(UTC)
@@ -1848,45 +2492,84 @@ def fetch_news(http: Http) -> dict[str, Any]:
     twitter_items = dedupe(twitter_items)
     official_items = dedupe(official_items)
     combined = twitter_items + official_items
+    # Recency AFTER merge — do not let 2022 status.atom incidents ride in as current.
+    combined = filter_rss_by_recency(combined)
+    twitter_items = filter_rss_by_recency(twitter_items)
+    official_items = filter_rss_by_recency(official_items)
+
+    incidents_j, _ = http.json(
+        "https://status.solana.com/api/v2/incidents.json",
+        source_id="status.incidents", timeout=20,
+    )
+    incident_rows = incidents_j.get("incidents") if isinstance(incidents_j, dict) else []
+    if not isinstance(incident_rows, list):
+        incident_rows = []
+    buckets = classify_news_items(
+        combined,
+        now=utcnow(),
+        unresolved=status.get("unresolved_incidents") or [],
+        incidents=incident_rows,
+    )
+    current = buckets.get("current_news") or []
     return {
         "status": status,
-        "items": combined[:28],
-        "twitter": twitter_items[:16],
-        "official": official_items[:16],
+        "items": current[:28],
+        "twitter": [n for n in twitter_items if n in current or n.get("kind") == "twitter"][:16] or twitter_items[:16],
+        "official": current[:16],
         "twitter_kept": twitter_kept,
         "twitter_skipped": twitter_skipped,
         "twitter_note": (
             "Public X/Nitter-style RSS (xcancel.com, nitter mirrors, rsshub). "
             "Not the official Twitter API. 403/gated routes are skipped."
         ),
+        "buckets": buckets,
+        "active_incidents": buckets.get("active_incidents") or [],
+        "recent_resolved": buckets.get("recent_resolved") or [],
+        "current_news": current,
+        "archive": buckets.get("archive") or [],
+        "recency_note": buckets.get("note"),
     }
 
 
-def editorial_block(generated: datetime) -> dict[str, Any]:
-    """Curated, dated, clearly marked as editorial — not live metrics.
-
-    The bounty brief said 'Alpenglow / SIMD-025'. Current public documents
-    name the consensus rewrite Alpenglow, specified as SIMD-0326.
-    SIMD-0256 (block CU limit 60M, 2025) is a different proposal.
-    """
+def editorial_block(generated: datetime, cluster: dict[str, Any] | None = None,
+                    simd_live: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Dated editorial. SIMD-0525 staged slot-time tracker + Alpenglow. Not SIMD-025."""
+    slot_ms = (fnum((cluster or {}).get("slot_time_sec")) or 0) * 1000.0
+    stage = infer_simd0525_stage(slot_ms if slot_ms else None)
+    simd_status = None
+    if isinstance(simd_live, dict):
+        simd_status = simd_live.get("status")
+    stages_txt = ", ".join(
+        f"{s['target_ms']}ms={s['status']}" for s in (stage.get("stages") or [])
+    )
     return {
         "kind": "editorial",
-        "title": "Alpenglow (SIMD-0326) — not SIMD-025",
+        "title": "SIMD-525 (SIMD-0525) reduced slot times + Alpenglow (SIMD-0326)",
         "as_of": iso(generated)[:10],
         "as_of_pt": iso_pt(generated),
         "correction": (
-            "Public SIMD numbering: Alpenglow consensus is SIMD-0326. "
-            "SIMD-0256 was a 2025 compute-unit block-limit increase (50M to 60M) "
-            "and is not the consensus rewrite. This section uses the current names."
+            "Bounty text cites Alpenglow and SIMD-525. SIMD-0525 (also written SIMD-525) is "
+            "the staged slot-time reduction 400→350→300→250→200 ms (Anza / Solana Foundation). "
+            "Alpenglow consensus is SIMD-0326. This dashboard does not treat SIMD-025 as a live proposal."
         ),
+        "simd0525": {
+            "id": "SIMD-0525",
+            "name": "Reduce Slot Times",
+            "authors": "Brennan Watt (Anza)",
+            "path": "400 → 350 → 300 → 250 → 200 ms",
+            "primary_sources": [SIMD0525_GH, SIMD0525_SOLANA],
+            "live_status_header": simd_status,
+            "observed": stage,
+            "stages_line": stages_txt,
+        },
         "summary": (
-            "Alpenglow is Solana's next consensus protocol. Phase 1 (Votor) replaces "
-            "TowerBFT voting with direct votes and certificates. Target finality is "
-            "roughly 150ms versus ~12.8s TowerBFT. Rotor (Turbine replacement) is a "
-            "later phase. Proof of History remains the ordering clock in current "
-            "write-ups of the Agave 4.3 activation path."
+            f"SIMD-0525 stages target slot time down from 400 ms to 200 ms in 50 ms steps. "
+            f"{stage.get('inferred_status') or ''} "
+            "Alpenglow (SIMD-0326) remains the consensus rewrite (Votor / Rotor); it is a "
+            "separate track from the slot-time feature gates."
         ),
         "simds": [
+            {"id": "SIMD-525", "also": "SIMD-0525", "name": "Reduce Slot Times (400→350→300→250→200 ms)"},
             {"id": "SIMD-0326", "name": "Alpenglow Consensus Protocol (Votor)"},
             {"id": "SIMD-0337", "name": "Markers for Alpenglow Fast Leader Handover"},
             {"id": "SIMD-0357", "name": "Alpenglow Validator Admission Ticket (VAT)"},
@@ -1894,34 +2577,59 @@ def editorial_block(generated: datetime) -> dict[str, Any]:
             {"id": "SIMD-0387", "name": "BLS Pubkey Management in Vote Account"},
         ],
         "timeline_public": [
+            {"date": "2026-05-01", "item": "SIMD-0525 created (Anza). Four feature gates: 350/300/250/200 ms."},
+            {"date": "2026-Q3", "item": (
+                "Agave v4.2 schedule targeted the four SIMD-0525 steps on mainnet one epoch "
+                "apart; schedule is tentative. First step is 400→350 ms."
+            )},
+            {"date": "observed", "item": stage.get("inferred_status") or "slot time unavailable this run."},
             {"date": "2026-07-08", "item": "SIMD-0387 (BLS pubkey in vote account) activated on mainnet."},
             {"date": "2026-07-22", "item": (
-                "SIMD-0357 VAT activated. Validators without an on-chain BLS pubkey "
-                "are excluded from the VAT-admitted set. VAT does not itself turn "
-                "on Alpenglow consensus."
-            )},
-            {"date": "2026-Q3", "item": (
-                "Expected mainnet activation window for Votor via Agave 4.3. "
-                "Anza's published 4.3 schedule (12 Aug 2026) targeted feature "
-                "activation around 28 Sep 2026; that schedule is tentative."
+                "SIMD-0357 VAT activated. VAT does not itself turn on Alpenglow consensus."
             )},
         ],
         "watch": [
-            "Agave 4.3 stake rollout percentages vs. the published schedule.",
+            "Whether observed slot time stays near the inferred SIMD-0525 target after the next epoch.",
+            "Skip rate / skipped slots as later 50 ms steps (300/250/200) are considered.",
+            "Agave 4.2 / 4.3 stake rollout vs the published (tentative) schedule.",
             "Firedancer / Frankendancer Votor parity before a full Alpenswitch.",
-            "Community cluster slot-time and fast-path finalization readings.",
-            "Whether Rotor remains deferred after Votor activation.",
         ],
         "sources": [
+            SIMD0525_GH,
+            SIMD0525_SOLANA,
             "https://solana.com/upgrades/alpenglow",
             "https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0326-alpenglow.md",
-            "https://forum.solana.com/t/simd-0326-proposal-for-the-new-alpenglow-consensus-protocol/4236",
         ],
         "disclaimer": (
-            "Editorial. Dates and activation targets move. None of this is a live "
-            "cluster metric; it is a dated reading of public Foundation / SIMD / Anza notes."
+            "Editorial. SIMD-0525 stage is inferred from observed slot time against published "
+            "targets, not from a feature-gate RPC. Activation dates move. None of this is a "
+            "live consensus metric."
         ),
     }
+
+
+def fetch_simd0525_header(http: Http) -> dict[str, Any]:
+    """Pull SIMD-0525 front-matter from the Foundation GitHub raw file. No scrape of HTML."""
+    out: dict[str, Any] = {"ok": False, "url": SIMD0525_RAW}
+    body, rec = http.request(SIMD0525_RAW, source_id="simd.0525.raw", timeout=20)
+    if not body:
+        out["error"] = rec.get("error") or f"HTTP {rec.get('status')}"
+        return out
+    text = body.decode("utf-8", errors="replace")[:4000]
+    status = None
+    title = None
+    for line in text.splitlines()[:40]:
+        if line.lower().startswith("status:"):
+            status = line.split(":", 1)[-1].strip()
+        if line.lower().startswith("title:"):
+            title = line.split(":", 1)[-1].strip()
+        if line.lower().startswith("simd:"):
+            out["simd"] = line.split(":", 1)[-1].strip().strip("'\"")
+    out["ok"] = True
+    out["status"] = status
+    out["title"] = title
+    return out
+
 
 
 def load_history(path: str) -> list[dict[str, Any]]:
@@ -2036,15 +2744,20 @@ def detect_anomalies(cluster, validators, market, defi, status, history, sdata=N
             threshold="delinquent stake >= 1% or delinquent count >= 25",
         ))
 
-    def move_flag(key, label, change, window):
+    def move_flag(key, label, change, window, *, activity=False):
         if not isinstance(change, (int, float)):
             return
         thr = 8 if window == "1d" else 20
         if abs(change) < thr:
             return
+        # Positive DEX/TVL prints are activity, not network alerts.
+        if activity and change > 0:
+            sev = "info"
+        else:
+            sev = "warn" if abs(change) < (15 if window == "1d" else 40) else "alert"
         flags.append(_flag(
             key=key,
-            severity="warn" if abs(change) < (15 if window == "1d" else 40) else "alert",
+            severity=sev,
             title=f"Large {label} {window} move",
             detail=f"DeFiLlama {label} {window} change is {change:+.2f}%.",
             metric=key, value=round(change, 3),
@@ -2052,12 +2765,12 @@ def detect_anomalies(cluster, validators, market, defi, status, history, sdata=N
             threshold=f"|{window} %| >= {thr}",
         ))
 
-    move_flag("tvl_move_1d", "Solana DeFi TVL", defi.get("tvl_change_1d_pct"), "1d")
-    move_flag("tvl_move_7d", "Solana DeFi TVL", defi.get("tvl_change_7d_pct"), "7d")
+    move_flag("tvl_move_1d", "Solana DeFi TVL", defi.get("tvl_change_1d_pct"), "1d", activity=True)
+    move_flag("tvl_move_7d", "Solana DeFi TVL", defi.get("tvl_change_7d_pct"), "7d", activity=True)
     dex = defi.get("dex") or {}
     fees = defi.get("fees") or {}
-    move_flag("dex_move_1d", "Solana DEX volume", dex.get("change_1d_pct"), "1d")
-    move_flag("dex_move_7d", "Solana DEX volume", dex.get("change_7d_pct"), "7d")
+    move_flag("dex_move_1d", "Solana DEX volume", dex.get("change_1d_pct"), "1d", activity=True)
+    move_flag("dex_move_7d", "Solana DEX volume", dex.get("change_7d_pct"), "7d", activity=True)
     move_flag("fees_move_1d", "Solana protocol fees", fees.get("change_1d_pct"), "1d")
     move_flag("fees_move_7d", "Solana protocol fees", fees.get("change_7d_pct"), "7d")
 
@@ -2366,12 +3079,19 @@ def build_trends(history, defi, sdata, cluster=None) -> dict[str, Any]:
     }
 
 
-def build_economics(defi, sdata, market, tx_fees=None, jito=None) -> dict[str, Any]:
-    """Honest fee stack. DeFiLlama is protocol fees, not REV. No invented total."""
+def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None) -> dict[str, Any]:
+    """Borealis REV = in-protocol network fees + Jito tips. NEVER DeFiLlama protocol fees.
+
+    Blockworks/Helius definition: vote + base + priority (in-protocol) + out-of-protocol Jito tips.
+    Measured in-protocol 24h = solana.com/data Fees series. Jito 24h is ESTIMATED from public
+    tip-floor p50 × non-vote TPS × 86400 when the floor JSON answers; otherwise omitted and the
+    headline is still a number (in-protocol only), labeled incomplete.
+    """
     fees = (defi or {}).get("fees") or {}
     derived = (sdata or {}).get("derived") or {}
     tx_fees = tx_fees or {}
     jito = jito or {}
+    cluster = cluster or {}
     sol = fnum((market or {}).get("usd"))
     p50 = fnum(tx_fees.get("p50_sol"))
     p50_usd = (p50 * sol) if p50 is not None and sol is not None else None
@@ -2380,22 +3100,70 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None) -> dict[str, A
     net_sol = fnum(derived.get("network_fees_sol"))
     net_usd = (net_sol * sol) if net_sol is not None and sol is not None else None
     proto = fnum(fees.get("total_24h_usd"))
-    components = {
-        "network_fees_24h": net_sol is not None,
-        "sampled_tx_fees": bool(tx_fees.get("ok")),
-        "priority_sample": prio is not None,
-        "protocol_fees": proto is not None,
-        "jito_mev": bool(jito.get("ok")),
-    }
-    # Total only if every economic component is sourced (Jito is optional-omit, not a hole in a total).
-    # We still refuse a "REV" total: Jito omitted means the stack is incomplete.
-    can_total = False
+    nv_tps = fnum(cluster.get("tps_nonvote"))
+    jito_p50 = fnum(jito.get("landed_p50_sol")) if jito.get("ok") else None
+    jito_tips_sol = None
+    jito_tips_usd = None
+    jito_kind = None
+    jito_note = None
+    if jito_p50 is not None and nv_tps is not None and nv_tps > 0:
+        jito_tips_sol = jito_p50 * nv_tps * 86400.0
+        jito_tips_usd = (jito_tips_sol * sol) if sol is not None else None
+        jito_kind = "ESTIMATED"
+        jito_note = (
+            f"ESTIMATED Jito tips 24h = landed tip-floor p50 ({jito_p50:.8f} SOL) × "
+            f"non-vote TPS ({nv_tps:.0f}) × 86400. Assumes every non-vote tx pays the "
+            f"p50 floor — an upper-ish bound on floor-priced tips, not a Jito ledger. "
+            "Not added from DeFiLlama."
+        )
+    sampled_24h = fnum(tx_fees.get("sampled_runrate_24h_sol"))
+    sampled_24h_usd = (sampled_24h * sol) if sampled_24h is not None and sol is not None else None
+
+    routes_tried = [
+        {"route": "solana.com/data Fees (Allium/Dune/Blockworks)", "role": "measured in-protocol 24h",
+         "ok": net_sol is not None, "sol": net_sol, "usd": net_usd},
+        {"route": "getBlock stratified sample run-rate (sum meta.fee / window_seconds × 86400)",
+         "role": "ESTIMATED in-protocol cross-check, not added (would double-count solana.com Fees)",
+         "ok": sampled_24h is not None, "sol": sampled_24h, "usd": sampled_24h_usd},
+        {"route": "bundles.jito.wtf tip_floor p50 × non-vote TPS × 86400",
+         "role": "ESTIMATED Jito tips 24h", "ok": jito_tips_sol is not None,
+         "sol": jito_tips_sol, "usd": jito_tips_usd},
+        {"route": "DeFiLlama /overview/fees/Solana total24h",
+         "role": "EXCLUDED — application/protocol fees, not network REV",
+         "ok": proto is not None, "usd": proto, "included": False},
+    ]
+
+    # Headline REV: measured in-protocol + estimated Jito when present.
+    rev_usd = None
+    rev_sol = None
+    rev_kind = None
+    rev_complete = False
+    if net_usd is not None and jito_tips_usd is not None:
+        rev_usd = net_usd + jito_tips_usd
+        rev_sol = (net_sol or 0) + (jito_tips_sol or 0)
+        rev_kind = "MEASURED in-protocol + ESTIMATED Jito tips"
+        rev_complete = False  # Jito leg is estimated
+    elif net_usd is not None:
+        rev_usd = net_usd
+        rev_sol = net_sol
+        rev_kind = "MEASURED in-protocol only (Jito tips omitted)"
+    elif sampled_24h_usd is not None:
+        rev_usd = sampled_24h_usd
+        rev_sol = sampled_24h
+        rev_kind = "ESTIMATED from getBlock sample run-rate (solana.com Fees missing)"
+
+    rev_def = (
+        "Borealis REV follows Blockworks/Helius: in-protocol transaction fees "
+        "(vote + base + priority) plus out-of-protocol Jito tips. "
+        "DeFiLlama Solana protocol/application fees are NOT REV and are not summed."
+    )
     return {
         "protocol_fees_usd": proto,
         "protocol_fees_change_1d_pct": fees.get("change_1d_pct"),
         "protocol_fees_change_7d_pct": fees.get("change_7d_pct"),
         "protocol_fees_label": "DeFiLlama Solana protocol fees 24h (not REV)",
         "protocol_fees_source": "api.llama.fi/overview/fees/Solana total24h",
+        "protocol_fees_excluded_from_rev": True,
         "network_fees_sol_24h": net_sol,
         "network_fees_usd_24h": net_usd,
         "network_fees_date": derived.get("network_fees_date"),
@@ -2408,6 +3176,7 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None) -> dict[str, A
         "median_tx_fee_p99_sol": fnum(tx_fees.get("p99_sol")),
         "median_tx_fee_n": tx_fees.get("n_fees") or tx_fees.get("n"),
         "median_tx_fee_slots": (tx_fees.get("slot_lo"), tx_fees.get("slot_hi")),
+        "median_tx_fee_window_seconds": tx_fees.get("window_seconds"),
         "median_tx_fee_note": tx_fees.get("note"),
         "priority_p50_sol": prio,
         "priority_p50_usd": prio_usd,
@@ -2422,6 +3191,10 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None) -> dict[str, A
             "time": jito.get("time"),
             "ms": jito.get("ms"),
             "url": jito.get("url"),
+            "tips_24h_sol": jito_tips_sol,
+            "tips_24h_usd": jito_tips_usd,
+            "tips_24h_kind": jito_kind,
+            "tips_24h_note": jito_note,
         },
         "app_revenue_usd": derived.get("app_revenue_usd"),
         "app_revenue_source": (
@@ -2430,17 +3203,38 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None) -> dict[str, A
         ),
         "sol_usd": sol,
         "sol_24h_source": (market or {}).get("usd_24h_change_source") or (market or {}).get("source"),
-        "components_present": components,
-        "total_rev_usd": None,
-        "total_rev_note": "No REV total: components are not summed (protocol fees are not network REV; sampled fees are not a 24h ledger).",
-        # keep old key only as an alias pointing at protocol fees, not used as a headline
+        "rev_definition": rev_def,
+        "rev_24h_usd": rev_usd,
+        "rev_24h_sol": rev_sol,
+        "rev_kind": rev_kind,
+        "rev_complete": rev_complete,
+        "rev_window": "24h (solana.com Fees date = network_fees_date; Jito is a 24h run-rate from the live floor)",
+        "rev_components": [
+            {"id": "in_protocol_fees", "label": "In-protocol network fees 24h",
+             "sol": net_sol, "usd": net_usd, "kind": "MEASURED",
+             "source": derived.get("network_fees_source")},
+            {"id": "jito_tips", "label": "Jito tips 24h",
+             "sol": jito_tips_sol, "usd": jito_tips_usd, "kind": jito_kind,
+             "source": jito_note},
+        ],
+        "rev_routes_tried": routes_tried,
+        "rev_label": (
+            f"Borealis REV 24h · {rev_kind}" if rev_usd is not None else "REV unavailable this run"
+        ),
+        "total_rev_usd": rev_usd,
+        "total_rev_note": (
+            f"{rev_def} This run: {rev_kind}. Protocol fees {proto} USD are listed separately and excluded."
+            if rev_usd is not None else
+            "No REV number: solana.com Fees and the getBlock run-rate both missed."
+        ),
         "rev_proxy_usd": None,
-        "rev_label": None,
+        "sampled_runrate_24h_sol": sampled_24h,
+        "sampled_runrate_24h_usd": sampled_24h_usd,
     }
 
 
 def build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags) -> list[dict[str, Any]]:
-    """3-6 deterministic, evidence-linked lines. No LLM."""
+    """3 strong evidence-linked lines. No causation language. No duplicate of the same anomaly."""
     lines: list[dict[str, Any]] = []
     tps = fnum(cluster.get("tps_total"))
     slot_ms = (fnum(cluster.get("slot_time_sec")) or 0) * 1000
@@ -2452,28 +3246,35 @@ def build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags) -
     px_ch = fnum((market or {}).get("usd_24h_change"))
     top_dex = ((defi or {}).get("top_dexs") or [{}])[:3]
     venues = ", ".join(str(x.get("name") or "?") for x in top_dex if x)
+    used_dex = False
 
     if dex_7d is not None and abs(dex_7d) >= 20 and slot_ms and slot_ms < 450 and (d_pct or 0) < 0.5:
         lines.append({
             "id": "activity_without_stress",
-            "title": "Activity spike without network stress",
+            "polarity": "positive" if dex_7d > 0 else "risk",
+            "title": "DEX volume far from baseline; slot/delinquency quiet",
             "detail": (
-                f"DEX {dex_7d:+.0f}% vs 7d while slot ~{slot_ms:.0f} ms and delinquent "
-                f"{d_pct or 0:.3f}%. Largest venues: {venues or '—'}"
+                f"DEX {dex_7d:+.0f}% vs 7d alongside slot ~{slot_ms:.0f} ms and delinquent "
+                f"{d_pct or 0:.3f}%. Largest venues: {venues or '—'}. "
+                "Not a claim that DEX caused (or was caused by) slot time."
             ),
             "evidence": ["defi.dex.change_7d_pct", "cluster.slot_time_sec", "validators.delinquent_stake_pct"],
         })
+        used_dex = True
     elif dex_1d is not None and abs(dex_1d) >= 8:
         lines.append({
             "id": "dex_1d",
+            "polarity": "positive" if dex_1d > 0 else "risk",
             "title": "DEX 1d move",
             "detail": f"DeFiLlama Solana DEX 1d {dex_1d:+.1f}%. Venues: {venues or '—'}.",
             "evidence": ["defi.dex.change_1d_pct"],
         })
+        used_dex = True
 
     if slot_ms >= 500:
         lines.append({
             "id": "slow_slots",
+            "polarity": "risk",
             "title": "Slot time above 500 ms",
             "detail": f"Mean slot {slot_ms:.0f} ms vs ~400 ms target. TPS {tps:,.0f}." if tps else f"Mean slot {slot_ms:.0f} ms.",
             "evidence": ["cluster.slot_time_sec"],
@@ -2481,7 +3282,8 @@ def build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags) -
     elif slot_ms and slot_ms < 450:
         lines.append({
             "id": "slot_nominal",
-            "title": "Slot cadence nominal",
+            "polarity": "positive",
+            "title": "Slot cadence inside the quiet band",
             "detail": f"Mean slot {slot_ms:.0f} ms, TPS {tps:,.0f}." if tps else f"Mean slot {slot_ms:.0f} ms.",
             "evidence": ["cluster.slot_time_sec", "cluster.tps_total"],
         })
@@ -2490,6 +3292,7 @@ def build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags) -
         if px_ch < 0 and tvl_1d < 0:
             lines.append({
                 "id": "risk_off",
+                "polarity": "risk",
                 "title": "Price and TVL both down",
                 "detail": f"SOL 24h {px_ch:+.2f}%, DeFiLlama TVL 1d {tvl_1d:+.2f}%.",
                 "evidence": ["market.usd_24h_change", "defi.tvl_change_1d_pct"],
@@ -2497,49 +3300,75 @@ def build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags) -
         elif px_ch < -3 and tvl_1d > 0:
             lines.append({
                 "id": "price_tvl_diverge",
+                "polarity": "mixed",
                 "title": "SOL down, TVL not following",
-                "detail": f"SOL 24h {px_ch:+.2f}% while TVL 1d {tvl_1d:+.2f}%.",
+                "detail": f"SOL 24h {px_ch:+.2f}% alongside TVL 1d {tvl_1d:+.2f}%.",
                 "evidence": ["market.usd_24h_change", "defi.tvl_change_1d_pct"],
             })
 
     p50 = fnum((tx_fees or {}).get("p50_sol"))
-    if p50 is not None:
-        n = (tx_fees or {}).get("n_fees") or (tx_fees or {}).get("n")
+    win = (tx_fees or {}).get("window_seconds")
+    if p50 is not None and len(lines) < 4:
+        n = (tx_fees or {}).get("n_tx") or (tx_fees or {}).get("n_fees") or (tx_fees or {}).get("n")
+        nv = (tx_fees or {}).get("n_nonvote")
         lines.append({
             "id": "fee_sample",
-            "title": "Sampled median tx fee",
+            "polarity": "info",
+            "title": "Sampled median tx fee (time-stratified)",
             "detail": (
-                f"p50 {p50:.6f} SOL over {n} txs in slots "
-                f"{(tx_fees or {}).get('slot_lo')}–{(tx_fees or {}).get('slot_hi')}."
+                f"p50 {p50:.6f} SOL · n_tx={n} · n_nonvote={nv} · "
+                f"window_seconds={win} · slots {(tx_fees or {}).get('slot_lo')}–{(tx_fees or {}).get('slot_hi')}."
             ),
-            "evidence": ["tx_fees.p50_sol"],
+            "evidence": ["tx_fees.p50_sol", "tx_fees.window_seconds"],
         })
 
     xs = xstocks or {}
-    if xs.get("market_cap_usd") is not None:
+    vol = fnum(xs.get("volume_24h_usd"))
+    if vol is not None:
+        lines.append({
+            "id": "xstocks_volume",
+            "polarity": "info",
+            "title": "Tokenized-equity volume (subset)",
+            "detail": (
+                f"24h tokenized-equity DEX volume {vol:,.0f} USD on a priced/search subset "
+                f"({xs.get('volume_coverage') or xs.get('coverage') or 'see xstocks'}). "
+                f"Priced mcap {xs.get('market_cap_usd')} is a lower bound over "
+                f"{xs.get('count_priced')} of {xs.get('count_solana')} Solana-listed symbols, "
+                f"not a 715-name census."
+            ),
+            "evidence": ["xstocks.volume_24h_usd", "xstocks.market_cap_usd"],
+        })
+    elif xs.get("market_cap_usd") is not None:
         top = (xs.get("top") or [{}])[0]
         lines.append({
             "id": "xstocks",
-            "title": "Tokenized equities (xStocks on Solana)",
+            "polarity": "info",
+            "title": "Tokenized equities — priced-subset mcap, not a census",
             "detail": (
-                f"{xs.get('count_solana')} Solana-deployed names. Priced mcap "
-                f"${(xs.get('market_cap_usd') or 0)/1e6:.1f}M via quote*circulating*multiplier. "
-                f"Largest: {top.get('symbol') or '—'}."
+                f"{xs.get('count_priced')} of {xs.get('count_solana')} Solana-deployed listed symbols priced. "
+                f"Mcap ${((xs.get('market_cap_usd') or 0)/1e6):.1f}M is a lower bound "
+                f"({xs.get('count_unique_underlying')} unique underlyings). "
+                f"Largest priced: {top.get('symbol') or '—'}."
             ),
-            "evidence": ["xstocks.market_cap_usd"],
+            "evidence": ["xstocks.market_cap_usd", "xstocks.count_priced"],
         })
 
-    alerts = [f for f in (flags or []) if f.get("severity") == "alert"]
-    if alerts and len(lines) < 6:
+    # Do not re-attach the same DEX move as an "alert" insight.
+    alerts = [
+        f for f in (flags or [])
+        if f.get("severity") == "alert"
+        and f.get("key") not in ("dex_move_7d", "dex_move_1d", "tvl_move_1d", "tvl_move_7d")
+    ]
+    if alerts and len(lines) < 5:
         a0 = alerts[0]
         lines.append({
             "id": "top_alert",
+            "polarity": "risk",
             "title": a0.get("title") or "Alert",
             "detail": a0.get("detail") or "",
             "evidence": [a0.get("key") or "anomaly"],
         })
 
-    # de-dupe by id, cap 6
     seen = set()
     uniq = []
     for ln in lines:
@@ -2547,24 +3376,18 @@ def build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags) -
             continue
         seen.add(ln["id"])
         uniq.append(ln)
-    return uniq[:6]
+    return uniq[:5]
 
 
-def build_brief(cluster, validators, market, defi, health, flags, insights) -> dict[str, Any]:
-    """30-second exec view. HEALTHY / WATCH / DEGRADED."""
+def build_brief(cluster, validators, market, defi, health, flags, insights,
+                status=None, sdata=None, stables=None, xstocks=None) -> dict[str, Any]:
+    """Exec view: Network Health separate from Ecosystem Activity. DEX surge ≠ WATCH."""
+    net = classify_network_health(cluster, validators, health, flags, status=status)
+    act = classify_ecosystem_activity(defi, sdata=sdata, stables=stables, xstocks=xstocks)
+    mkt = classify_market_posture(market)
     score = (health or {}).get("score")
     slot_ms = (fnum(cluster.get("slot_time_sec")) or 0) * 1000
     d_pct = fnum(validators.get("delinquent_stake_pct")) or 0
-    rpc_ok = cluster.get("health") in ("ok", None) and cluster.get("tps_total") is not None
-    has_alert = any(f.get("severity") == "alert" for f in (flags or []))
-    has_warn = any(f.get("severity") == "warn" for f in (flags or []))
-    if (not rpc_ok) or slot_ms >= 700 or d_pct >= 2.0 or (isinstance(score, (int, float)) and score < 55):
-        verdict = "DEGRADED"
-    elif has_alert or slot_ms >= 500 or d_pct >= 1.0 or (isinstance(score, (int, float)) and score < 80) or has_warn:
-        verdict = "WATCH"
-    else:
-        verdict = "HEALTHY"
-
     px_ch = fnum((market or {}).get("usd_24h_change"))
     dex_7d = fnum(((defi or {}).get("dex") or {}).get("change_7d_pct"))
     what = []
@@ -2574,20 +3397,35 @@ def build_brief(cluster, validators, market, defi, health, flags, insights) -> d
         what.append(f"DEX 7d {dex_7d:+.0f}%")
     if slot_ms:
         what.append(f"slot {slot_ms:.0f} ms")
-    why = "Cluster cadence and delinquency inside nominal bands." if verdict == "HEALTHY" else (
-        "Flags or slot/delinquency outside the quiet band — see anomalies."
-        if verdict == "WATCH" else
-        "RPC, slot time, or delinquency is off-nominal."
-    )
-    pos = next((i for i in insights if i.get("id") in ("activity_without_stress", "slot_nominal", "xstocks")), None)
-    risk = next((i for i in insights if i.get("id") in ("slow_slots", "risk_off", "top_alert", "dex_1d")), None)
+
+    pos = next((i for i in insights if i.get("polarity") == "positive"), None)
+    if pos is None:
+        pos = next((i for i in insights if i.get("id") in ("activity_without_stress", "slot_nominal")), None)
+    risk = next((i for i in insights if item_is_adverse_risk(i)), None)
+    # never let the same detail sit in both cells
+    if pos and risk and (pos.get("detail") == risk.get("detail") or pos.get("id") == risk.get("id")):
+        risk = None
+    if act.get("label") in ("SURGE", "ELEVATED") and risk and "DEX" in (risk.get("detail") or "") and "+" in (risk.get("detail") or ""):
+        risk = None
+
     nak = validators.get("nakamoto_33")
+    risk_text = (risk or {}).get("detail") if risk else "None — no isolated adverse network or market print this run."
+    pos_text = (pos or {}).get("detail") or "No isolated positive this run."
     return {
-        "verdict": verdict,
+        "verdict": net["label"],
+        "network_health": net["label"],
+        "network_health_why": net["why"],
+        "ecosystem_activity": act["label"],
+        "ecosystem_activity_why": act["why"],
+        "market_posture": mkt["label"],
+        "market_posture_why": mkt["why"],
         "what_changed": "; ".join(what) or "see snapshot",
-        "why_it_matters": why,
-        "biggest_positive": (pos or {}).get("detail") or "No positive signal isolated this run.",
-        "biggest_risk": (risk or {}).get("detail") or "No isolated risk this run.",
+        "why_it_matters": (
+            f"Network {net['label']}: {net['why']} "
+            f"Ecosystem {act['label']}: {act['why']}"
+        ),
+        "biggest_positive": pos_text,
+        "biggest_risk": risk_text,
         "network": f"slot {slot_ms:.0f} ms · TPS {fmt_num(cluster.get('tps_total'))} · score {score}",
         "capital": f"TVL {fmt_usd((defi or {}).get('tvl_usd'))} · SOL {fmt_usd((market or {}).get('usd'), 2)} ({fmt_pct(px_ch)})",
         "usage": f"DEX 24h {fmt_usd(((defi or {}).get('dex') or {}).get('total_24h_usd'))} · 7d {fmt_pct(dex_7d)}",
@@ -2596,35 +3434,59 @@ def build_brief(cluster, validators, market, defi, health, flags, insights) -> d
     }
 
 
+
+def _expected_unavailable(s: dict[str, Any]) -> bool:
+    sid = str(s.get("id") or "")
+    st = s.get("status")
+    err = str(s.get("error") or "")
+    if sid.startswith("xstocks.mult") and st in (400, 404):
+        return True
+    if sid.startswith("rss.") and (st in (403, 404) or "gated" in err.lower() or "empty" in err.lower()):
+        return True
+    if sid == "coingecko.simple_price" and st == 429:
+        return True
+    if sid.startswith("jup.tokens.search") and st in (429, 404):
+        return True
+    return False
+
+
 def build_data_health(sources: list[dict[str, Any]], market, cluster) -> dict[str, Any]:
     rows = sources or []
     ok_n = sum(1 for s in rows if s.get("ok"))
-    fail = [
-        s for s in rows if not s.get("ok")
-        and not (
-            isinstance(s.get("id"), str)
-            and s["id"].startswith("xstocks.mult")
-            and s.get("status") in (400, 404)
-        )
-    ]
+    expected = [s for s in rows if not s.get("ok") and _expected_unavailable(s)]
+    unexpected = [s for s in rows if not s.get("ok") and not _expected_unavailable(s)]
+    required = [s for s in rows if not _expected_unavailable(s)]
+    required_ok = sum(1 for s in required if s.get("ok"))
     fallbacks = [s for s in rows if isinstance(s.get("id"), str) and "fallback" in s.get("id")]
     gecko_fail = any(s.get("id") == "coingecko.simple_price" and not s.get("ok") for s in rows)
     conf = "HIGH"
-    if gecko_fail or fallbacks:
+    if gecko_fail or fallbacks or unexpected:
         conf = "MED"
     if not cluster.get("tps_total") or not (market or {}).get("usd"):
         conf = "LOW"
+    notes = [
+        "CoinGecko 429 — Coinbase 24h used" if gecko_fail else None,
+        f"{len(fallbacks)} RPC fallbacks" if fallbacks else None,
+        f"{len(expected)} expected misses (xStocks multiplier 404s, gated RSS, CoinGecko 429)" if expected else None,
+    ]
     return {
-        "ok": ok_n,
-        "total": len(rows),
-        "failures": [{"id": s.get("id"), "error": s.get("error"), "status": s.get("status")} for s in fail[:12]],
+        "ok": required_ok,
+        "total": len(required),
+        "raw_ok": ok_n,
+        "raw_total": len(rows),
+        "expected_unavailable": len(expected),
+        "unexpected_failures": [{"id": s.get("id"), "error": s.get("error"), "status": s.get("status")} for s in unexpected[:12]],
+        "failures": [{"id": s.get("id"), "error": s.get("error"), "status": s.get("status")} for s in unexpected[:12]],
         "fallbacks": [s.get("id") for s in fallbacks],
         "headline_confidence": conf,
-        "notes": [
-            "CoinGecko 429 — Coinbase 24h used" if gecko_fail else None,
-            f"{len(fallbacks)} RPC fallbacks" if fallbacks else None,
-        ],
+        "headline": (
+            f"required sources {required_ok}/{len(required)} OK"
+            + (f" · {len(expected)} expected unavailable" if expected else "")
+            + (f" · {len(unexpected)} unexpected" if unexpected else "")
+        ),
+        "notes": notes,
     }
+
 
 
 def render_md(snap: dict[str, Any]) -> str:
@@ -2707,9 +3569,11 @@ def render_md(snap: dict[str, Any]) -> str:
         tag = (" `" + "` `".join(tags) + "`") if tags else ""
         return f"- [{n.get('title')}]({n.get('url')}) — {n.get('source')} · {n.get('published')}{tag}"
     tw_rows = [news_line(n) for n in (news.get("twitter") or [])[:10]] or ["- No public X/Nitter-style RSS items this run."]
-    news_rows = [news_line(n) for n in (news.get("official") or news.get("items") or [])[:10]]
+    news_rows = [news_line(n) for n in (news.get("current_news") or news.get("official") or [])[:10]]
     if not news_rows:
-        news_rows = ["- No RSS items parsed this run."]
+        news_rows = ["- No current RSS items this run."]
+    active_rows = [news_line(n) for n in (news.get("active_incidents") or [])] or ["- None open."]
+    resolved_rows = [news_line(n) for n in (news.get("recent_resolved") or [])[:6]] or ["- None in the recency window."]
 
     daa = act.get("active_addresses") or {}
     daa_line = "Omitted (no public no-key source responded)."
@@ -2746,7 +3610,7 @@ def render_md(snap: dict[str, Any]) -> str:
 **Live demo** {m.get('demo_url') or DEMO_URL}
 **Cluster block time** {c.get('block_time_utc') or '—'} · **RPC health** `{health}`
 **Health score** {hs.get('score')} / 100 — `{hs.get('formula')}`
-**Verdict** {brief.get('verdict') or '—'} — {brief.get('what_changed') or ''}
+**Network health** {brief.get('network_health') or brief.get('verdict') or '—'} · **Ecosystem** {brief.get('ecosystem_activity') or '—'} — {brief.get('what_changed') or ''}
 Updates every 15 min via GitHub Action.
 
 This file is produced by `python3 generate.py` from public endpoints. Every number
@@ -2814,17 +3678,18 @@ TPS = `numTransactions / samplePeriodSecs`. Slot time = `samplePeriodSecs / numS
 | SOL chart | {len((trends.get('chart') or {{}}).get('sol') or [])} | {(trends.get('chart') or {{}}).get('sol_source') or '—'} |
 | history.jsonl rows | {(trends.get('run') or {{}}).get('n')} | data/history.jsonl |
 
-## Economics (honest stack — not REV)
+## Economics — Borealis REV (not DeFiLlama protocol fees)
+
+{eco.get('rev_definition') or ''}
 
 | Metric | Value | Source |
 | --- | ---: | --- |
-| Median tx fee p50 | {fmt_num(eco.get('median_tx_fee_sol'), 6)} SOL ({fmt_usd(eco.get('median_tx_fee_usd'), 4)}) | getBlock meta.fee n={eco.get('median_tx_fee_n')} slots {eco.get('median_tx_fee_slots')} |
+| **Borealis REV 24h** | **{fmt_usd(eco.get('rev_24h_usd'))}** ({fmt_num(eco.get('rev_24h_sol'), 1)} SOL) | {eco.get('rev_kind') or eco.get('rev_label')} |
+| In-protocol network fees 24h | {fmt_num(eco.get('network_fees_sol_24h'), 1)} SOL ({fmt_usd(eco.get('network_fees_usd_24h'))}) | {eco.get('network_fees_source') or '—'} MEASURED |
+| Jito tips 24h | {fmt_usd((eco.get('jito') or {{}}).get('tips_24h_usd'))} | {(eco.get('jito') or {{}}).get('tips_24h_kind') or 'omitted'} |
+| Protocol fees 24h | {fmt_usd(eco.get('protocol_fees_usd'))} | EXCLUDED from REV — {eco.get('protocol_fees_label')} |
+| Median tx fee p50 | {fmt_num(eco.get('median_tx_fee_sol'), 6)} SOL ({fmt_usd(eco.get('median_tx_fee_usd'), 4)}) | getBlock n_tx={eco.get('median_tx_fee_n')} window_seconds={eco.get('median_tx_fee_window_seconds')} |
 | p90 / p99 | {fmt_num(eco.get('median_tx_fee_p90_sol'), 6)} / {fmt_num(eco.get('median_tx_fee_p99_sol'), 6)} SOL | same sample |
-| Priority p50 (est.) | {fmt_num(eco.get('priority_p50_sol'), 6)} SOL | {eco.get('priority_note') or 'omitted'} |
-| Network fees 24h | {fmt_num(eco.get('network_fees_sol_24h'), 1)} SOL ({fmt_usd(eco.get('network_fees_usd_24h'))}) | {eco.get('network_fees_source') or '—'} |
-| Protocol fees 24h | {fmt_usd(eco.get('protocol_fees_usd'))} | {eco.get('protocol_fees_label')} |
-| Jito/MEV tip floor | {fmt_num((eco.get('jito') or {{}}).get('landed_p50_sol'), 6)+' SOL p50 landed' if (eco.get('jito') or {{}}).get('ok') and (eco.get('jito') or {{}}).get('landed_p50_sol') is not None else 'omitted'} | {(eco.get('jito') or {{}}).get('reason') or (eco.get('jito') or {{}}).get('url') or 'bundles.jito.wtf tip_floor'} |
-| REV total | — | {eco.get('total_rev_note')} |
 | Burned SOL | {fmt_num(inc.get('sol'), 2) if inc.get('ok') else '—'} SOL | incinerator getBalance |
 
 ## Market
@@ -2892,15 +3757,25 @@ HTTP {dune.get('http_status') or '—'} · included: {'yes' if dune.get('ok') el
 
 **status.solana.com:** {status.get('description') or '—'} (indicator `{status.get('indicator') or '—'}`)
 
+Recency is applied **after** RSS merge. Historic status.solana.com incidents (2022–2024) are archive, not current.
+
+### Active incidents
+
+{chr(10).join(active_rows)}
+
+### Recently resolved
+
+{chr(10).join(resolved_rows)}
+
+### Current news
+
+{chr(10).join(news_rows)}
+
 ### X / announcements (public Nitter-style RSS, not Twitter API)
 
 {chr(10).join(tw_rows)}
 
 {news.get('twitter_note') or ''}
-
-### Foundation / Anza RSS
-
-{chr(10).join(news_rows)}
 
 ## Editorial — {ed.get('title')}
 
@@ -3048,12 +3923,27 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
     market = apply_solana_com_price(market, sdata)
     news = fetch_news(http)
     incinerator = fetch_incinerator(http)
-    tx_fees = fetch_tx_fees(http, cluster.get("slot"))
+    tx_fees = fetch_tx_fees(http, cluster.get("slot"), cluster=cluster)
     xstocks = fetch_xstocks(http)
+    llama_xs = fetch_llama_xstocks(http)
+    tok_vol = fetch_tokenized_volume(http, xstocks)
+    if isinstance(xstocks, dict):
+        xstocks["llama"] = llama_xs
+        xstocks["volume_24h_usd"] = tok_vol.get("volume_24h_usd")
+        xstocks["volume_7d_usd"] = tok_vol.get("volume_7d_usd")
+        xstocks["volume_source"] = tok_vol.get("source")
+        xstocks["volume_kind"] = tok_vol.get("kind")
+        xstocks["volume_coverage"] = tok_vol.get("coverage")
+        xstocks["volume_top"] = tok_vol.get("top")
+        xstocks["volume_routes_tried"] = tok_vol.get("routes_tried")
+        if llama_xs.get("solana_tvl_usd") is not None:
+            xstocks["llama_solana_tvl_usd"] = llama_xs.get("solana_tvl_usd")
+            xstocks["llama_token_count"] = llama_xs.get("llama_token_count")
     jito = probe_jito_tip(http)
     dune = probe_dune_embed(http)
-    editorial = editorial_block(generated)
-    economics = build_economics(defi, sdata, market, tx_fees=tx_fees, jito=jito)
+    simd_live = fetch_simd0525_header(http)
+    editorial = editorial_block(generated, cluster=cluster, simd_live=simd_live)
+    economics = build_economics(defi, sdata, market, tx_fees=tx_fees, jito=jito, cluster=cluster)
     health = compute_health(cluster, validators, sdata)
     trends = build_trends(history, defi, sdata, cluster)
 
@@ -3065,7 +3955,10 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
         cluster, validators, market, defi, news.get("status") or {}, history, sdata,
     )
     insights = build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags)
-    brief = build_brief(cluster, validators, market, defi, health, flags, insights)
+    brief = build_brief(
+        cluster, validators, market, defi, health, flags, insights,
+        status=news.get("status") or {}, sdata=sdata, stables=stable, xstocks=xstocks,
+    )
 
     hist_row = {
         "ts": iso(generated), "tps": cluster.get("tps_total"),
