@@ -14,6 +14,7 @@ License: MIT
 from __future__ import annotations
 
 import argparse
+import base64
 import gzip
 import hashlib
 import json
@@ -37,7 +38,7 @@ from zoneinfo import ZoneInfo
 
 from htmlout import render_html
 
-VERSION = "1.5.3"
+VERSION = "1.5.4"
 PRODUCT = "Borealis"
 LAMPORTS = 1_000_000_000
 PT = ZoneInfo("America/Vancouver")
@@ -47,7 +48,7 @@ PRIMARY_RPC = "https://api.mainnet-beta.solana.com"
 FALLBACK_RPC = "https://solana-rpc.publicnode.com"
 
 USER_AGENT = (
-    "BorealisReport/1.5.3 (Solana ecosystem dashboard; stdlib urllib; no API key)"
+    "BorealisReport/1.5.4 (Solana ecosystem dashboard; stdlib urllib; no API key)"
 )
 
 # Official Solana burn address, cited from Solana Foundation (not guessed):
@@ -97,6 +98,19 @@ SIMD0525_GH = (
 SIMD0525_SOLANA = "https://solana.com/upgrades/reduced-slot-times"
 SIMD0525_NEWS = "https://solana.com/news/lowering-slot-time-and-validators-economic"
 SIMD0525_NEWS_TITLE = "Lowering Slot Time and Validators Economic"
+SIMD0525_CHANGELOG = "https://solana.com/news/solana-changelog-august-20-2026"
+SIMD0525_CHANGELOG_TITLE = "Solana Changelog: August 20, 2026"
+SIMD0525_CHANGELOG_QUOTE = (
+    "Feature gates reduced mainnet slot times from 400ms to 350ms, "
+    "while Testnet moved from 250ms to 200ms."
+)
+# GitHub's in-repo */15 cron is known to drift (~2h) and can pause for a day.
+# Do not claim a 15-minute tick. Banner if snapshot age exceeds this.
+STALE_AFTER_SECONDS = 2 * 60 * 60
+CADENCE = (
+    "auto-refresh on a GitHub Actions schedule (not a guaranteed 15-minute tick; "
+    "GitHub cron can drift or pause). STALE banner if snapshot age > 2 hours."
+)
 SIMD0525_STAGES = (
     {"target_ms": 400, "feature": None, "gate": None},
     {"target_ms": 350, "feature": "iBRL5RuWhw4yqaAZu96RUULHckHTZAoe2b77qaV38JZ",
@@ -301,64 +315,176 @@ def is_vote_tx(tx: Any) -> bool:
     return False
 
 
-def infer_simd0525_stage(slot_ms: Any) -> dict[str, Any]:
-    """Map observed slot time to the SIMD-0525 staged targets. Not a feature-gate RPC."""
+def parse_feature_account_bytes(raw: bytes | None) -> dict[str, Any]:
+    """Feature account: Option<u64> activated_slot. byte0=1 Some, bytes1-8 little-endian slot."""
+    if not raw:
+        return {"activated_flag": 0, "activated_slot": None, "nbytes": 0}
+    flag = int(raw[0])
+    slot = None
+    if flag == 1 and len(raw) >= 9:
+        slot = int.from_bytes(raw[1:9], "little")
+    return {"activated_flag": flag, "activated_slot": slot, "nbytes": len(raw)}
+
+
+def epoch_of_slot(
+    slot: Any,
+    *,
+    current_epoch: Any,
+    epoch_start: Any,
+    slots_in_epoch: Any,
+) -> int | None:
+    """Integer epoch containing `slot` given the current epoch's start slot."""
+    if not isinstance(slot, int) or not isinstance(current_epoch, int):
+        return None
+    if not isinstance(epoch_start, int):
+        return None
+    sie = int(slots_in_epoch) if isinstance(slots_in_epoch, (int, float)) and slots_in_epoch else 432000
+    if sie <= 0:
+        return None
+    if slot >= epoch_start:
+        return int(current_epoch + (slot - epoch_start) // sie)
+    return int(current_epoch - ((epoch_start - 1 - slot) // sie + 1))
+
+
+def classify_one_gate(
+    *,
+    exists: bool,
+    activated_flag: Any,
+    activated_slot: Any,
+    current_epoch: Any,
+    epoch_start: Any,
+    slots_in_epoch: Any,
+) -> dict[str, Any]:
+    """live / activated-not-yet-effective / pending from a Feature account."""
+    out: dict[str, Any] = {
+        "exists": bool(exists),
+        "activated_flag": int(activated_flag) if isinstance(activated_flag, (int, float)) else 0,
+        "activated_slot": activated_slot if isinstance(activated_slot, int) else None,
+        "activation_epoch": None,
+        "effective_epoch": None,
+        "status": "pending",
+    }
+    if not exists or out["activated_flag"] != 1 or out["activated_slot"] is None:
+        return out
+    act_ep = epoch_of_slot(
+        out["activated_slot"],
+        current_epoch=current_epoch,
+        epoch_start=epoch_start,
+        slots_in_epoch=slots_in_epoch,
+    )
+    out["activation_epoch"] = act_ep
+    out["effective_epoch"] = (act_ep + 1) if act_ep is not None else None
+    if (
+        isinstance(current_epoch, int)
+        and out["effective_epoch"] is not None
+        and current_epoch >= out["effective_epoch"]
+    ):
+        out["status"] = "live"
+    else:
+        out["status"] = "activated-not-yet-effective"
+    return out
+
+
+def classify_simd0525_gates(
+    *,
+    current_epoch: Any,
+    absolute_slot: Any,
+    slot_index: Any,
+    slots_in_epoch: Any,
+    accounts: dict[Any, Any] | None = None,
+    observed_slot_ms: Any = None,
+) -> dict[str, Any]:
+    """Label SIMD-0525 stages from Feature accounts. Observed slot is never gate proof."""
+    epoch_start = None
+    if isinstance(absolute_slot, int) and isinstance(slot_index, int):
+        epoch_start = absolute_slot - slot_index
+    accounts = accounts or {}
+    stages: list[dict[str, Any]] = []
+    live_ms = None
+    for st in SIMD0525_STAGES:
+        tgt = st["target_ms"]
+        if tgt == 400:
+            stages.append({
+                "target_ms": 400, "feature": None, "gate": None,
+                "exists": False, "activated_flag": 0, "activated_slot": None,
+                "activation_epoch": None, "effective_epoch": None,
+                "status": "baseline",
+            })
+            continue
+        acc = accounts.get(tgt) or accounts.get(str(tgt)) or {}
+        exists = bool(acc.get("exists"))
+        one = classify_one_gate(
+            exists=exists,
+            activated_flag=acc.get("activated_flag"),
+            activated_slot=acc.get("activated_slot"),
+            current_epoch=current_epoch,
+            epoch_start=epoch_start,
+            slots_in_epoch=slots_in_epoch,
+        )
+        row = {
+            "target_ms": tgt,
+            "feature": st.get("feature"),
+            "gate": st.get("gate"),
+            **one,
+        }
+        if row["status"] == "live":
+            live_ms = tgt
+        stages.append(row)
+    for row in stages:
+        if row["target_ms"] == 400:
+            row["status"] = "superseded" if live_ms else "baseline"
+    obs = fnum(observed_slot_ms)
+    return {
+        "observed_slot_ms": round(obs, 1) if obs is not None else None,
+        "live_target_ms": live_ms,
+        "current_epoch": current_epoch,
+        "epoch_start_slot": epoch_start,
+        "stages": stages,
+        "method": (
+            "getAccountInfo Feature accounts (encoding=base64). "
+            "effective_epoch = epoch(activated_slot) + 1. "
+            "Observed mean slot is corroboration only — never gate proof."
+        ),
+        "kind": "FEATURE_GATE",
+        "changelog": SIMD0525_CHANGELOG,
+        "changelog_quote": SIMD0525_CHANGELOG_QUOTE,
+        "disclaimer": (
+            "Do not treat observed ~367 ms as proof the 350 ms gate is live. "
+            "Do not copy solana.com/upgrades/reduced-slot-times if it lists 400 ms as current."
+        ),
+    }
+
+
+def infer_simd0525_stage(slot_ms: Any, gates: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Observed slot is corroboration only. Prefer classify_simd0525_gates for labels."""
+    if isinstance(gates, dict) and gates.get("stages"):
+        return gates
     ms = fnum(slot_ms)
     stages = []
-    inferred = None
-    for i, st in enumerate(SIMD0525_STAGES):
-        tgt = st["target_ms"]
-        row = {
-            "target_ms": tgt, "feature": st.get("feature"), "gate": st.get("gate"),
-            "status": "pending",
-        }
-        stages.append(row)
-    if ms is None:
-        return {
-            "observed_slot_ms": None, "inferred_target_ms": None,
-            "inferred_status": "slot time unavailable", "stages": stages,
-            "method": "observed mean slot time vs SIMD-0525 targets; feature accounts not probed",
-        }
-    # Nearest target at or below observed+tolerance. 365ms → 350ms stage.
-    # If observed is still ~400, baseline. If clearly below a target, that stage is likely live.
-    for row in stages:
-        tgt = row["target_ms"]
-        lo = tgt - 25
-        hi = tgt + 25 if tgt > 200 else tgt + 30
-        if lo <= ms <= hi:
-            row["status"] = "consistent-with-observed"
-            inferred = tgt
-            break
-    if inferred is None:
-        # pick the lowest target that is still >= observed - 20
-        below = [s["target_ms"] for s in SIMD0525_STAGES if ms <= s["target_ms"] + 20]
-        inferred = min(below) if below else SIMD0525_STAGES[-1]["target_ms"]
-        for row in stages:
-            if row["target_ms"] == inferred:
-                row["status"] = "nearest-target"
-    for row in stages:
-        if inferred is not None and row["target_ms"] > inferred:
-            row["status"] = "not-yet"
-        elif inferred is not None and row["target_ms"] < inferred:
-            row["status"] = "superseded"
+    for st in SIMD0525_STAGES:
+        stages.append({
+            "target_ms": st["target_ms"],
+            "feature": st.get("feature"),
+            "gate": st.get("gate"),
+            "status": "unprobed",
+        })
     return {
-        "observed_slot_ms": round(ms, 1),
-        "inferred_target_ms": inferred,
+        "observed_slot_ms": round(ms, 1) if ms is not None else None,
+        "inferred_target_ms": None,
+        "live_target_ms": None,
         "inferred_status": (
-            f"Observed mean slot {ms:.0f} ms is consistent with the "
-            f"{inferred} ms SIMD-0525 target (staged 400→350→300→250→200)."
-            if inferred is not None else "unmapped"
+            f"Observed mean slot {ms:.0f} ms is corroboration only — not feature-gate proof."
+            if ms is not None else "slot time unavailable"
         ),
         "stages": stages,
         "method": (
-            "INFERRED from observed mean slot time vs SIMD-0525 targets. "
-            "Corroboration only — not a feature-gate RPC."
+            "Observed mean slot is NOT a feature-gate RPC. "
+            "Call classify_simd0525_gates / fetch_simd0525_gates for live/pending labels."
         ),
         "kind": "INFERRED",
         "disclaimer": (
-            "Observed slot time is corroboration of the SIMD-525 listing, labeled inferred. "
-            "Not a feature-gate / activation-slot RPC. A ~365 ms mean is consistent with the "
-            "350 ms first step, not proof the gate is live."
+            "Observed slot time is corroboration of the SIMD-0525 listing, labeled inferred. "
+            "Not a feature-gate / activation-slot RPC. A ~367 ms mean is not proof the 350 ms gate is live."
         ),
     }
 
@@ -2927,10 +3053,14 @@ def fetch_news(http: Http) -> dict[str, Any]:
 
 
 def editorial_block(generated: datetime, cluster: dict[str, Any] | None = None,
-                    simd_live: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Dated editorial. SIMD-525 listing token from solana.com/news. Observed slot is inferred."""
+                    simd_live: dict[str, Any] | None = None,
+                    gates: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Dated editorial. Gate status from Feature accounts. Changelog is first-party for 350ms."""
     slot_ms = (fnum((cluster or {}).get("slot_time_sec")) or 0) * 1000.0
-    stage = infer_simd0525_stage(slot_ms if slot_ms else None)
+    if isinstance(gates, dict) and gates.get("stages"):
+        stage = gates
+    else:
+        stage = infer_simd0525_stage(slot_ms if slot_ms else None)
     simd_status = None
     if isinstance(simd_live, dict):
         simd_status = simd_live.get("status")
@@ -2938,10 +3068,18 @@ def editorial_block(generated: datetime, cluster: dict[str, Any] | None = None,
         f"{s['target_ms']}ms={s['status']}" for s in (stage.get("stages") or [])
     )
     obs = stage.get("observed_slot_ms")
+    if obs is None and slot_ms:
+        obs = round(slot_ms, 1)
+    live_ms = stage.get("live_target_ms")
     obs_bit = (
-        f"Observed mean slot ~{obs:.0f} ms is corroboration, labeled inferred — not a feature-gate RPC."
+        f"Observed mean slot ~{obs:.0f} ms is corroboration only — not feature-gate proof."
         if isinstance(obs, (int, float)) else
-        "Observed slot time unavailable this run (inference omitted)."
+        "Observed slot time unavailable this run."
+    )
+    live_bit = (
+        f"On-chain Feature accounts: {stages_txt}."
+        if stages_txt else
+        "Feature accounts not probed this call."
     )
     return {
         "kind": "editorial",
@@ -2950,9 +3088,10 @@ def editorial_block(generated: datetime, cluster: dict[str, Any] | None = None,
         "as_of_pt": iso_pt(generated),
         "correction": "Listing token SIMD-525 is SIMD-0525. Not SIMD-025.",
         "primary_source": {
-            "title": SIMD0525_NEWS_TITLE,
-            "url": SIMD0525_NEWS,
-            "role": "primary source for the SIMD-525 listing token",
+            "title": SIMD0525_CHANGELOG_TITLE,
+            "url": SIMD0525_CHANGELOG,
+            "role": "first-party changelog: Feature gates reduced mainnet 400ms to 350ms",
+            "quote": SIMD0525_CHANGELOG_QUOTE,
         },
         "simd0525": {
             "id": "SIMD-0525",
@@ -2960,18 +3099,30 @@ def editorial_block(generated: datetime, cluster: dict[str, Any] | None = None,
             "name": "Reduce Slot Times",
             "authors": "Brennan Watt (Anza)",
             "path": "400 → 350 → 300 → 250 → 200 ms",
-            "primary_source": SIMD0525_NEWS,
-            "primary_source_title": SIMD0525_NEWS_TITLE,
-            "primary_sources": [SIMD0525_NEWS, SIMD0525_SOLANA, SIMD0525_GH],
+            "primary_source": SIMD0525_CHANGELOG,
+            "primary_source_title": SIMD0525_CHANGELOG_TITLE,
+            "primary_sources": [SIMD0525_CHANGELOG, SIMD0525_NEWS, SIMD0525_GH],
+            "stale_secondary": {
+                "url": SIMD0525_SOLANA,
+                "note": (
+                    "solana.com/upgrades/reduced-slot-times may still list 400 ms; "
+                    "do not copy that as live cluster status."
+                ),
+            },
             "live_status_header": simd_status,
-            "observed": stage,
-            "observed_kind": "INFERRED corroboration",
+            "gates": stage,
+            "observed": {
+                "slot_ms": obs,
+                "kind": "INFERRED corroboration",
+                "not_gate_proof": True,
+            },
+            "observed_kind": "INFERRED corroboration, not gate proof",
             "stages_line": stages_txt,
+            "live_target_ms": live_ms,
         },
         "summary": (
-            f"Primary source for the listing token SIMD-525: solana.com/news "
-            f"“{SIMD0525_NEWS_TITLE}” (SIMD-0525 staged 400→350→300→250→200 ms). "
-            f"{obs_bit} "
+            f"First-party {SIMD0525_CHANGELOG_TITLE}: “{SIMD0525_CHANGELOG_QUOTE}” "
+            f"{live_bit} {obs_bit} "
             "Alpenglow (SIMD-0326) remains the consensus rewrite (Votor / Rotor); it is a "
             "separate track from the slot-time feature gates."
         ),
@@ -2984,43 +3135,91 @@ def editorial_block(generated: datetime, cluster: dict[str, Any] | None = None,
             {"id": "SIMD-0387", "name": "BLS Pubkey Management in Vote Account"},
         ],
         "timeline_public": [
+            {"date": "2026-08-20", "item": (
+                f"{SIMD0525_CHANGELOG_TITLE}: “{SIMD0525_CHANGELOG_QUOTE}”"
+            )},
             {"date": "source", "item": (
-                f"solana.com/news “{SIMD0525_NEWS_TITLE}” is the primary public write-up "
-                "for the SIMD-525 listing token (SIMD-0525)."
+                f"solana.com/news “{SIMD0525_NEWS_TITLE}” remains a listing-token write-up "
+                "for SIMD-525 (SIMD-0525)."
             )},
             {"date": "2026-05-01", "item": "SIMD-0525 created (Anza). Four feature gates: 350/300/250/200 ms."},
-            {"date": "2026-Q3", "item": (
-                "Agave v4.2 schedule targeted the four SIMD-0525 steps on mainnet one epoch "
-                "apart; schedule is tentative. First step is 400→350 ms."
-            )},
-            {"date": "observed", "item": (
-                (stage.get("inferred_status") or "slot time unavailable this run.")
-                + " INFERRED corroboration, not a feature-gate RPC."
-            )},
+            {"date": "on-chain", "item": live_bit},
+            {"date": "observed", "item": obs_bit + " INFERRED corroboration, not a feature-gate RPC."},
             {"date": "2026-07-08", "item": "SIMD-0387 (BLS pubkey in vote account) activated on mainnet."},
             {"date": "2026-07-22", "item": (
                 "SIMD-0357 VAT activated. VAT does not itself turn on Alpenglow consensus."
             )},
         ],
         "watch": [
-            "Whether observed slot time stays near the inferred SIMD-0525 target after the next epoch.",
-            "Skip rate / skipped slots as later 50 ms steps (300/250/200) are considered.",
-            "Agave 4.2 / 4.3 stake rollout vs the published (tentative) schedule.",
+            "Whether the 300 ms gate (effective epoch 1024 when activated at epoch-1023 start) is live once that epoch starts.",
+            "Skip rate / skipped slots as later 50 ms steps (250/200) get Feature accounts on mainnet.",
+            "Do not treat observed slot ms as activation proof.",
             "Firedancer / Frankendancer Votor parity before a full Alpenswitch.",
         ],
         "sources": [
+            SIMD0525_CHANGELOG,
             SIMD0525_NEWS,
-            SIMD0525_SOLANA,
             SIMD0525_GH,
+            SIMD0525_SOLANA,
             "https://solana.com/upgrades/alpenglow",
             "https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0326-alpenglow.md",
         ],
         "disclaimer": (
-            "Editorial. Listing token SIMD-525 cites solana.com/news "
-            f"“{SIMD0525_NEWS_TITLE}”. Observed slot time is INFERRED corroboration, "
-            "not a feature-gate RPC. Activation dates move. None of this is a live consensus metric."
+            "Editorial. Gate labels come from getAccountInfo Feature accounts "
+            "(effective epoch = activation epoch + 1). Observed slot ms is INFERRED corroboration, "
+            "not proof. Ignore solana.com/upgrades/reduced-slot-times if it lists 400 ms as current."
         ),
     }
+
+
+def fetch_simd0525_gates(http: Http, cluster: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Probe SIMD-0525 Feature accounts on mainnet. Missing account → pending."""
+    cluster = cluster or {}
+    accounts: dict[Any, Any] = {}
+    for st in SIMD0525_STAGES:
+        pk = st.get("feature")
+        if not pk:
+            continue
+        res, rec = http.rpc(
+            "getAccountInfo",
+            [pk, {"encoding": "base64", "commitment": "finalized"}],
+            timeout=20,
+        )
+        val = res.get("value") if isinstance(res, dict) else None
+        if val is None:
+            accounts[st["target_ms"]] = {
+                "exists": False, "activated_flag": 0, "activated_slot": None,
+                "pubkey": pk, "rpc_ok": bool(rec.get("ok")),
+            }
+            continue
+        data = val.get("data")
+        raw = b""
+        if isinstance(data, list) and data:
+            try:
+                raw = base64.b64decode(data[0])
+            except Exception:
+                raw = b""
+        parsed = parse_feature_account_bytes(raw)
+        accounts[st["target_ms"]] = {
+            "exists": True,
+            "activated_flag": parsed["activated_flag"],
+            "activated_slot": parsed["activated_slot"],
+            "pubkey": pk,
+            "lamports": val.get("lamports"),
+            "nbytes": parsed["nbytes"],
+        }
+    obs = None
+    st_sec = fnum(cluster.get("slot_time_sec"))
+    if st_sec is not None:
+        obs = st_sec * 1000.0
+    return classify_simd0525_gates(
+        current_epoch=cluster.get("epoch"),
+        absolute_slot=cluster.get("absolute_slot"),
+        slot_index=cluster.get("slot_index"),
+        slots_in_epoch=cluster.get("slots_in_epoch"),
+        accounts=accounts,
+        observed_slot_ms=obs,
+    )
 
 
 def fetch_simd0525_header(http: Http) -> dict[str, Any]:
@@ -3139,7 +3338,7 @@ def detect_anomalies(cluster, validators, market, defi, status, history, sdata=N
             title="Slot time above 500 ms",
             detail=(f"Slot time {last_or_mean_st*1000:.0f} ms (last sample "
                     f"{(st_last or 0)*1000:.0f} ms, window mean {(st or 0)*1000:.0f} ms). "
-                    "Mainnet target cadence is ~400 ms."),
+                    "Quiet band is <500 ms; SIMD-0525 350 ms is the live mainnet target, not a 400 ms ceiling."),
             metric="slot_time_sec", value=round(last_or_mean_st, 4),
             baseline={"target_sec": 0.4, "mean": st, "last": st_last},
             threshold="slot time > 500 ms (last sample or window mean)",
@@ -3412,7 +3611,7 @@ def compute_health(cluster, validators, sdata) -> dict[str, Any]:
         "tps": tps,
         "tps_baseline": tps_base,
         "tps_baseline_source": tps_src,
-        "cadence": "updates every 15 min via GitHub Action",
+        "cadence": CADENCE,
     }
 
 
@@ -3431,7 +3630,7 @@ def _pts(rows: list[dict[str, Any]], ts_key: str, val_key: str) -> list[dict[str
 def build_trends(history, defi, sdata, cluster=None) -> dict[str, Any]:
     """TPS / TVL / SOL series for in-page charts.
 
-    15-min tape comes from data/history.jsonl. If that tape is short, daily
+    Snapshot tape comes from data/history.jsonl. If that tape is short, daily
     seed series from DeFiLlama historical TVL and solana.com/data 30d fill the
     charts so judges see TRENDS on run 1, not only KPI tiles.
     """
@@ -3458,17 +3657,17 @@ def build_trends(history, defi, sdata, cluster=None) -> dict[str, Any]:
     tvl_chart = run_tvl if len(run_tvl) >= 8 else (daily_tvl or run_tvl)
     sol_chart = run_sol if len(run_sol) >= 8 else (daily_sol or run_sol)
     tps_src = (
-        "data/history.jsonl 15-min tape"
+        "data/history.jsonl snapshot tape"
         if tps_chart is run_tps and len(run_tps) >= 8
         else (derived.get("tps_30d_source") or "solana.com/data Transaction Count / 86400")
     )
     tvl_src = (
-        "data/history.jsonl 15-min tape"
+        "data/history.jsonl snapshot tape"
         if tvl_chart is run_tvl and len(run_tvl) >= 8
         else "DeFiLlama /v2/historicalChainTvl/Solana"
     )
     sol_src = (
-        "data/history.jsonl 15-min tape"
+        "data/history.jsonl snapshot tape"
         if sol_chart is run_sol and len(run_sol) >= 8
         else f"solana.com/data SOL Price ({px_prov or 'vendor'})"
     )
@@ -3489,7 +3688,7 @@ def build_trends(history, defi, sdata, cluster=None) -> dict[str, Any]:
             "Daily seed from DeFiLlama historical TVL and solana.com/data 30d "
             "(TPS = tx count / 86400) because history.jsonl still has fewer than 8 snapshots."
             if seeded else
-            "15-min Borealis tape (data/history.jsonl) with daily DeFiLlama / solana.com/data context."
+            "Borealis snapshot tape (data/history.jsonl) with daily DeFiLlama / solana.com/data context."
         ),
     }
 
@@ -3958,11 +4157,8 @@ def build_brief(cluster, validators, market, defi, health, flags, insights,
     if net["label"] != "HEALTHY":
         risk_text = net.get("dominant") or net.get("why") or "Network off-nominal."
     else:
-        risk_text = (
-            (risk or {}).get("detail")
-            if risk else
-            "None — network inside nominal bands."
-        )
+        # DEX/TVL/DAA cannot paint network risk. CONTRACTION is ecosystem, not WATCH.
+        risk_text = "None — network inside nominal bands."
     pos_text = (pos or {}).get("detail") or "No isolated positive this run."
     usage = (
         f"DEX 24h {fmt_usd(dex_24h)} · 1d {fmt_pct(dex_1d)} · vs-7d-ago {fmt_pct(dex_7d)}"
@@ -4170,7 +4366,7 @@ def render_md(snap: dict[str, Any]) -> str:
 **Cluster block time** {c.get('block_time_utc') or '—'} · **RPC health** `{health}`
 **Health score** {hs.get('score')} / 100 — `{hs.get('formula')}`
 **Network health** {brief.get('network_health') or brief.get('verdict') or '—'} · **Ecosystem** {brief.get('ecosystem_activity') or '—'} — {brief.get('what_changed') or ''}
-Updates every 15 min via GitHub Action.
+Auto-refresh on a GitHub Actions schedule (not a guaranteed 15-minute tick). STALE if snapshot age > 2 hours.
 
 This file is produced by `python3 generate.py` from public endpoints. Every number
 is timestamped in `out/report.json`. If a source fails, the tile is omitted rather
@@ -4539,7 +4735,8 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
     jito = probe_jito_tip(http)
     dune = probe_dune_embed(http)
     simd_live = fetch_simd0525_header(http)
-    editorial = editorial_block(generated, cluster=cluster, simd_live=simd_live)
+    simd_gates = fetch_simd0525_gates(http, cluster)
+    editorial = editorial_block(generated, cluster=cluster, simd_live=simd_live, gates=simd_gates)
     jito_daily = fetch_jito_daily_mev(http)
     economics = build_economics(defi, sdata, market, tx_fees=tx_fees, jito=jito, cluster=cluster, jito_daily=jito_daily)
     health = compute_health(cluster, validators, sdata)
@@ -4582,7 +4779,8 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
             "python": sys.version.split()[0],
             "run_id": hashlib.sha1(iso(generated).encode()).hexdigest()[:12],
             "demo_url": DEMO_URL, "repo_url": REPO_URL,
-            "cadence": "updates every 15 min via GitHub Action",
+            "cadence": CADENCE,
+            "stale_after_seconds": STALE_AFTER_SECONDS,
             "live_tick": {
                 "url": "https://api.exchange.coinbase.com/products/SOL-USD/stats",
                 "cors": True,
@@ -4607,7 +4805,7 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
             },
             "derived": sdata.get("derived"),
         },
-        "news": news, "editorial": editorial, "anomalies": flags,
+        "news": news, "editorial": editorial, "simd0525_gates": simd_gates, "anomalies": flags,
         "incinerator": incinerator, "dune": dune, "trends": trends,
         "tx_fees": tx_fees, "xstocks": xstocks, "jito": jito, "insights": insights, "brief": brief,
         "sources": http.log, "omissions": [],

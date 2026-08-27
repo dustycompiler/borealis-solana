@@ -1,4 +1,4 @@
-# Official requirement matrix — Borealis 1.5.3
+# Official requirement matrix — Borealis 1.5.4
 
 Source: live Superteam Canada listing
 https://earn.superteam.fun/listing/develop-solana-ecosystem-auto-updating-report-and-interactive-dashboard
@@ -28,8 +28,8 @@ Green = implemented as specified. Partial = related metric present, limitation n
 | Tokenized asset volumes (equities) | yes | Jupiter stats24h buy+sell; query=xStock first, per-symbol only for misses, <=0.5 RPS; STALE cache <=24h | lite-api.jup.ag | yes | yes | yes | yes | Subset, not all 715, not all Solana DEX. STALE labeled, never presented as current. |
 | Daily active addresses | yes | Allium series via solana.com/data | solana.com/api/databricks | yes | yes | yes | helper | Vendors disagree; not averaged. |
 | Alpenglow | yes | SIMD-0326 editorial + status | SIMD docs / solana.com | yes | yes | yes | yes | Not claimed activated from slot time. |
-| SIMD-525 | yes | Listing token SIMD-525 = SIMD-0525 slot-time stages | solana.com/news + SIMD-0525 | yes | yes | yes | yes | Observed slot is INFERRED corroboration, not a feature-gate RPC. |
-| Automation / configurable refresh | yes | Actions every 15 minutes; local `--` flags | GitHub Actions | yes | yes | yes | workflow | Cron can drift. |
+| SIMD-525 | yes | Listing token SIMD-525 = SIMD-0525; per-stage live/activated-not-yet-effective/pending from Feature accounts | changelog 2026-08-20 + getAccountInfo | yes | yes | yes | yes | Observed slot is INFERRED corroboration, never gate proof. Upgrades page 400 ms ignored if stale. |
+| Automation / configurable refresh | yes | GitHub Actions schedule + workflow_dispatch; STALE banner if snapshot age > 2h; local `--` flags | GitHub Actions | yes | yes | yes | workflow | GitHub cron can drift or pause; 15-minute tick is not claimed. |
 | Anomaly detection | yes | TPS/slot/delinquency/TVL/DEX/price vs baselines | derived | yes | yes | yes | yes | Optional in the listing; present. |
 | Interactive HTML | yes | dark dashboard | htmlout.py | yes | — | — | yes | |
 | Markdown report | yes | report.md | render_md | — | yes | — | yes | |

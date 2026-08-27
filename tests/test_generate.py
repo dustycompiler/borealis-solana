@@ -42,6 +42,12 @@ from generate import (  # noqa: E402
     save_volume_cache,
     filter_rss_by_recency,
     infer_simd0525_stage,
+    classify_simd0525_gates,
+    parse_feature_account_bytes,
+    epoch_of_slot,
+    CADENCE,
+    STALE_AFTER_SECONDS,
+    VERSION,
     jito_gross_tips_sol,
     pct_24h,
     percentile,
@@ -550,6 +556,23 @@ class InsightBriefTests(unittest.TestCase):
         self.assertIn("slot", brief["biggest_risk"].lower())
         self.assertFalse(brief["biggest_risk"].lower().startswith("none"))
 
+    def test_healthy_plus_contraction_dex_drop_is_not_network_risk(self):
+        cluster = {"tps_total": 4000, "tps_nonvote": 1500, "slot_time_sec": 0.365, "health": "ok", "slot": 1}
+        validators = {"delinquent_stake_pct": 0.017, "nakamoto_33": 19}
+        defi = {"dex": {"change_7d_pct": -4, "change_1d_pct": -19.9, "total_24h_usd": 3e9},
+                "tvl_usd": 5e9, "tvl_change_1d_pct": -1.0}
+        insights = [{
+            "id": "dex_1d", "polarity": "risk",
+            "title": "DEX 1d",
+            "detail": "DeFiLlama Solana DEX 1d -19.9%",
+        }]
+        brief = build_brief(cluster, validators, {"usd": 100, "usd_24h_change": -1.0}, defi,
+                            {"score": 100, "tps_baseline": 3500}, [], insights)
+        self.assertEqual(brief["network_health"], "HEALTHY")
+        self.assertEqual(brief["ecosystem_activity"], "CONTRACTION")
+        self.assertTrue(brief["biggest_risk"].startswith("None"))
+        self.assertNotIn("DEX", brief["biggest_risk"])
+
     def test_healthy_plus_dex_surge_risk_is_none(self):
         cluster = {"tps_total": 4000, "tps_nonvote": 1500, "slot_time_sec": 0.365, "health": "ok", "slot": 1}
         validators = {"delinquent_stake_pct": 0.017, "nakamoto_33": 19}
@@ -635,6 +658,14 @@ class NewsRecencyTests(unittest.TestCase):
 
 
 class Simd525Tests(unittest.TestCase):
+    def _epoch1023_accounts(self):
+        return {
+            350: {"exists": True, "activated_flag": 1, "activated_slot": 440208000},
+            300: {"exists": True, "activated_flag": 1, "activated_slot": 441936000},
+            250: {"exists": False, "activated_flag": 0, "activated_slot": None},
+            200: {"exists": False, "activated_flag": 0, "activated_slot": None},
+        }
+
     def test_editorial_contains_listing_token(self):
         now = datetime(2026, 8, 25, tzinfo=UTC)
         ed = editorial_block(now, cluster={"slot_time_sec": 0.365})
@@ -643,11 +674,14 @@ class Simd525Tests(unittest.TestCase):
         self.assertIn("400", blob)
         self.assertIn("200", blob)
         self.assertIn("lowering-slot-time-and-validators-economic", blob)
+        self.assertIn("solana-changelog-august-20-2026", blob)
         self.assertLessEqual(blob.lower().count("simd-025"), 1)
         self.assertIn("INFERRED", blob)
+        self.assertNotIn("consistent-with-observed", blob)
         html = render_html({
-            "meta": {"version": "1.4.0", "generated_at_utc": "2026-08-26T00:00:00Z",
-                     "generated_at_pt": "2026-08-25 17:00:00 PT"},
+            "meta": {"version": "1.5.4", "generated_at_utc": "2026-08-26T00:00:00Z",
+                     "generated_at_pt": "2026-08-25 17:00:00 PT",
+                     "stale_after_seconds": 7200, "cadence": CADENCE},
             "cluster": {"health": "ok", "slot_time_sec": 0.365, "tps_total": 4000},
             "brief": {"network_health": "HEALTHY", "ecosystem_activity": "SURGE",
                       "verdict": "HEALTHY", "biggest_positive": "DEX +103%",
@@ -666,10 +700,98 @@ class Simd525Tests(unittest.TestCase):
         self.assertIn("$1.14M", html)  # in-protocol fees 24h, not Full REV
         self.assertIn("incomplete", html)
         self.assertNotIn("Borealis REV 24h", html)
+        self.assertIn("stale-banner", html)
+        self.assertIn("STALE_MS", html)
+        self.assertNotIn("updates every 15 min via GitHub Action", html)
 
-    def test_365ms_maps_to_350_stage(self):
+    def test_observed_slot_is_not_gate_proof(self):
         st = infer_simd0525_stage(365)
-        self.assertEqual(st["inferred_target_ms"], 350)
+        self.assertIsNone(st["inferred_target_ms"])
+        self.assertEqual(st["kind"], "INFERRED")
+        self.assertNotEqual(st.get("stages", [{}])[1].get("status"), "consistent-with-observed")
+        blob = json_blob(st)
+        self.assertNotIn("consistent-with-observed", blob)
+
+    def test_feature_account_bytes_option_u64(self):
+        raw = b"\x01" + (440208000).to_bytes(8, "little")
+        parsed = parse_feature_account_bytes(raw)
+        self.assertEqual(parsed["activated_flag"], 1)
+        self.assertEqual(parsed["activated_slot"], 440208000)
+        self.assertEqual(parse_feature_account_bytes(None)["activated_flag"], 0)
+
+    def test_epoch_of_slot_around_1023(self):
+        # epoch 1023 starts at 441936000
+        self.assertEqual(
+            epoch_of_slot(440208000, current_epoch=1023, epoch_start=441936000, slots_in_epoch=432000),
+            1019,
+        )
+        self.assertEqual(
+            epoch_of_slot(441936000, current_epoch=1023, epoch_start=441936000, slots_in_epoch=432000),
+            1023,
+        )
+
+    def test_350_live_300_not_yet_effective_at_epoch_1023(self):
+        g = classify_simd0525_gates(
+            current_epoch=1023, absolute_slot=442145139, slot_index=209139,
+            slots_in_epoch=432000, accounts=self._epoch1023_accounts(),
+            observed_slot_ms=367.2,
+        )
+        by = {s["target_ms"]: s["status"] for s in g["stages"]}
+        self.assertEqual(by[400], "superseded")
+        self.assertEqual(by[350], "live")
+        self.assertEqual(by[300], "activated-not-yet-effective")
+        self.assertEqual(by[250], "pending")
+        self.assertEqual(by[200], "pending")
+        self.assertEqual(g["live_target_ms"], 350)
+        self.assertEqual(g["kind"], "FEATURE_GATE")
+        self.assertNotIn("consistent-with-observed", json_blob(g))
+
+    def test_300ms_live_once_epoch_1024_starts(self):
+        g = classify_simd0525_gates(
+            current_epoch=1024, absolute_slot=442368000, slot_index=0,
+            slots_in_epoch=432000, accounts=self._epoch1023_accounts(),
+            observed_slot_ms=310.0,
+        )
+        by = {s["target_ms"]: s["status"] for s in g["stages"]}
+        self.assertEqual(by[350], "live")
+        self.assertEqual(by[300], "live")
+        self.assertEqual(g["live_target_ms"], 300)
+
+    def test_editorial_renders_on_chain_labels(self):
+        now = datetime(2026, 8, 27, tzinfo=UTC)
+        g = classify_simd0525_gates(
+            current_epoch=1023, absolute_slot=442145139, slot_index=209139,
+            slots_in_epoch=432000, accounts=self._epoch1023_accounts(),
+            observed_slot_ms=367.2,
+        )
+        ed = editorial_block(now, cluster={"slot_time_sec": 0.367, "epoch": 1023}, gates=g)
+        blob = json_blob(ed)
+        self.assertIn("activated-not-yet-effective", blob)
+        self.assertIn("350ms=live", blob)
+        self.assertIn("solana-changelog-august-20-2026", blob)
+        self.assertIn("400ms to 350ms", blob)
+        self.assertNotIn("consistent-with-observed", blob)
+        html = render_html({
+            "meta": {"version": VERSION, "generated_at_utc": "2026-08-27T16:00:00Z",
+                     "generated_at_pt": "2026-08-27 09:00:00 PT",
+                     "stale_after_seconds": STALE_AFTER_SECONDS, "cadence": CADENCE},
+            "cluster": {"health": "ok", "slot_time_sec": 0.367, "tps_total": 4000, "epoch": 1023},
+            "brief": {"network_health": "HEALTHY", "ecosystem_activity": "CONTRACTION",
+                      "verdict": "HEALTHY", "biggest_positive": "x",
+                      "biggest_risk": "None — network inside nominal bands.",
+                      "score": 100, "what_changed": "x", "why_it_matters": "y"},
+            "editorial": ed,
+            "health_score": {"score": 100, "formula": "25x"},
+        })
+        self.assertIn("activated-not-yet-effective", html)
+        self.assertIn("gate-chip live", html)
+        self.assertIn("stale-banner", html)
+        self.assertIn("7200", html)
+
+    def test_stale_banner_threshold_is_two_hours(self):
+        self.assertEqual(STALE_AFTER_SECONDS, 7200)
+        self.assertIn("2 hour", CADENCE)
+        self.assertNotIn("every 15 min via GitHub Action", CADENCE)
 
 
 def json_blob(obj) -> str:

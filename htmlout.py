@@ -239,6 +239,15 @@ CSS += """
   letter-spacing:.06em; text-transform:uppercase; color:var(--amber); border:1px solid #3a3220; }
 .watching { color:var(--muted); font-size:13px; padding:6px 0 2px; }
 .age { color:var(--teal); }
+#stale-banner { display:none; margin:10px 0 0; padding:10px 14px; border-radius:10px;
+  border:1px solid #5a3a14; background:#1a140a; color:var(--amber); font-size:13px; }
+#stale-banner.on { display:block; }
+.gate-chip { display:inline-block; margin:0 6px 6px 0; padding:2px 8px; border-radius:999px;
+  font-size:11px; letter-spacing:.04em; border:1px solid var(--line2); color:var(--muted); }
+.gate-chip.live { color:var(--teal); border-color:#1c3a32; }
+.gate-chip.activated-not-yet-effective { color:var(--amber); border-color:#5a3a14; }
+.gate-chip.pending, .gate-chip.unprobed { color:var(--faint); }
+.gate-chip.superseded { color:var(--faint); text-decoration:line-through; }
 .score-hero .ring { width:64px; height:64px; }
 .trend-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:10px; }
 @media (max-width: 980px) { .trend-grid { grid-template-columns:1fr; } }
@@ -279,14 +288,35 @@ JS += """
     if (s < 3600) return Math.floor(s/60) + "m ago";
     return Math.floor(s/3600) + "h " + Math.floor((s%3600)/60) + "m ago";
   }
+  var staleBanner = document.getElementById("stale-banner");
+  var STALE_MS = (((snap.meta && snap.meta.stale_after_seconds) || 7200) * 1000);
   function tickAge(){
-    if (!ageEl || !gen) return;
+    if (!gen) return;
     var t0 = Date.parse(gen);
     if (isNaN(t0)) return;
-    ageEl.textContent = fmtAge(Math.max(0, Date.now() - t0));
+    var age = Math.max(0, Date.now() - t0);
+    if (ageEl) ageEl.textContent = fmtAge(age);
+    if (staleBanner) {
+      if (age > STALE_MS) staleBanner.classList.add("on");
+      else staleBanner.classList.remove("on");
+    }
   }
   tickAge();
   setInterval(tickAge, 15000);
+  try {
+    var bust = Date.now();
+    fetch("report.json?t=" + bust, {cache: "no-store"}).then(function(r){
+      return r.ok ? r.json() : null;
+    }).then(function(j){
+      if (!j || !j.meta || !j.meta.generated_at_utc) return;
+      var remote = Date.parse(j.meta.generated_at_utc);
+      var local = Date.parse(gen);
+      if (!isNaN(remote) && !isNaN(local) && remote > local + 5000) {
+        gen = j.meta.generated_at_utc;
+        tickAge();
+      }
+    }).catch(function(){});
+  } catch (e) {}
   var rb = document.getElementById("range-btns");
   if (rb) {
     rb.addEventListener("click", function(ev){
@@ -620,6 +650,14 @@ def render_html(snap: dict) -> str:
     om_lis = "".join(f'<li><b>{e(o.get("metric"))}</b> — {e(o.get("reason"))}</li>' for o in om) or "<li>None.</li>"
 
     simd = "".join(f'<li><b>{e(s.get("id"))}</b> — {e(s.get("name"))}</li>' for s in (ed.get("simds") or []))
+    _gates = ((ed.get("simd0525") or {}).get("gates") or {})
+    _gstages = _gates.get("stages") or []
+    gate_chips = "".join(
+        f'<span class="gate-chip {e(s.get("status"))}">{e(s.get("target_ms"))}ms {e(s.get("status"))}</span>'
+        for s in _gstages
+    )
+    if gate_chips:
+        gate_chips = '<p class="tiny muted">SIMD-0525 Feature-gate labels (not observed slot ms)</p><p>' + gate_chips + '</p>'
     tl = "".join(f'<li><span class="mono">{e(t.get("date"))}</span> — {e(t.get("item"))}</li>' for t in (ed.get("timeline_public") or []))
     watch = "".join(f'<li>{e(w)}</li>' for w in (ed.get("watch") or []))
     ed_src = "".join(f'<li><a href="{e(u)}">{e(u)}</a></li>' for u in (ed.get("sources") or []))
@@ -793,7 +831,7 @@ def render_html(snap: dict) -> str:
         "24h": (runp.get("tps") or _tail(daily.get("tps"), 2),
                 runp.get("tvl") or _tail(daily.get("tvl"), 2),
                 runp.get("sol") or _tail(daily.get("sol"), 2),
-                "15-min tape or last daily points"),
+                "snapshot tape or last daily points"),
         "7d": (_tail(daily.get("tps"), 7), _tail(daily.get("tvl"), 7), _tail(daily.get("sol"), 7),
                "daily seed 7d"),
         "30d": (_tail(daily.get("tps"), 30), _tail(daily.get("tvl"), 30), _tail(daily.get("sol"), 30),
@@ -833,7 +871,7 @@ def render_html(snap: dict) -> str:
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="color-scheme" content="dark"/>
-<meta name="description" content="Borealis — live Solana cluster and ecosystem report. No API keys. Updates every 15 minutes."/>
+<meta name="description" content="Borealis — live Solana cluster and ecosystem report. No API keys. Auto-refresh on a GitHub Actions schedule; STALE if snapshot age &gt; 2 hours."/>
 <meta property="og:title" content="Borealis — live Solana cluster report"/>
 <meta property="og:description" content="Public RPC, DeFiLlama, Coinbase 24h, solana.com/data, and Nitter-style X RSS. Health score, anomalies, no API keys."/>
 <meta property="og:type" content="website"/>
@@ -847,6 +885,7 @@ def render_html(snap: dict) -> str:
 <style>{CSS}</style>
 </head>
 <body>
+<div id="stale-banner" role="status">STALE snapshot — generated_at is older than 2 hours. GitHub Actions schedule is not a guaranteed 15-minute tick.</div>
 <div class="wrap">
   <header class="top">
     <div class="brand">{MARK}
@@ -860,7 +899,7 @@ def render_html(snap: dict) -> str:
       <b>{e(m.get("generated_at_utc"))}</b>
       {e(m.get("generated_at_pt"))}<br/>
       snapshot <span id="age" class="age">just now</span>
-      · updates every 15 min via GitHub Action<br/>
+      · auto-refresh on a GitHub Actions schedule (not a guaranteed 15-min tick)<br/>
       <span class="tiny">{e(health_label)}</span>
       · run {e(m.get("run_id"))} · v{e(m.get("version"))}
       <div id="live-sol" class="live-sol"></div>
@@ -928,6 +967,7 @@ def render_html(snap: dict) -> str:
     <div class="panel ed" style="margin-top:10px">
       <h2>Editorial · {e(ed.get("title"))}</h2>
       <p class="tiny muted">As of {e(ed.get("as_of"))} ({e(ed.get("as_of_pt"))}). {e(ed.get("disclaimer"))}</p>
+      {gate_chips}
       <p>{e(ed.get("summary"))}</p>
       <p class="tiny muted">{e(ed.get("correction"))}</p>
       <ul>{simd}</ul>
@@ -1045,9 +1085,9 @@ def render_html(snap: dict) -> str:
       <h2>Multi-run tape · data/history.jsonl</h2>
       <p class="tiny muted">{e((trends or {}).get("note") or "")} · run points {nfmt((trends.get("run") or {}).get("n"))}</p>
       <div class="trend-grid">
-        <div class="trend-card"><h3>TPS (15-min tape)</h3>{trend_chart((trends.get("run") or {}).get("tps") or [], color="#3ee0b0", ylabel="TPS")}</div>
-        <div class="trend-card"><h3>TVL (15-min tape)</h3>{trend_chart((trends.get("run") or {}).get("tvl") or [], color="#f0b429", ylabel="TVL", money=True)}</div>
-        <div class="trend-card"><h3>SOL (15-min tape)</h3>{trend_chart((trends.get("run") or {}).get("sol") or [], color="#7aa2ff", ylabel="SOL", money=True)}</div>
+        <div class="trend-card"><h3>TPS (snapshot tape)</h3>{trend_chart((trends.get("run") or {}).get("tps") or [], color="#3ee0b0", ylabel="TPS")}</div>
+        <div class="trend-card"><h3>TVL (snapshot tape)</h3>{trend_chart((trends.get("run") or {}).get("tvl") or [], color="#f0b429", ylabel="TVL", money=True)}</div>
+        <div class="trend-card"><h3>SOL (snapshot tape)</h3>{trend_chart((trends.get("run") or {}).get("sol") or [], color="#7aa2ff", ylabel="SOL", money=True)}</div>
       </div>
     </div>
     <div class="panel" style="margin-top:10px">
@@ -1079,9 +1119,9 @@ def render_html(snap: dict) -> str:
 
   <footer class="footer">
     Borealis is read-only public telemetry. Numbers are never invented: a failed fetch becomes a dashed tile and an omissions row.
-    MIT · author dustycompiler · updates every 15 min via GitHub Action ·
+    MIT · author dustycompiler · auto-refresh on a GitHub Actions schedule (STALE if snapshot age &gt; 2h) ·
     <a href="https://github.com/dustycompiler/borealis-solana">repo</a> ·
-    <a href="report.md">report.md</a> · <a href="report.json">report.json</a>
+    <a href="report.md">report.md</a> · <a href="report.json?v={e(m.get("generated_at_utc") or "")}">report.json</a>
   </footer>
 </div>
 <script id="snapshot" type="application/json">{payload}</script>

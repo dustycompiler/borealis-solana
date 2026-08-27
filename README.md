@@ -1,7 +1,7 @@
 # Borealis
 
-**Version 1.5.3.** 
-Live Solana cluster & ecosystem report, **version 1.5.3**. One command, **no API keys**, Python stdlib only (`urllib`).
+**Version 1.5.4.** 
+Live Solana cluster & ecosystem report, **version 1.5.4**. One command, **no API keys**, Python stdlib only (`urllib`).
 
 [![Live demo](https://img.shields.io/badge/live-demo-3ee0b0?style=flat-square)](https://dustycompiler.github.io/borealis-solana/)
 [![Tests](https://github.com/dustycompiler/borealis-solana/actions/workflows/tests.yml/badge.svg)](https://github.com/dustycompiler/borealis-solana/actions/workflows/tests.yml)
@@ -145,7 +145,7 @@ Shown in the hero. Not a mystery number.
 
 Covered by `tests/test_generate.py`.
 
-**Network Health vs Ecosystem Activity.** The exec verdict is **network** health only: RPC, slot cadence, TPS vs baseline, delinquency, status.solana.com. Labels: `HEALTHY` / `WATCH` / `DEGRADED` / `CRITICAL`. DEX/TVL/DAA moves are **Ecosystem Activity** (`QUIET` / `NORMAL` / `ELEVATED` / `SURGE` / `CONTRACTION`) and cannot paint the network WATCH. A DEX surge is SURGE + HEALTHY when slots and delinquency are quiet. If Network Health is not HEALTHY, Biggest risk is the classifier's dominant factor (delinquency, slot, RPC) — never "None" under WATCH.
+**Network Health vs Ecosystem Activity.** The exec verdict is **network** health only: RPC, slot cadence, TPS vs baseline, delinquency, status.solana.com. Labels: `HEALTHY` / `WATCH` / `DEGRADED` / `CRITICAL`. DEX/TVL/DAA moves are **Ecosystem Activity** (`QUIET` / `NORMAL` / `ELEVATED` / `SURGE` / `CONTRACTION`) and cannot paint the network WATCH. A DEX surge is SURGE + HEALTHY when slots and delinquency are quiet. If Network Health is HEALTHY, Biggest risk is always None (DEX/TVL contraction cannot paint network risk). If not HEALTHY, Biggest risk is the classifier's dominant factor (delinquency, slot, RPC) — never "None" under WATCH.
 
 ---
 
@@ -177,25 +177,27 @@ Useful **on run 1** (no history.jsonl required). Empty strip copy:
 
 ## Editorial: SIMD-525 (slot-time reduction) + Alpenglow
 
-The Superteam listing asks for **Alpenglow, SIMD-525**. **Primary source for the listing token:** [solana.com/news “Lowering Slot Time and Validators Economic”](https://solana.com/news/lowering-slot-time-and-validators-economic) (SIMD-0525 staged **400 → 350 → 300 → 250 → 200 ms**). Secondary: [proposal 0525](https://github.com/solana-foundation/solana-improvement-documents/blob/main/proposals/0525-reduce-slot-times.md) and [solana.com/upgrades/reduced-slot-times](https://solana.com/upgrades/reduced-slot-times). Observed mean slot ~365 ms is **INFERRED corroboration**, not a feature-gate RPC. **Alpenglow consensus is SIMD-0326** (separate track). One short SIMD-025 correction exists; it is not the headline.
+The Superteam listing asks for **Alpenglow, SIMD-525**. **First-party live status:** [Solana Changelog: August 20, 2026](https://solana.com/news/solana-changelog-august-20-2026) — “Feature gates reduced mainnet slot times from 400ms to 350ms, while Testnet moved from 250ms to 200ms.” Borealis labels each stage from **on-chain Feature accounts** (`getAccountInfo`, `effective_epoch = epoch(activated_slot) + 1`), not from observed slot milliseconds. Observed ~367 ms is **INFERRED corroboration**, never gate proof. Do not copy [solana.com/upgrades/reduced-slot-times](https://solana.com/upgrades/reduced-slot-times) if it still lists 400 ms. Listing-token write-up: [“Lowering Slot Time and Validators Economic”](https://solana.com/news/lowering-slot-time-and-validators-economic). **Alpenglow consensus is SIMD-0326** (separate track).
 
-The Overview tab carries a dated upgrade tracker with the exact listing token `SIMD-525`. Stage is inferred from observed slot time vs published targets, not a feature-gate RPC. See `editorial` in `report.json`.
+The Overview tab carries a dated upgrade tracker with the exact listing token `SIMD-525` and per-stage labels (`live` / `activated-not-yet-effective` / `pending`). See `editorial` and `simd0525_gates` in `report.json`.
 
 ---
 
 ## Automation
 
-### GitHub Action (every 15 minutes)
+### GitHub Action (scheduled auto-refresh)
 
-`.github/workflows/update.yml` runs `python3 -m unittest` then `python3 generate.py` on `*/15 * * * *` and on `workflow_dispatch`, then commits `out/`, `docs/`, and `data/history.jsonl` as **dustycompiler** (`dustycompiler@users.noreply.github.com`). Enable Actions on the repo. No secrets required. GitHub cron can drift by a few minutes.
+`.github/workflows/update.yml` runs `python3 -m unittest` then `python3 generate.py` on a GitHub Actions `schedule` plus `workflow_dispatch` (and on generator-path pushes to main), then commits `out/`, `docs/`, and `data/history.jsonl` as **dustycompiler** (`dustycompiler@users.noreply.github.com`). Enable Actions on the repo. No secrets required.
+
+**Honest cadence:** GitHub's `*/15 * * * *` line is **not** a guaranteed 15-minute tick. It has drifted to ~2 hours and has paused for a day. The live dashboard does **not** claim 15-minute updates. A **STALE** banner appears when `generated_at` is older than **2 hours**. Manual `workflow_dispatch` is the reliable refresh. Do not add another in-repo cron.
 
 ### GitHub Pages
 
 Settings → Pages → Deploy from branch → `/docs`. `docs/index.html` is the dashboard. `docs/.nojekyll` is included so GitHub does not run Jekyll. Favicon + Open Graph tags ship with the snapshot.
 
-### cron
+### Local cron (optional)
 
-See `crontab.example` (`*/15 * * * *`).
+See `crontab.example`. That file is a **local** optional `*/15` loop. It is **not** how GitHub Pages is refreshed.
 
 ---
 
@@ -219,7 +221,7 @@ See `crontab.example` (`*/15 * * * *`).
 - No API keys, no scraping of authenticated dashboards.
 - If a source 429s or 5xxs after retries, the tile is omitted and `omissions[]` explains why.
 - Every fetch is logged in `report.json` → `sources[]` with URL, HTTP status, bytes, milliseconds, UTC timestamp — including failures.
-- User-Agent: `BorealisReport/1.5.3 (Solana ecosystem dashboard; stdlib urllib; no API key)`.
+- User-Agent: `BorealisReport/1.5.4 (Solana ecosystem dashboard; stdlib urllib; no API key)`.
 
 ## Layout
 
@@ -240,7 +242,7 @@ Stdlib unittest. No pip, no network.
 
     python3 -m unittest
 
-Covers health-score formula, 24h percent (last-open)/open, anomaly flags on synthetic series, RSS recency (ISO + RFC2822; 2022 incidents not current), fee percentiles + `window_seconds` + `not_24h_census`, xStocks mcap formula + **live `/multiplier?network=Solana` `currentMultiplier`** (missing → mcap omitted, never silent 1.0), REV = same UTC day fees + gross Jito MEV (jito_tips+validator_tips); llama protocol fees excluded; Jito tip-floor run-rate is not headline REV, SIMD-525 listing token from solana.com/news, DEX surge → HEALTHY + SURGE not WATCH with biggest_risk None, WATCH/DEGRADED/CRITICAL biggest_risk from dominant network sentence, RPC 429 → publicnode fallback, and CoinGecko 429 → Coinbase (expected unavailable, not a raw 108/132 headline).
+Covers health-score formula, 24h percent (last-open)/open, anomaly flags on synthetic series, RSS recency (ISO + RFC2822; 2022 incidents not current), fee percentiles + `window_seconds` + `not_24h_census`, xStocks mcap formula + **live `/multiplier?network=Solana` `currentMultiplier`** (missing → mcap omitted, never silent 1.0), REV = same UTC day fees + gross Jito MEV (jito_tips+validator_tips); llama protocol fees excluded; Jito tip-floor run-rate is not headline REV, SIMD-525 Feature-gate labels from getAccountInfo (not observed slot ms), DEX surge or contraction → HEALTHY with biggest_risk None, WATCH/DEGRADED/CRITICAL biggest_risk from dominant network sentence, RPC 429 → publicnode fallback, and CoinGecko 429 → Coinbase (expected unavailable, not a raw 108/132 headline).
 
 ---
 
@@ -256,11 +258,11 @@ Covers health-score formula, 24h percent (last-open)/open, anomaly flags on synt
 | Tokenized equities | xStocks public assets + price-data + live `/multiplier?network=Solana`; Jupiter `stats24h` subset activity; mcap = quote × circ × currentMultiplier (omitted if missing) | api.backed.fi / jup.ag lite-api | xStocks vol + mcap tiles | `EquityMcapTests`, `MultiplierFetchTests` |
 | In-protocol fees / Solana REV | MEASURED same-UTC-day fees + gross Jito MEV; USD uses that day's solana.com/data SOL Price; llama protocol fees EXCLUDED; tip-floor not REV | solana.com/data Fees + SOL Price + kobe.mainnet.jito.network daily_mev_rewards | Solana REV tile (SOL + USD + UTC date) | `EconomicsHonestyTests` |
 | Exec view | Network HEALTHY/WATCH/DEGRADED/CRITICAL **separate from** Ecosystem QUIET/NORMAL/ELEVATED/SURGE; risk only if adverse | RPC + validators vs DEX/TVL | Top of dashboard | `InsightBriefTests` |
-| SIMD-525 tracker | listing token + staged 400→200 ms vs observed slot | SIMD-0525 GH + solana.com/upgrades | Overview editorial | `Simd525Tests` |
+| SIMD-525 tracker | listing token + Feature-gate labels (live / activated-not-yet-effective / pending) | changelog 2026-08-20 + getAccountInfo | Overview editorial | `Simd525Tests` |
 | Intelligence | 3–6 evidence-linked lines, no LLM | same snapshot | Intelligence panel | `InsightBriefTests` |
 | Charts 24h/7d/30d/90d | SVG + range buttons; seed from Llama 90d + solana.com 30d | history.jsonl + public historical | Trends | generate.py live |
 | Source · age · confidence | every headline tile | `sources[]` + snapshot time | KPI meta-line | htmlout provenance |
-| 15-min Action, GH Pages | `*/15 * * * *`, unittest then generate, commit as dustycompiler noreply | GitHub Actions | live demo | `.github/workflows` |
+| Scheduled Action, GH Pages | unittest then generate; STALE banner if snapshot age > 2h; commit as dustycompiler noreply | GitHub Actions | live demo | `.github/workflows` |
 | Stdlib, no keys | urllib only in `generate.py` | — | — | no pip in workflow |
 
 Architecture: `generate.py` fetches and scores; `htmlout.py` renders a self-contained dark page; `data/history.jsonl` is the rolling tape. Methodology: never invent a missing number — omit the tile and record the miss in `omissions[]` / `sources[]`.
