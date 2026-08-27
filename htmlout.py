@@ -235,6 +235,12 @@ CSS += """
   margin-top:6px; max-width:420px; }
 .live-sol { display:none; margin-top:6px; font-size:11.5px; color:var(--muted); }
 .live-sol.on { display:block; }
+.live-pulse { margin-top:8px; font-size:11.5px; color:var(--muted); max-width:380px; margin-left:auto; line-height:1.4; }
+.pulse-badge { display:inline-block; margin-right:6px; padding:1px 7px; border-radius:999px;
+  font-size:10px; letter-spacing:.08em; font-weight:650; border:1px solid var(--line2); vertical-align:middle; }
+.live-pulse[data-state="live"] .pulse-badge { color:var(--teal); border-color:#1c3a32; background:rgba(62,224,176,.1); }
+.live-pulse[data-state="not-live"] .pulse-badge { color:var(--amber); border-color:#5a3a14; background:#1a140a; }
+.live-pulse[data-state="pending"] .pulse-badge { color:var(--blue); }
 .tagchip { display:inline-block; margin:0 4px 0 0; padding:0 6px; border-radius:999px; font-size:10px;
   letter-spacing:.06em; text-transform:uppercase; color:var(--amber); border:1px solid #3a3220; }
 .watching { color:var(--muted); font-size:13px; padding:6px 0 2px; }
@@ -345,6 +351,143 @@ JS += """
         live.className = "live-sol on";
       })
       .catch(function(){ if (live.parentNode) live.parentNode.removeChild(live); });
+  }
+  var pulseEl = document.getElementById("live-pulse");
+  var pulseBadge = document.getElementById("pulse-badge");
+  var pulseBody = document.getElementById("pulse-body");
+  var PULSE_INTERVAL_MS = 60000;
+  var PULSE_RPCS = [
+    "https://solana-rpc.publicnode.com",
+    "https://api.mainnet-beta.solana.com"
+  ];
+  if (snap.live_pulse && snap.live_pulse.rpc && snap.live_pulse.rpc.length) {
+    PULSE_RPCS = snap.live_pulse.rpc;
+  }
+  if (snap.live_pulse && snap.live_pulse.interval_ms) {
+    PULSE_INTERVAL_MS = snap.live_pulse.interval_ms;
+  }
+  function numOrNull(x){
+    var n = typeof x === "number" ? x : parseFloat(x);
+    return isFinite(n) ? n : null;
+  }
+  function fmtNum(n){
+    if (n == null) return null;
+    return Math.round(n).toLocaleString("en-US");
+  }
+  function snapshotPulse(){
+    var c = snap.cluster || {};
+    var slot = numOrNull(c.slot);
+    if (slot == null) slot = numOrNull(c.absolute_slot);
+    var st = numOrNull(c.slot_time_sec);
+    return {
+      slot: slot,
+      epoch: numOrNull(c.epoch),
+      tps: numOrNull(c.tps_total),
+      slotMs: st == null ? null : st * 1000
+    };
+  }
+  function pulseLine(d){
+    var bits = [];
+    var slotS = fmtNum(d.slot); if (slotS) bits.push("slot " + slotS);
+    var ep = fmtNum(d.epoch); if (ep) bits.push("epoch " + ep);
+    var tps = fmtNum(d.tps); if (tps) bits.push("TPS " + tps);
+    if (d.slotMs != null && isFinite(d.slotMs)) bits.push(d.slotMs.toFixed(1) + " ms");
+    return bits.join(" · ");
+  }
+  function setPulse(state, data, note){
+    if (!pulseEl) return;
+    pulseEl.setAttribute("data-state", state);
+    if (pulseBadge) pulseBadge.textContent = state === "live" ? "LIVE" : (state === "pending" ? "PULSE" : "NOT LIVE");
+    if (!pulseBody) return;
+    var line = pulseLine(data || {});
+    var genAt = (snap.meta && snap.meta.generated_at_utc) || "snapshot";
+    if (state === "live") {
+      pulseBody.textContent = line + " · on-page-now · " + (note || "public RPC") + " vs snapshot " + genAt;
+    } else if (state === "not-live") {
+      pulseBody.textContent = (line ? line + " · " : "") + "snapshot values · RPC not live" + (note ? " (" + note + ")" : "");
+    } else {
+      pulseBody.textContent = note || "querying public RPC…";
+    }
+  }
+  function parseBatch(arr){
+    if (!Array.isArray(arr)) return null;
+    var by = {};
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i] && arr[i].id != null) by[arr[i].id] = arr[i];
+    }
+    var epochRes = by[1] && by[1].result;
+    var samples = by[2] && by[2].result;
+    var slotRes = by[3] && by[3].result;
+    if (!epochRes && slotRes == null) return null;
+    var out = {slot: null, epoch: null, tps: null, slotMs: null};
+    if (epochRes && typeof epochRes === "object") {
+      out.epoch = numOrNull(epochRes.epoch);
+      out.slot = numOrNull(epochRes.absoluteSlot);
+    }
+    if (out.slot == null) out.slot = numOrNull(slotRes);
+    if (Array.isArray(samples) && samples[0] && typeof samples[0] === "object") {
+      var s0 = samples[0];
+      var period = numOrNull(s0.samplePeriodSecs) || 60;
+      var ntx = numOrNull(s0.numTransactions);
+      var nslot = numOrNull(s0.numSlots);
+      if (ntx != null && period) out.tps = ntx / period;
+      if (nslot && period) out.slotMs = (period / nslot) * 1000;
+    }
+    if (out.slot == null && out.epoch == null) return null;
+    return out;
+  }
+  function rpcPulse(url, ms){
+    var ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var t = ctrl ? setTimeout(function(){ try { ctrl.abort(); } catch (e) {} }, ms || 8000) : null;
+    var body = JSON.stringify([
+      {jsonrpc: "2.0", id: 1, method: "getEpochInfo", params: []},
+      {jsonrpc: "2.0", id: 2, method: "getRecentPerformanceSamples", params: [1]},
+      {jsonrpc: "2.0", id: 3, method: "getSlot", params: []}
+    ]);
+    var opts = {
+      method: "POST",
+      headers: {"Content-Type": "application/json", "Accept": "application/json"},
+      body: body
+    };
+    if (ctrl) opts.signal = ctrl.signal;
+    return fetch(url, opts).then(function(r){
+      if (t) clearTimeout(t);
+      if (!r.ok) throw new Error("http " + r.status);
+      return r.json();
+    }).then(function(j){
+      var parsed = parseBatch(j);
+      if (!parsed) throw new Error("empty");
+      return parsed;
+    });
+  }
+  var pulseBusy = false;
+  function hostOf(u){
+    try { return (new URL(u)).host; } catch (e) { return "public RPC"; }
+  }
+  function tickPulse(){
+    if (!pulseEl || pulseBusy) return;
+    pulseBusy = true;
+    var chain = PULSE_RPCS.slice();
+    function next(errNote){
+      if (!chain.length) {
+        setPulse("not-live", snapshotPulse(), errNote || "all endpoints failed");
+        pulseBusy = false;
+        return;
+      }
+      var url = chain.shift();
+      rpcPulse(url, 8000).then(function(d){
+        setPulse("live", d, hostOf(url));
+        pulseBusy = false;
+      }).catch(function(err){
+        next((err && err.message) ? err.message : "rpc fail");
+      });
+    }
+    next();
+  }
+  if (pulseEl) {
+    setPulse("pending", {}, "querying public RPC…");
+    tickPulse();
+    setInterval(tickPulse, PULSE_INTERVAL_MS);
   }
 })();
 """
@@ -856,6 +999,22 @@ def render_html(snap: dict) -> str:
 
     payload = json.dumps({
         "meta": m,
+        "cluster": {
+            "slot": c.get("slot") or c.get("absolute_slot"),
+            "absolute_slot": c.get("absolute_slot"),
+            "epoch": c.get("epoch"),
+            "tps_total": c.get("tps_total"),
+            "slot_time_sec": c.get("slot_time_sec"),
+            "slot_index": c.get("slot_index"),
+            "slots_in_epoch": c.get("slots_in_epoch"),
+        },
+        "live_pulse": (m.get("live_pulse") or {
+            "rpc": [
+                "https://solana-rpc.publicnode.com",
+                "https://api.mainnet-beta.solana.com",
+            ],
+            "interval_ms": 60000,
+        }),
         "anomalies": flags,
         "validators_top": v.get("top") or [],
         "omissions": om,
@@ -871,7 +1030,7 @@ def render_html(snap: dict) -> str:
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <meta name="color-scheme" content="dark"/>
-<meta name="description" content="Borealis — live Solana cluster and ecosystem report. No API keys. Auto-refresh on a GitHub Actions schedule; STALE if snapshot age &gt; 2 hours."/>
+<meta name="description" content="Borealis — live Solana cluster and ecosystem report. No API keys. GitHub snapshot + STALE if age &gt; 2 hours. On-page LIVE pulse (public RPC) for current slot/epoch."/>
 <meta property="og:title" content="Borealis — live Solana cluster report"/>
 <meta property="og:description" content="Public RPC, DeFiLlama, Coinbase 24h, solana.com/data, and Nitter-style X RSS. Health score, anomalies, no API keys."/>
 <meta property="og:type" content="website"/>
@@ -899,10 +1058,14 @@ def render_html(snap: dict) -> str:
       <b>{e(m.get("generated_at_utc"))}</b>
       {e(m.get("generated_at_pt"))}<br/>
       snapshot <span id="age" class="age">just now</span>
-      · auto-refresh on a GitHub Actions schedule (not a guaranteed 15-min tick)<br/>
+      · GitHub Actions snapshot (not a guaranteed 15-min tick)<br/>
       <span class="tiny">{e(health_label)}</span>
       · run {e(m.get("run_id"))} · v{e(m.get("version"))}
       <div id="live-sol" class="live-sol"></div>
+      <div id="live-pulse" class="live-pulse" data-state="pending" aria-live="polite">
+        <span class="pulse-badge" id="pulse-badge">PULSE</span>
+        <span id="pulse-body">querying public RPC…</span>
+      </div>
     </div>
   </header>
   {brief_html}
@@ -1119,7 +1282,7 @@ def render_html(snap: dict) -> str:
 
   <footer class="footer">
     Borealis is read-only public telemetry. Numbers are never invented: a failed fetch becomes a dashed tile and an omissions row.
-    MIT · author dustycompiler · auto-refresh on a GitHub Actions schedule (STALE if snapshot age &gt; 2h) ·
+    MIT · author dustycompiler · GitHub snapshot (STALE if age &gt; 2h) · on-page LIVE pulse (public RPC, 60s) ·
     <a href="https://github.com/dustycompiler/borealis-solana">repo</a> ·
     <a href="report.md">report.md</a> · <a href="report.json?v={e(m.get("generated_at_utc") or "")}">report.json</a>
   </footer>

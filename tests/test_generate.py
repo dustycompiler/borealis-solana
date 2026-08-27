@@ -794,6 +794,38 @@ class Simd525Tests(unittest.TestCase):
         self.assertNotIn("every 15 min via GitHub Action", CADENCE)
 
 
+class LivePulseTests(unittest.TestCase):
+    def test_html_ships_live_pulse_not_github_ticks(self):
+        html = render_html({
+            "meta": {"version": VERSION, "generated_at_utc": "2026-08-27T18:00:00Z",
+                     "generated_at_pt": "2026-08-27 11:00:00 PT",
+                     "stale_after_seconds": STALE_AFTER_SECONDS, "cadence": CADENCE},
+            "cluster": {"health": "ok", "slot": 442160000, "epoch": 1023,
+                        "tps_total": 4100, "slot_time_sec": 0.367},
+            "brief": {"network_health": "HEALTHY", "ecosystem_activity": "CONTRACTION",
+                      "verdict": "HEALTHY", "biggest_positive": "x",
+                      "biggest_risk": "None — network inside nominal bands.",
+                      "score": 100, "what_changed": "x", "why_it_matters": "y"},
+            "health_score": {"score": 100, "formula": "25x"},
+        })
+        self.assertIn("live-pulse", html)
+        self.assertIn("on-page-now", html)
+        self.assertIn("NOT LIVE", html)
+        self.assertIn("snapshot values", html)
+        self.assertIn("solana-rpc.publicnode.com", html)
+        self.assertIn("api.mainnet-beta.solana.com", html)
+        self.assertIn("getEpochInfo", html)
+        self.assertIn("getRecentPerformanceSamples", html)
+        self.assertIn("getSlot", html)
+        self.assertIn("60000", html)
+        self.assertIn("stale-banner", html)
+        self.assertIn("442160000", html)
+        self.assertNotIn("updates every 15 min via GitHub Action", html)
+        self.assertIn("LIVE pulse", CADENCE)
+        self.assertIn("60s", CADENCE)
+        self.assertIn("NOT LIVE", CADENCE)
+
+
 def json_blob(obj) -> str:
     import json
     return json.dumps(obj)

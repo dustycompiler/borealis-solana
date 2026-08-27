@@ -1,7 +1,7 @@
 # Borealis
 
-**Version 1.5.4.** 
-Live Solana cluster & ecosystem report, **version 1.5.4**. One command, **no API keys**, Python stdlib only (`urllib`).
+**Version 1.5.5.** 
+Live Solana cluster & ecosystem report, **version 1.5.5**. One command, **no API keys**, Python stdlib only (`urllib`).
 
 [![Live demo](https://img.shields.io/badge/live-demo-3ee0b0?style=flat-square)](https://dustycompiler.github.io/borealis-solana/)
 [![Tests](https://github.com/dustycompiler/borealis-solana/actions/workflows/tests.yml/badge.svg)](https://github.com/dustycompiler/borealis-solana/actions/workflows/tests.yml)
@@ -191,6 +191,8 @@ The Overview tab carries a dated upgrade tracker with the exact listing token `S
 
 **Honest cadence:** GitHub's `*/15 * * * *` line is **not** a guaranteed 15-minute tick. It has drifted to ~2 hours and has paused for a day. The live dashboard does **not** claim 15-minute updates. A **STALE** banner appears when `generated_at` is older than **2 hours**. Manual `workflow_dispatch` is the reliable refresh. Do not add another in-repo cron.
 
+**On-page LIVE pulse (1.5.5):** the dashboard JS JSON-RPC-calls public Solana RPC on load and at most every 60s (`getEpochInfo`, `getRecentPerformanceSamples(1)`, `getSlot`) for slot, epoch, TPS, and slot-time. Labeled **LIVE / on-page-now** vs snapshot `generated_at`. If RPC fails, last snapshot values render as **NOT LIVE** — numbers are never invented. Endpoints are the same keyless pair as generate.py, publicnode first (GitHub Pages Origin is 403'd by `api.mainnet-beta.solana.com`). This is how the page stays alive without burning Actions minutes.
+
 ### GitHub Pages
 
 Settings → Pages → Deploy from branch → `/docs`. `docs/index.html` is the dashboard. `docs/.nojekyll` is included so GitHub does not run Jekyll. Favicon + Open Graph tags ship with the snapshot.
@@ -221,7 +223,7 @@ See `crontab.example`. That file is a **local** optional `*/15` loop. It is **no
 - No API keys, no scraping of authenticated dashboards.
 - If a source 429s or 5xxs after retries, the tile is omitted and `omissions[]` explains why.
 - Every fetch is logged in `report.json` → `sources[]` with URL, HTTP status, bytes, milliseconds, UTC timestamp — including failures.
-- User-Agent: `BorealisReport/1.5.4 (Solana ecosystem dashboard; stdlib urllib; no API key)`.
+- User-Agent: `BorealisReport/1.5.5 (Solana ecosystem dashboard; stdlib urllib; no API key)`.
 
 ## Layout
 

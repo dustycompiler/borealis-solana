@@ -38,7 +38,7 @@ from zoneinfo import ZoneInfo
 
 from htmlout import render_html
 
-VERSION = "1.5.4"
+VERSION = "1.5.5"
 PRODUCT = "Borealis"
 LAMPORTS = 1_000_000_000
 PT = ZoneInfo("America/Vancouver")
@@ -48,7 +48,7 @@ PRIMARY_RPC = "https://api.mainnet-beta.solana.com"
 FALLBACK_RPC = "https://solana-rpc.publicnode.com"
 
 USER_AGENT = (
-    "BorealisReport/1.5.4 (Solana ecosystem dashboard; stdlib urllib; no API key)"
+    f"BorealisReport/{VERSION} (Solana ecosystem dashboard; stdlib urllib; no API key)"
 )
 
 # Official Solana burn address, cited from Solana Foundation (not guessed):
@@ -108,8 +108,10 @@ SIMD0525_CHANGELOG_QUOTE = (
 # Do not claim a 15-minute tick. Banner if snapshot age exceeds this.
 STALE_AFTER_SECONDS = 2 * 60 * 60
 CADENCE = (
-    "auto-refresh on a GitHub Actions schedule (not a guaranteed 15-minute tick; "
-    "GitHub cron can drift or pause). STALE banner if snapshot age > 2 hours."
+    "GitHub Actions snapshot (not a guaranteed 15-minute tick; cron can drift or pause). "
+    "STALE banner if snapshot age > 2 hours. On-page LIVE pulse: browser JSON-RPC to "
+    "public Solana RPC (publicnode, mainnet-beta fallback) for slot/epoch/TPS at most "
+    "every 60s. Snapshot values shown as NOT LIVE if RPC fails. Never invented."
 )
 SIMD0525_STAGES = (
     {"target_ms": 400, "feature": None, "gate": None},
@@ -4366,7 +4368,7 @@ def render_md(snap: dict[str, Any]) -> str:
 **Cluster block time** {c.get('block_time_utc') or '—'} · **RPC health** `{health}`
 **Health score** {hs.get('score')} / 100 — `{hs.get('formula')}`
 **Network health** {brief.get('network_health') or brief.get('verdict') or '—'} · **Ecosystem** {brief.get('ecosystem_activity') or '—'} — {brief.get('what_changed') or ''}
-Auto-refresh on a GitHub Actions schedule (not a guaranteed 15-minute tick). STALE if snapshot age > 2 hours.
+GitHub Actions snapshot (not a guaranteed 15-minute tick). STALE if snapshot age > 2 hours. The HTML dashboard also runs an on-page LIVE pulse (browser JSON-RPC, at most every 60s) for slot/epoch/TPS.
 
 This file is produced by `python3 generate.py` from public endpoints. Every number
 is timestamped in `out/report.json`. If a source fails, the tile is omitted rather
@@ -4786,6 +4788,18 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
                 "cors": True,
                 "label": "browser live vs snapshot",
                 "source": "Coinbase Exchange SOL-USD 24h stats (CORS *)",
+            },
+            "live_pulse": {
+                "rpc": [FALLBACK_RPC, PRIMARY_RPC],
+                "interval_ms": 60_000,
+                "methods": ["getEpochInfo", "getRecentPerformanceSamples", "getSlot"],
+                "label": "LIVE / on-page-now vs snapshot generated_at",
+                "fail": "NOT LIVE — last snapshot values; never invented",
+                "note": (
+                    "Browser JSON-RPC. publicnode first because api.mainnet-beta.solana.com "
+                    "403s GitHub Pages Origin; publicnode CORS *. Same two keyless endpoints "
+                    "as generate.py. At most every 60s. Not a GitHub Actions tick."
+                ),
             },
         },
         "cluster": cluster, "validators": validators, "market": market, "defi": defi,

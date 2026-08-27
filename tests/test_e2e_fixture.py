@@ -115,6 +115,10 @@ class EndToEndFixtureTests(unittest.TestCase):
             self.assertEqual(js["brief"]["network_health"], "HEALTHY")
             self.assertFalse(js["brief"]["biggest_risk"].lower().startswith("none") and js["brief"]["network_health"] != "HEALTHY")
             self.assertIn("External Reference", html + md + json.dumps(js))
+            self.assertIn("live-pulse", html)
+            self.assertIn("on-page-now", html)
+            self.assertIn("solana-rpc.publicnode.com", html)
+            self.assertNotIn("updates every 15 min via GitHub Action", html)
 
     def test_watch_delinquency_is_never_none_risk(self):
         cluster = {

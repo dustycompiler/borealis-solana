@@ -1,5 +1,7 @@
 # Optional LOCAL refresh every 15 minutes. This is not how GitHub Pages is updated.
 # GitHub Actions schedule can drift or pause; the live dashboard shows STALE if
-# generated_at is older than 2 hours. Install with: crontab crontab.example
+# generated_at is older than 2 hours, and an on-page LIVE pulse (browser JSON-RPC,
+# at most every 60s) keeps slot/epoch/TPS current without burning Actions minutes.
+# Install with: crontab crontab.example
 # Adjust the path. Uses python3 from PATH. No API keys required.
 */15 * * * * cd /path/to/borealis-solana && python3 generate.py >> /tmp/borealis.log 2>&1
