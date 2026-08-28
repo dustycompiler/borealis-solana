@@ -38,7 +38,7 @@ from zoneinfo import ZoneInfo
 
 from htmlout import render_html
 
-VERSION = "1.5.5"
+VERSION = "1.5.6"
 PRODUCT = "Borealis"
 LAMPORTS = 1_000_000_000
 PT = ZoneInfo("America/Vancouver")
@@ -3699,8 +3699,11 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None, 
     """REV = same completed UTC day: in-protocol fees + gross Jito MEV tips.
 
     Gross tips = jito_tips + validator_tips (components, not inclusive).
-    tip_floor × TPS is NOT REV. DeFiLlama protocol/application fees are NEVER REV.
-    Never mix fee date with a different Jito day. Never use today's incomplete Jito row.
+    In-protocol fee USD (network_fees_usd_24h) uses that UTC day's solana.com/data
+    SOL Price — the same FX as REV — not the live snapshot. Spot only if that
+    day's series is missing. tip_floor × TPS is NOT REV. DeFiLlama protocol/
+    application fees are NEVER REV. Never mix fee date with a different Jito day.
+    Never use today's incomplete Jito row.
     """
     fees = (defi or {}).get("fees") or {}
     derived = (sdata or {}).get("derived") or {}
@@ -3785,6 +3788,22 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None, 
         gross_jito_usd = gross_jito_sol * rev_px
     net_usd_rev = (net_sol * rev_px) if (net_sol is not None and rev_px is not None) else None
 
+    # network_fees_usd_24h must use the same UTC-day SOL-USD as REV
+    # (solana.com/data SOL Price on network_fees_date), not the live snapshot.
+    # Spot is only a fallback when that day's series is missing — never fabricated.
+    if rev_date and rev_date == fee_date:
+        fee_px, fee_px_date, fee_px_src = rev_px, rev_px_date, rev_px_src
+    else:
+        fee_px, fee_px_date, fee_px_src = daily_sol_usd(derived, fee_date)
+    net_usd_fx = None
+    net_usd_fx_date = None
+    net_usd_fx_src = None
+    if net_sol is not None and fee_px is not None and fee_px_date == fee_date:
+        net_usd = net_sol * fee_px
+        net_usd_fx = fee_px
+        net_usd_fx_date = fee_px_date
+        net_usd_fx_src = fee_px_src
+
     routes_tried = [
         {"route": "solana.com/data Fees (Allium/Dune/Blockworks)", "role": "measured in-protocol 24h (headline_primary)",
          "ok": net_sol is not None, "sol": net_sol, "usd": net_usd, "included_in_headline": True},
@@ -3863,6 +3882,9 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None, 
         "network_fees_usd_24h": net_usd,
         "network_fees_date": derived.get("network_fees_date"),
         "network_fees_source": derived.get("network_fees_source"),
+        "network_fees_sol_usd": net_usd_fx,
+        "network_fees_usd_price_date": net_usd_fx_date,
+        "network_fees_usd_price_source": net_usd_fx_src,
         "network_fees_30d_median_sol": derived.get("network_fees_30d_median_sol"),
         "sampled": tx_fees,
         "median_tx_fee_sol": p50,
@@ -4441,7 +4463,7 @@ TPS = `numTransactions / samplePeriodSecs`. Slot time = `samplePeriodSecs / numS
 
 | Metric | Value | Source |
 | --- | ---: | --- |
-| **In-protocol fees 24h** | **{fmt_usd(eco.get('network_fees_usd_24h'))}** ({fmt_num(eco.get('network_fees_sol_24h'), 1)} SOL) | {eco.get('network_fees_source') or '—'} MEASURED |
+| **In-protocol fees 24h** | **{fmt_usd(eco.get('network_fees_usd_24h'))}** ({fmt_num(eco.get('network_fees_sol_24h'), 1)} SOL) | {eco.get('network_fees_source') or '—'} MEASURED · USD at {eco.get('network_fees_usd_price_source') or eco.get('rev_usd_price_source') or 'run SOL-USD (no same-UTC-day series)'} |
 | **Solana REV** | **{fmt_num(eco.get('rev_24h_sol'), 1) + ' SOL' if eco.get('rev_complete') else 'incomplete'}** / **{fmt_usd(eco.get('rev_24h_usd')) if eco.get('rev_24h_usd') is not None else 'USD omitted'}** | {eco.get('rev_kind') or eco.get('rev_label')} · UTC day {eco.get('rev_utc_day') or '—'} · SOL-USD date {eco.get('rev_usd_price_date') or '—'} |
 | Jito tip-floor run-rate (NOT REV) | {fmt_usd((eco.get('jito_runrate_not_rev') or dict()).get('runrate_24h_usd'))} | INVALID as a 24h aggregate · included_in_headline=false · {(eco.get('jito') or dict()).get('sensitivity') or eco.get('rev_sensitivity') or 'tip_floor × nv TPS × 86400'} |
 | Protocol fees 24h | {fmt_usd(eco.get('protocol_fees_usd'))} | EXCLUDED from REV — {eco.get('protocol_fees_label')} |

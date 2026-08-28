@@ -1,27 +1,25 @@
-# Borealis 1.5.5 — official Superteam rubric
+# Borealis 1.5.6 — official Superteam rubric
 
-Scored 2026-08-27 **11:20 PT** against the 1.5.5 ship
-(`meta.version` **1.5.5**). Not a judge ranking. Do not inflate.
+Scored 2026-08-27 **18:13 PT** against the 1.5.6 ship
+(`meta.version` **1.5.6**). Not a judge ranking. Do not inflate.
 
 Official listing criteria only (earn.superteam.fun, listing token SIMD-525). Scale 0.0–5.0.
 If uncertain, score lower. A 5.0 would survive a hostile grep with no remaining P0/P1.
 
 | Criterion | Score / 5 | Why | What prevents 5.0 |
 |---|---:|---|---|
-| Comprehensiveness | 4.8 | Same coverage as 1.5.4 (REV calendar-day, Jupiter xStocks subset volume, fees sample, incinerator, DAA, Feature-gate SIMD labels). Live pulse is cluster slot/epoch/TPS only — not a second census. | REV is a UTC **calendar day**, not rolling 24h. xStocks mcap is 80 of 715. Volume is a Jupiter subset. 7d equity volume does not exist no-key. Dune is an external embed. |
-| Automation & Maintainability | 4.4 | One command, stdlib-only, no secrets, `workflow_dispatch` kept. **On-page LIVE pulse** (browser JSON-RPC to publicnode, mainnet-beta fallback, at most every 60s) is the automation answer to GitHub cron unreliability: the comprehensive snapshot can sit idle; judges still see current cluster time. STALE banner remains for `generated_at` age > 2 hours. No new in-repo cron. | GitHub `*/15` cron still is not a clock for the full snapshot. Pulse is cluster-only (slot/epoch/TPS), not REV/DEX/xStocks. CoinGecko/Jupiter 429 from shared IPs is standing. |
-| Clarity & Presentation | 4.8 | LIVE / on-page-now vs snapshot `generated_at`. RPC fail → last snapshot values, **NOT LIVE**, never invented. SIMD stages still `live` / `activated-not-yet-effective` / `pending`. STALE banner explicit. | Headline confidence cannot be HIGH while xStocks mcap is 80/715. Charts mix a short local tape with upstream 30d/90d — labeled. |
-| Innovation | 4.7 | Same as 1.5.4 (Feature-account decode, network-vs-ecosystem classifier, keyless Jito daily MEV). Pulse is a small CORS-aware reuse of existing public RPC, not a new oracle. | Rule-based intelligence. No original Dune query. |
-| Technical Implementation | 4.8 | Stdlib unittests cover gate labels at epoch 1023 (350 live, 300 not-yet-effective, 250/200 pending), epoch 1024 → 300 live, observed 367 ms is **not** gate proof, STALE threshold, HEALTHY+CONTRACTION risk None, live-pulse HTML/RPC fallbacks. | Full generate.py is network-bound; e2e is fixture-backed. Browser CORS: mainnet-beta 403s GitHub Pages Origin, so pulse tries publicnode first. |
+| Comprehensiveness | 4.8 | Same coverage as 1.5.5. In-protocol fee USD now uses the same UTC-day SOL-USD as REV (not a new metric). Live pulse is still cluster slot/epoch/TPS only. | REV is a UTC **calendar day**, not rolling 24h. xStocks mcap is 80 of 715. Volume is a Jupiter subset. 7d equity volume does not exist no-key. Dune is an external embed. |
+| Automation & Maintainability | 4.4 | Unchanged: one command, stdlib-only, no secrets, `workflow_dispatch` kept. On-page LIVE pulse (browser JSON-RPC, ≤60s) plus STALE banner if snapshot age > 2 hours. No new in-repo cron. This patch does not add a snapshot cadence. | GitHub `*/15` cron still is not a clock for the full snapshot. Pulse is cluster-only (slot/epoch/TPS), not REV/DEX/xStocks. CoinGecko/Jupiter 429 from shared IPs is standing. |
+| Clarity & Presentation | 4.8 | Fee tile now labels the UTC-day SOL-USD next to REV's. LIVE / on-page-now vs snapshot `generated_at`. RPC fail → last snapshot values, **NOT LIVE**, never invented. SIMD stages still `live` / `activated-not-yet-effective` / `pending`. STALE banner explicit. | Headline confidence cannot be HIGH while xStocks mcap is 80/715. Charts mix a short local tape with upstream 30d/90d — labeled. |
+| Innovation | 4.7 | Same as 1.5.5. This is a consistency fix, not a new oracle. | Rule-based intelligence. No original Dune query. |
+| Technical Implementation | 4.8 | Stdlib tests now pin `network_fees_usd_24h` to the fee UTC day's solana.com/data SOL Price (rejects live/spot when that series exists; falls back only if the day is missing). Gate-label and STALE tests unchanged. | Full generate.py is network-bound; e2e is fixture-backed. Browser CORS: mainnet-beta 403s GitHub Pages Origin, so pulse tries publicnode first. 1.5.5 shipped a real FX inconsistency; closing it is the job, not extra credit. |
 | Originality | 4.8 | First-party generator. Pulse still labels Llama app fees as REV — Borealis does not. Gate labels are Feature accounts, not a copied upgrades-page “still 400ms”. Dune iframe is External Reference. | Third-party Dune dashboard remains on Sources. |
 
-Mean: **4.72 / 5**. Category below 4.5: **Automation & Maintainability (4.4)** — GitHub cron is still not a clock for the comprehensive snapshot; the live pulse only keeps cluster time honest.
+Mean: **4.72 / 5**. Category below 4.5: **Automation & Maintainability (4.4)** — GitHub cron is still not a clock for the comprehensive snapshot; the live pulse only keeps cluster time honest. Scores are not raised for a bugfix.
 
-## This cycle vs 1.5.4
+## This cycle vs 1.5.5
 
-1.5.4 stopped claiming 15-minute GitHub ticks and labeled SIMD from Feature accounts. 1.5.5 keeps both, and adds a judged-visible **on-page LIVE pulse** so cluster slot/epoch/TPS stay current when Actions is idle. No second cron. Observed slot ms is still not gate proof.
-
-Ship-time chain check (epoch **1023**): 350 **live**, 300 **activated-not-yet-effective** (effective epoch 1024), 250/200 **pending**.
+1.5.5's `network_fees_usd_24h` converted the UTC-day Allium fee SOL total at the **live snapshot** SOL-USD while headline REV used that day's solana.com/data SOL Price. Same SOL quantity, two USD numbers. Superteam can ding that. 1.5.6 uses the same UTC-day FX for in-protocol fee USD as the rest of the REV stack. Spot remains labeled on `rev_spot_usd` only. Not a new snapshot cadence. STALE banner + live pulse unchanged. No Superteam Earn reopen. No withdraw.
 
 ## External blockers (not laziness)
 

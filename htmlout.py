@@ -610,9 +610,15 @@ def render_html(snap: dict) -> str:
              source="RPC getBlock meta.fee · time-stratified sample, NOT a 24h census", conf=fee_conf, extra=age),
         tile("In-protocol fees 24h",
              usd(eco.get("network_fees_usd_24h")) if eco.get("network_fees_usd_24h") is not None else "—",
-             "MEASURED · solana.com Fees (vote + base + priority)",
+             (
+                 f"MEASURED · solana.com Fees (vote + base + priority) · SOL-USD "
+                 f"{nfmt(eco.get('network_fees_sol_usd'), 2)} on {e(eco.get('network_fees_usd_price_date'))}"
+                 if eco.get("network_fees_usd_price_date")
+                 else "MEASURED · solana.com Fees (vote + base + priority) · USD at run SOL-USD (no same-UTC-day series)"
+             ),
              ghost=eco.get("network_fees_usd_24h") is None,
-             source=(eco.get("network_fees_source") or "solana.com/data Fees") + " MEASURED; NOT DeFiLlama protocol fees",
+             source=(eco.get("network_fees_source") or "solana.com/data Fees") + " MEASURED; NOT DeFiLlama protocol fees"
+                    + ("; USD " + (eco.get("network_fees_usd_price_source") or "at run SOL-USD")),
              conf="HIGH" if eco.get("network_fees_usd_24h") is not None else "LOW", extra=age),
         tile("Solana REV",
              (usd(eco.get("rev_24h_usd")) if eco.get("rev_24h_usd") is not None else (

@@ -421,6 +421,10 @@ class EconomicsHonestyTests(unittest.TestCase):
         self.assertAlmostEqual(eco.get("rev_sol_usd"), 100)
         # snapshot 97 must not be the REV USD converter
         self.assertNotAlmostEqual(eco.get("rev_24h_usd"), (9000 + gross) * 97)
+        self.assertAlmostEqual(eco.get("network_fees_usd_24h"), 900_000)
+        self.assertNotAlmostEqual(eco.get("network_fees_usd_24h"), 9000 * 97)
+        self.assertEqual(eco.get("network_fees_usd_price_date"), "2026-08-25")
+        self.assertAlmostEqual(eco.get("network_fees_sol_usd"), 100)
         # Llama app fees and tip-floor product are not in REV
         self.assertNotAlmostEqual(eco.get("rev_24h_usd"), llama)
         self.assertNotAlmostEqual(eco.get("rev_24h_usd"), 900_000 + llama)
@@ -479,6 +483,10 @@ class EconomicsHonestyTests(unittest.TestCase):
         self.assertAlmostEqual(eco.get("rev_sol_usd"), 95.40)
         self.assertAlmostEqual(eco.get("rev_24h_usd"), rev_sol * 95.40)
         self.assertNotAlmostEqual(eco.get("rev_24h_usd"), rev_sol * 97.09)
+        self.assertAlmostEqual(eco.get("network_fees_usd_24h"), 9162.05 * 95.40)
+        self.assertNotAlmostEqual(eco.get("network_fees_usd_24h"), 9162.05 * 97.09)
+        self.assertEqual(eco.get("network_fees_usd_price_date"), "2026-08-24")
+        self.assertAlmostEqual(eco.get("network_fees_sol_usd"), 95.40)
         px, d, src = daily_sol_usd(
             {"sol_price_30d": [{"date": "2026-08-24", "value": 95.40}],
              "sol_price_30d_provider": "DexPaprika"},
@@ -500,6 +508,86 @@ class EconomicsHonestyTests(unittest.TestCase):
         self.assertIsNone(eco.get("rev_24h_usd"))
         self.assertIsNone(eco.get("rev_usd_price_date"))
         self.assertAlmostEqual(eco.get("rev_24h_sol"), 9000 + 113.294 + 2152.587)
+        # no same-day price → fee USD may fall back to snapshot; do not invent a day FX
+        self.assertAlmostEqual(eco.get("network_fees_usd_24h"), 900_000)
+        self.assertIsNone(eco.get("network_fees_usd_price_date"))
+        self.assertIsNone(eco.get("network_fees_sol_usd"))
+
+    def test_network_fees_usd_uses_same_utc_day_fx_as_rev(self):
+        """network_fees_usd_24h must not use live/spot SOL-USD when the fee day's series exists."""
+        fees_sol = 9174.159785
+        day_px = 98.29925768278424
+        spot = 109.43
+        eco = build_economics(
+            {"fees": {"total_24h_usd": 14_490_000}},
+            {"derived": {
+                "network_fees_sol": fees_sol,
+                "network_fees_date": "2026-08-25",
+                "network_fees_source": "solana.com/data Fees (Allium)",
+                "sol_price_30d_provider": "DexPaprika",
+                "sol_price_30d": [
+                    {"date": "2026-08-24", "value": 90.0},
+                    {"date": "2026-08-25", "value": day_px},
+                    {"date": "2026-08-26", "value": 105.0},
+                ],
+            }},
+            {"usd": spot},
+            jito_daily=self._jito_daily(),
+        )
+        self.assertTrue(eco.get("rev_complete"))
+        self.assertEqual(eco.get("network_fees_date"), eco.get("rev_utc_day"))
+        self.assertEqual(eco.get("network_fees_usd_price_date"), "2026-08-25")
+        self.assertEqual(eco.get("network_fees_usd_price_date"), eco.get("rev_usd_price_date"))
+        self.assertAlmostEqual(eco.get("rev_sol_usd"), day_px)
+        self.assertAlmostEqual(eco.get("network_fees_sol_usd"), day_px)
+        self.assertAlmostEqual(eco.get("network_fees_usd_24h"), fees_sol * day_px)
+        self.assertNotAlmostEqual(eco.get("network_fees_usd_24h"), fees_sol * spot)
+        ids = {c["id"]: c for c in eco.get("rev_components") or []}
+        self.assertAlmostEqual(eco.get("network_fees_usd_24h"), ids["in_protocol_fees"]["usd"])
+        self.assertAlmostEqual((eco.get("headline_primary") or {}).get("usd"), fees_sol * day_px)
+        self.assertAlmostEqual(
+            eco.get("network_fees_usd_24h") / eco.get("network_fees_sol_24h"),
+            eco.get("rev_sol_usd"),
+        )
+        self.assertIn("DexPaprika", eco.get("network_fees_usd_price_source") or "")
+        html = render_html({
+            "meta": {"version": "1.5.6", "generated_at_utc": "2026-08-28T01:00:00Z",
+                     "generated_at_pt": "2026-08-27 18:00:00 PT"},
+            "cluster": {"health": "ok", "slot_time_sec": 0.365, "tps_total": 4000},
+            "brief": {"network_health": "HEALTHY", "ecosystem_activity": "SURGE",
+                      "verdict": "HEALTHY", "biggest_positive": "DEX",
+                      "biggest_risk": "None — no isolated adverse network or market print this run.",
+                      "score": 100, "what_changed": "x", "why_it_matters": "y"},
+            "health_score": {"score": 100, "formula": "25x"},
+            "economics": eco,
+        })
+        self.assertIn("2026-08-25", html)
+        self.assertIn("98.30", html)  # nfmt of day FX on the in-protocol tile
+        self.assertIn("$901.81K", html)  # 9174.16 SOL × $98.30 same-day FX
+        self.assertNotIn("$1.00M", html)  # that would be 9174.16 × live $109.43
+
+    def test_network_fees_usd_uses_fee_day_fx_even_if_rev_incomplete(self):
+        """Fee USD follows the fee UTC day even when Jito is missing for that day."""
+        eco = build_economics(
+            {"fees": {"total_24h_usd": 1e6}},
+            {"derived": {
+                "network_fees_sol": 9000,
+                "network_fees_date": "2026-08-24",
+                "sol_price_30d_provider": "DexPaprika",
+                "sol_price_30d": [{"date": "2026-08-24", "value": 95.40}],
+            }},
+            {"usd": 109.43},
+            jito_daily={
+                "ok": True, "utc_today": "2026-08-26",
+                "rows": [{"day": "2026-08-25 00:00:00.000 UTC",
+                          "jito_tips": 113.294, "validator_tips": 2152.587}],
+            },
+        )
+        self.assertFalse(eco.get("rev_complete"))
+        self.assertAlmostEqual(eco.get("network_fees_usd_24h"), 9000 * 95.40)
+        self.assertNotAlmostEqual(eco.get("network_fees_usd_24h"), 9000 * 109.43)
+        self.assertEqual(eco.get("network_fees_usd_price_date"), "2026-08-24")
+        self.assertAlmostEqual(eco.get("network_fees_sol_usd"), 95.40)
 
 class InsightBriefTests(unittest.TestCase):
     def _surge_fixture(self):
