@@ -1,7 +1,7 @@
 # Borealis
 
-**Version 1.5.6.** 
-Live Solana cluster & ecosystem report, **version 1.5.6**. One command, **no API keys**, Python stdlib only (`urllib`).
+**Version 1.5.7.** 
+Live Solana cluster & ecosystem report, **version 1.5.7**. One command, **no API keys**, Python stdlib only (`urllib`).
 
 [![Live demo](https://img.shields.io/badge/live-demo-3ee0b0?style=flat-square)](https://dustycompiler.github.io/borealis-solana/)
 [![Tests](https://github.com/dustycompiler/borealis-solana/actions/workflows/tests.yml/badge.svg)](https://github.com/dustycompiler/borealis-solana/actions/workflows/tests.yml)
@@ -129,9 +129,11 @@ Items older than 45 days are dropped by the RSS recency filter (`_parse_pub` acc
 
 Shown in the hero. Not a mystery number.
 
+`G` is the highest SIMD-0525 Feature-gate `target_ms` whose status is **LIVE** (effective), from `classify_simd0525_gates` / `fetch_simd0525_gates`. It is not a hardcoded 400 (or 300). When 250 or 200 later become live, health follows without another manual constant. Observed slot ms is corroboration only — never gate proof.
+
 ```
 25×rpc_ok
-+ 30×clamp(1 − max(0, slot_ms − 400)/400, 0, 1)
++ 30×clamp(1 − max(0, slot_ms − G)/G, 0, 1)
 + 25×clamp(1 − delinquent_stake_pct/2, 0, 1)
 + 20×clamp(tps / tps_baseline, 0, 1)
 ```
@@ -139,11 +141,11 @@ Shown in the hero. Not a mystery number.
 | Term | Max | Meaning |
 | --- | --- | --- |
 | `rpc_ok` | 25 | 25 if `getHealth == ok`, or if getHealth 429s but slot + TPS RPC succeeded; 0 if RPC unreachable |
-| slot | 30 | 400 ms → 30, 800 ms → 0 (faster than 400 still 30) |
+| slot | 30 | live gate G → 30, 2G → 0 (faster than G still 30). At G=300: 300 ms → 30, 390 ms → 21, 400 ms is not a free 30. If the live gate cannot be read, slot points are withheld (0/30) rather than awarding a 400 ms floor. |
 | delinquency | 25 | 0% delinquent stake → 25, 2%+ → 0 |
 | TPS | 20 | current mean TPS vs 30d median from solana.com/data `Transaction Count / 86400`; falls back to the in-window sample median |
 
-Covered by `tests/test_generate.py`.
+WATCH / slow-slot alert at **1.25×G** (same ratio as the old 500/400). At G=300 that is 375 ms, so 390 ms fires. Covered by `tests/test_generate.py` and `tests/test_slot_health_gate.py`.
 
 **Network Health vs Ecosystem Activity.** The exec verdict is **network** health only: RPC, slot cadence, TPS vs baseline, delinquency, status.solana.com. Labels: `HEALTHY` / `WATCH` / `DEGRADED` / `CRITICAL`. DEX/TVL/DAA moves are **Ecosystem Activity** (`QUIET` / `NORMAL` / `ELEVATED` / `SURGE` / `CONTRACTION`) and cannot paint the network WATCH. A DEX surge is SURGE + HEALTHY when slots and delinquency are quiet. If Network Health is HEALTHY, Biggest risk is always None (DEX/TVL contraction cannot paint network risk). If not HEALTHY, Biggest risk is the classifier's dominant factor (delinquency, slot, RPC) — never "None" under WATCH.
 
@@ -158,7 +160,7 @@ Useful **on run 1** (no history.jsonl required). Empty strip copy:
 | Flag | Window | Threshold |
 | --- | --- | --- |
 | `tps_last_sigma` / `slot_time_last_sigma` | 60 × ~60s samples | last sample vs window mean, \|z\| ≥ 2.5 |
-| `slow_slots_500ms` | same | last or mean slot time > 500 ms |
+| `slow_slots` | same | last or mean slot time > 1.25× live SIMD-0525 gate G (375 ms when G=300; was 500 ms when G=400) |
 | `high_delinquency` | `getVoteAccounts` | delinquent stake ≥ 1% **or** count ≥ 25 |
 | `tvl_move_1d` / `_7d` | DeFiLlama daily TVL | \|1d\| ≥ 8% or \|7d\| ≥ 20% |
 | `dex_move_1d` / `_7d` | DeFiLlama DEX | same |
@@ -223,7 +225,7 @@ See `crontab.example`. That file is a **local** optional `*/15` loop. It is **no
 - No API keys, no scraping of authenticated dashboards.
 - If a source 429s or 5xxs after retries, the tile is omitted and `omissions[]` explains why.
 - Every fetch is logged in `report.json` → `sources[]` with URL, HTTP status, bytes, milliseconds, UTC timestamp — including failures.
-- User-Agent: `BorealisReport/1.5.6 (Solana ecosystem dashboard; stdlib urllib; no API key)`.
+- User-Agent: `BorealisReport/1.5.7 (Solana ecosystem dashboard; stdlib urllib; no API key)`.
 
 ## Layout
 
@@ -231,6 +233,7 @@ See `crontab.example`. That file is a **local** optional `*/15` loop. It is **no
 generate.py          orchestrator (RPC, HTTP, anomalies, markdown, json)
 htmlout.py           dark dashboard renderer (inline CSS/JS, SVG trend charts)
 tests/test_generate.py
+tests/test_slot_health_gate.py
 out/                 latest generated artifacts
 docs/                GitHub Pages snapshot (copy of out/)
 data/history.jsonl   rolling baselines

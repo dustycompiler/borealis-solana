@@ -38,7 +38,7 @@ from zoneinfo import ZoneInfo
 
 from htmlout import render_html
 
-VERSION = "1.5.6"
+VERSION = "1.5.7"
 PRODUCT = "Borealis"
 LAMPORTS = 1_000_000_000
 PT = ZoneInfo("America/Vancouver")
@@ -125,7 +125,7 @@ SIMD0525_STAGES = (
      "gate": "reduce_slot_time_to_200ms"},
 )
 NETWORK_FLAG_KEYS = {
-    "tps_last_sigma", "slot_time_last_sigma", "slow_slots_500ms",
+    "tps_last_sigma", "slot_time_last_sigma", "slow_slots",
     "high_delinquency", "tps_vs_30d", "rpc_unhealthy", "status_degraded",
     "corr_congestion", "corr_validator_stress", "tps_vs_run_history",
 }
@@ -491,7 +491,92 @@ def infer_simd0525_stage(slot_ms: Any, gates: dict[str, Any] | None = None) -> d
     }
 
 
-def classify_network_health(cluster, validators, health, flags, status=None) -> dict[str, Any]:
+
+SLOT_ALERT_RATIO = 1.25  # old 500 ms WATCH / 400 ms floor
+SLOT_DEGRADED_RATIO = 1.75  # old 700 / 400
+SLOT_CRITICAL_RATIO = 2.0  # old 800 / 400; also slot score zero at 2G
+
+
+def live_slot_target_ms(gates: dict[str, Any] | None) -> int | None:
+    """Highest SIMD-0525 target_ms whose Feature status is LIVE (effective).
+
+    Reads classify_simd0525_gates / fetch_simd0525_gates output. Never silently
+    returns 400 when gates are missing — callers take a degraded path that
+    cannot award a 400 ms floor as perfect.
+
+    Historical: when no later gate is live and the 400 ms row is still
+    ``baseline`` (not superseded), 400 is the live floor.
+    """
+    if not isinstance(gates, dict):
+        return None
+    live: list[int] = []
+    baseline_400 = False
+    for st in gates.get("stages") or []:
+        if not isinstance(st, dict):
+            continue
+        tgt = st.get("target_ms")
+        if not isinstance(tgt, (int, float)):
+            continue
+        tgt_i = int(tgt)
+        status = st.get("status")
+        if status == "live":
+            live.append(tgt_i)
+        elif tgt_i == 400 and status == "baseline":
+            baseline_400 = True
+    if live:
+        return max(live)
+    lt = gates.get("live_target_ms")
+    if isinstance(lt, (int, float)) and lt > 0:
+        return int(lt)
+    if baseline_400:
+        return 400
+    return None
+
+
+def slot_health_params(gates: dict[str, Any] | None = None,
+                       health: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Slot score/alert thresholds from the live SIMD-0525 gate.
+
+    G = live_slot_target_ms. Full slot score at <= G, zero at >= 2G.
+    WATCH / slow-slot alert at 1.25*G (375 ms when G=300). When G cannot
+    be read, refuse a 400 ms floor.
+    """
+    G = live_slot_target_ms(gates)
+    if G is None and isinstance(health, dict):
+        g2 = health.get("live_slot_target_ms")
+        if isinstance(g2, (int, float)) and g2 > 0:
+            G = int(g2)
+    if G is None or G <= 0:
+        return {
+            "G": None,
+            "alert_ms": None,
+            "degraded_ms": None,
+            "critical_ms": None,
+            "source": "unavailable",
+            "note": (
+                "live SIMD-0525 gate unavailable — refusing a 400 ms floor. "
+                "Slot component is withheld (0/30); alerts do not use a 500 ms quiet band."
+            ),
+        }
+    return {
+        "G": G,
+        "alert_ms": SLOT_ALERT_RATIO * G,
+        "degraded_ms": SLOT_DEGRADED_RATIO * G,
+        "critical_ms": SLOT_CRITICAL_RATIO * G,
+        "source": "simd0525_live_gate",
+        "note": None,
+    }
+
+
+def slot_component_points(slot_ms: float, G: int | float) -> float:
+    """30 * clamp(1 - max(0, slot_ms - G)/G, 0, 1). Full at <=G, zero at >=2G."""
+    g = float(G)
+    slot_frac = clamp(1.0 - max(0.0, float(slot_ms) - g) / g, 0.0, 1.0)
+    return 30.0 * slot_frac
+
+
+def classify_network_health(cluster, validators, health, flags, status=None,
+                            gates=None) -> dict[str, Any]:
     """HEALTHY/WATCH/DEGRADED/CRITICAL from RPC, incidents, slot, TPS vs baseline, delinquency ONLY."""
     score = (health or {}).get("score")
     slot_ms = (fnum(cluster.get("slot_time_sec")) or 0) * 1000
@@ -505,6 +590,14 @@ def classify_network_health(cluster, validators, health, flags, status=None) -> 
     tps_depressed = (
         tps is not None and tps_base and tps_base > 0 and tps < 0.70 * tps_base
     )
+    params = slot_health_params(gates, health)
+    G = params["G"]
+    alert_ms = params["alert_ms"]
+    degraded_ms = params["degraded_ms"]
+    critical_ms = params["critical_ms"]
+    slot_critical = bool(critical_ms is not None and slot_ms >= critical_ms)
+    slot_degraded = bool(degraded_ms is not None and slot_ms >= degraded_ms)
+    slot_watch = bool(alert_ms is not None and slot_ms >= alert_ms)
     net_flags = [f for f in (flags or []) if f.get("key") in NETWORK_FLAG_KEYS]
     adverse_net = [
         f for f in net_flags
@@ -517,18 +610,21 @@ def classify_network_health(cluster, validators, health, flags, status=None) -> 
             and fnum(cluster.get("tps_last")) >= fnum(cluster.get("tps_median"))
         )
     ]
-    if rpc_down or slot_ms >= 800 or d_pct >= 5.0 or ind in ("critical",) or (
+    if rpc_down or slot_critical or d_pct >= 5.0 or ind in ("critical",) or (
         any(i.get("impact") in ("critical", "major") for i in unresolved if isinstance(i, dict))
         and unresolved
     ):
         label = "CRITICAL"
-        why = "RPC unreachable, slot ≥800 ms, delinquency ≥5%, or a critical/major open incident."
-    elif (rpc_health not in ("ok", None) and tps is None) or slot_ms >= 700 or d_pct >= 2.0 or (
+        crit_band = f"{critical_ms:.0f}" if critical_ms is not None else "2× live SIMD-0525 gate"
+        why = (
+            f"RPC unreachable, slot ≥{crit_band} ms, delinquency ≥5%, or a critical/major open incident."
+        )
+    elif (rpc_health not in ("ok", None) and tps is None) or slot_degraded or d_pct >= 2.0 or (
         isinstance(score, (int, float)) and score < 55
     ) or unresolved or ind in ("major",):
         label = "DEGRADED"
         why = "Slot, delinquency, health score, or an open incident is off-nominal."
-    elif slot_ms >= 500 or d_pct >= 1.0 or (isinstance(score, (int, float)) and score < 80) or tps_depressed or (
+    elif slot_watch or d_pct >= 1.0 or (isinstance(score, (int, float)) and score < 80) or tps_depressed or (
         ind not in ("none", "operational", None, "")
     ) or any(f.get("severity") == "alert" for f in adverse_net):
         label = "WATCH"
@@ -551,7 +647,7 @@ def classify_network_health(cluster, validators, health, flags, status=None) -> 
     )
     # Dominant is a specific sentence (not an OR-list). Order matches
     # CRITICAL/DEGRADED/WATCH thresholds: delinquency first (WATCH ≥1%),
-    # then slot (WATCH ≥500 ms), then RPC/status, TPS vs baseline, score.
+    # then slot (WATCH ≥ 1.25× live SIMD-0525 gate), then RPC/status, TPS vs baseline, score.
     if d_pct >= 1.0:
         if n_del is not None:
             dominant = (
@@ -560,10 +656,14 @@ def classify_network_health(cluster, validators, health, flags, status=None) -> 
             )
         else:
             dominant = f"Validator delinquency elevated: {d_pct:.2f}% of activated stake."
-    elif slot_ms >= 500:
-        dominant = (
-            f"Slot cadence degraded: mean {slot_ms:.0f} ms vs quiet band <500 ms."
-        )
+    elif slot_watch:
+        if G is not None and alert_ms is not None:
+            dominant = (
+                f"Slot cadence degraded: mean {slot_ms:.0f} ms vs quiet band "
+                f"<{alert_ms:.0f} ms (1.25× live SIMD-0525 {G} ms gate)."
+            )
+        else:
+            dominant = f"Slot cadence degraded: mean {slot_ms:.0f} ms vs live SIMD-0525 gate."
     elif rpc_issue:
         dominant = "RPC/status health degraded."
     elif tps_depressed:
@@ -3282,10 +3382,14 @@ def _flag(*, key: str, severity: str, title: str, detail: str, metric: str,
     }
 
 
-def detect_anomalies(cluster, validators, market, defi, status, history, sdata=None) -> list[dict[str, Any]]:
+def detect_anomalies(cluster, validators, market, defi, status, history, sdata=None, gates=None) -> list[dict[str, Any]]:
     flags: list[dict[str, Any]] = []
     sdata = sdata or {}
     derived = sdata.get("derived") or {}
+    slot_params = slot_health_params(gates)
+    G = slot_params["G"]
+    alert_ms = slot_params["alert_ms"]
+    degraded_ms = slot_params["degraded_ms"]
     samples = cluster.get("tps_samples") or []
     n_samples = len(samples)
     tps_samples = [r["tps_total"] for r in samples if isinstance(r.get("tps_total"), (int, float))]
@@ -3323,7 +3427,7 @@ def detect_anomalies(cluster, validators, market, defi, status, history, sdata=N
     if z_st is not None and abs(z_st) >= 2.5:
         flags.append(_flag(
             key="slot_time_last_sigma",
-            severity="warn" if (st_last or 0) < 0.5 else "alert",
+            severity="warn" if (alert_ms is None or (st_last or 0) * 1000.0 < alert_ms) else "alert",
             title="Last slot-time sample outside 2.5σ of the 60-sample window",
             detail=(f"Last sample {(st_last or 0)*1000:.0f} ms is {z_st:+.2f}σ vs window mean "
                     f"{(mean(st_samples) or 0)*1000:.0f} ms (n={n_samples})."),
@@ -3333,17 +3437,19 @@ def detect_anomalies(cluster, validators, market, defi, status, history, sdata=N
         ))
 
     last_or_mean_st = st_last if st_last is not None else st
-    if last_or_mean_st is not None and last_or_mean_st > 0.50:
+    last_or_mean_ms = (last_or_mean_st * 1000.0) if last_or_mean_st is not None else None
+    if last_or_mean_ms is not None and alert_ms is not None and last_or_mean_ms > alert_ms:
         flags.append(_flag(
-            key="slow_slots_500ms",
-            severity="alert" if last_or_mean_st > 0.70 else "warn",
-            title="Slot time above 500 ms",
-            detail=(f"Slot time {last_or_mean_st*1000:.0f} ms (last sample "
+            key="slow_slots",
+            severity="alert" if (degraded_ms is not None and last_or_mean_ms > degraded_ms) else "warn",
+            title=f"Slot time above {alert_ms:.0f} ms vs live SIMD-0525 gate",
+            detail=(f"Slot time {last_or_mean_ms:.0f} ms (last sample "
                     f"{(st_last or 0)*1000:.0f} ms, window mean {(st or 0)*1000:.0f} ms). "
-                    "Quiet band is <500 ms; SIMD-0525 350 ms is the live mainnet target, not a 400 ms ceiling."),
+                    f"Quiet band is <{alert_ms:.0f} ms (1.25× live SIMD-0525 {G} ms gate), "
+                    "not a 400/500 ms floor."),
             metric="slot_time_sec", value=round(last_or_mean_st, 4),
-            baseline={"target_sec": 0.4, "mean": st, "last": st_last},
-            threshold="slot time > 500 ms (last sample or window mean)",
+            baseline={"target_ms": G, "alert_ms": alert_ms, "mean": st, "last": st_last},
+            threshold=f"slot time > {alert_ms:.0f} ms (1.25× live SIMD-0525 {G} ms; last sample or window mean)",
         ))
 
     d_pct = validators.get("delinquent_stake_pct")
@@ -3445,9 +3551,11 @@ def detect_anomalies(cluster, validators, market, defi, status, history, sdata=N
         ))
 
     # Multi-source correlation — the innovation judges asked for.
+    # Elevated vs live SIMD-0525 gate G, not a leftover 450 ms (400-floor) band.
+    g_sec = (G / 1000.0) if G is not None else None
     elevated_slot = (
-        (st_last is not None and st_last > 0.45)
-        or (st is not None and st > 0.45)
+        (g_sec is not None and st_last is not None and st_last > g_sec)
+        or (g_sec is not None and st is not None and st > g_sec)
         or (z_st is not None and z_st >= 1.0)
     )
     depressed_nv = (
@@ -3539,7 +3647,7 @@ def detect_anomalies(cluster, validators, market, defi, status, history, sdata=N
     return flags
 
 
-def compute_health(cluster, validators, sdata) -> dict[str, Any]:
+def compute_health(cluster, validators, sdata, gates=None) -> dict[str, Any]:
     """Transparent 0–100 score. Formula is shown on the page and in README."""
     derived = (sdata or {}).get("derived") or {}
     rpc_ok = cluster.get("health") == "ok"
@@ -3557,16 +3665,28 @@ def compute_health(cluster, validators, sdata) -> dict[str, Any]:
         rpc_pts = 0.0
         rpc_detail = "RPC unreachable"
 
+    params = slot_health_params(gates)
+    G = params["G"]
+    alert_ms = params["alert_ms"]
     slot_sec = cluster.get("slot_time_sec")
     if slot_sec is None:
         slot_pts = 0.0
         slot_detail = "slot time unavailable"
         slot_ms = None
+    elif G is None:
+        slot_ms = slot_sec * 1000.0
+        slot_pts = 0.0
+        slot_detail = (
+            f"mean slot {slot_ms:.0f} ms; live SIMD-0525 gate unavailable — "
+            "slot component withheld (refusing a 400 ms floor)"
+        )
     else:
         slot_ms = slot_sec * 1000.0
-        slot_frac = clamp(1.0 - max(0.0, slot_ms - 400.0) / 400.0, 0.0, 1.0)
-        slot_pts = 30.0 * slot_frac
-        slot_detail = f"mean slot {slot_ms:.0f} ms vs 400 ms target (400→30, 800→0)"
+        slot_pts = slot_component_points(slot_ms, G)
+        slot_detail = (
+            f"mean slot {slot_ms:.0f} ms vs live SIMD-0525 {G} ms gate "
+            f"({G}→30, {2 * G}→0)"
+        )
 
     d_pct = validators.get("delinquent_stake_pct")
     if d_pct is None:
@@ -3599,16 +3719,26 @@ def compute_health(cluster, validators, sdata) -> dict[str, Any]:
         {"id": "tps", "max": 20, "points": round(tps_pts, 2), "detail": tps_detail},
     ]
     score = int(round(sum(p["points"] for p in parts)))
-    formula = (
-        "25×rpc_ok + 30×clamp(1 − max(0, slot_ms − 400)/400, 0, 1) + "
-        "25×clamp(1 − delinquent_stake_pct/2, 0, 1) + 20×clamp(tps / tps_baseline, 0, 1)"
-    )
+    if G is None:
+        formula = (
+            "25×rpc_ok + 30×(slot withheld: live SIMD-0525 gate unavailable; refusing 400 ms floor) + "
+            "25×clamp(1 − delinquent_stake_pct/2, 0, 1) + 20×clamp(tps / tps_baseline, 0, 1)"
+        )
+    else:
+        formula = (
+            f"25×rpc_ok + 30×clamp(1 − max(0, slot_ms − {G})/{G}, 0, 1) + "
+            "25×clamp(1 − delinquent_stake_pct/2, 0, 1) + 20×clamp(tps / tps_baseline, 0, 1)"
+        )
     return {
         "score": max(0, min(100, score)),
         "parts": parts,
         "formula": formula,
         "rpc_ok": rpc_ok,
         "slot_ms": slot_ms,
+        "live_slot_target_ms": G,
+        "slot_alert_ms": alert_ms,
+        "slot_gate_source": params["source"],
+        "slot_gate_note": params["note"],
         "delinquent_stake_pct": d_pct,
         "tps": tps,
         "tps_baseline": tps_base,
@@ -3990,12 +4120,18 @@ def build_economics(defi, sdata, market, tx_fees=None, jito=None, cluster=None, 
 
 
 
-def build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags) -> list[dict[str, Any]]:
+def build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags,
+                   gates=None) -> list[dict[str, Any]]:
     """3 strong evidence-linked lines. No causation language. No duplicate of the same anomaly."""
     lines: list[dict[str, Any]] = []
     tps = fnum(cluster.get("tps_total"))
     slot_ms = (fnum(cluster.get("slot_time_sec")) or 0) * 1000
     d_pct = fnum(validators.get("delinquent_stake_pct"))
+    slot_params = slot_health_params(gates)
+    G = slot_params["G"]
+    alert_ms = slot_params["alert_ms"]
+    slot_quiet = bool(slot_ms and alert_ms is not None and slot_ms < alert_ms)
+    slot_slow = bool(alert_ms is not None and slot_ms >= alert_ms)
     dex = (defi or {}).get("dex") or {}
     dex_7d = fnum(dex.get("change_7d_pct"))
     dex_1d = fnum(dex.get("change_1d_pct"))
@@ -4005,7 +4141,7 @@ def build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags) -
     venues = ", ".join(str(x.get("name") or "?") for x in top_dex if x)
     used_dex = False
 
-    if dex_7d is not None and abs(dex_7d) >= 20 and slot_ms and slot_ms < 450 and (d_pct or 0) < 0.5:
+    if dex_7d is not None and abs(dex_7d) >= 20 and slot_quiet and (d_pct or 0) < 0.5:
         lines.append({
             "id": "activity_without_stress",
             "polarity": "positive" if dex_7d > 0 else "risk",
@@ -4029,20 +4165,24 @@ def build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags) -
         })
         used_dex = True
 
-    if slot_ms >= 500:
+    if slot_slow:
+        gate_txt = f"live SIMD-0525 {G} ms gate" if G is not None else "live SIMD-0525 gate"
         lines.append({
             "id": "slow_slots",
             "polarity": "risk",
-            "title": "Slot time above 500 ms",
-            "detail": f"Mean slot {slot_ms:.0f} ms vs ~400 ms target. TPS {tps:,.0f}." if tps else f"Mean slot {slot_ms:.0f} ms.",
+            "title": f"Slot time above {alert_ms:.0f} ms vs live gate",
+            "detail": (
+                f"Mean slot {slot_ms:.0f} ms vs {gate_txt} (quiet <{alert_ms:.0f} ms = 1.25×G). "
+                + (f"TPS {tps:,.0f}." if tps else "")
+            ).strip(),
             "evidence": ["cluster.slot_time_sec"],
         })
-    elif slot_ms and slot_ms < 450:
+    elif slot_quiet:
         lines.append({
             "id": "slot_nominal",
             "polarity": "positive",
             "title": "Slot cadence inside the quiet band",
-            "detail": f"Mean slot {slot_ms:.0f} ms, TPS {tps:,.0f}." if tps else f"Mean slot {slot_ms:.0f} ms.",
+            "detail": f"Mean slot {slot_ms:.0f} ms vs live SIMD-0525 {G} ms gate, TPS {tps:,.0f}." if tps else f"Mean slot {slot_ms:.0f} ms vs live SIMD-0525 {G} ms gate.",
             "evidence": ["cluster.slot_time_sec", "cluster.tps_total"],
         })
 
@@ -4138,9 +4278,9 @@ def build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags) -
 
 
 def build_brief(cluster, validators, market, defi, health, flags, insights,
-                status=None, sdata=None, stables=None, xstocks=None) -> dict[str, Any]:
+                status=None, sdata=None, stables=None, xstocks=None, gates=None) -> dict[str, Any]:
     """Exec view: Network Health separate from Ecosystem Activity. DEX surge ≠ WATCH."""
-    net = classify_network_health(cluster, validators, health, flags, status=status)
+    net = classify_network_health(cluster, validators, health, flags, status=status, gates=gates)
     act = classify_ecosystem_activity(defi, sdata=sdata, stables=stables, xstocks=xstocks)
     mkt = classify_market_posture(market)
     score = (health or {}).get("score")
@@ -4763,7 +4903,7 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
     editorial = editorial_block(generated, cluster=cluster, simd_live=simd_live, gates=simd_gates)
     jito_daily = fetch_jito_daily_mev(http)
     economics = build_economics(defi, sdata, market, tx_fees=tx_fees, jito=jito, cluster=cluster, jito_daily=jito_daily)
-    health = compute_health(cluster, validators, sdata)
+    health = compute_health(cluster, validators, sdata, gates=simd_gates)
     trends = build_trends(history, defi, sdata, cluster)
 
     activity = {}
@@ -4772,11 +4912,14 @@ def generate(out_dir: str, docs_dir: str, history_path: str) -> dict[str, Any]:
 
     flags = detect_anomalies(
         cluster, validators, market, defi, news.get("status") or {}, history, sdata,
+        gates=simd_gates,
     )
-    insights = build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags)
+    insights = build_insights(cluster, validators, market, defi, tx_fees, xstocks, flags,
+                              gates=simd_gates)
     brief = build_brief(
         cluster, validators, market, defi, health, flags, insights,
         status=news.get("status") or {}, sdata=sdata, stables=stable, xstocks=xstocks,
+        gates=simd_gates,
     )
 
     hist_row = {

@@ -31,6 +31,8 @@ from generate import (  # noqa: E402
     daily_sol_usd,
     compute_health,
     detect_anomalies,
+    live_slot_target_ms,
+    SIMD0525_STAGES,
     editorial_block,
     equity_mcap,
     fee_stats_from_lamports,
@@ -56,7 +58,27 @@ from generate import (  # noqa: E402
 from htmlout import render_html  # noqa: E402
 
 
+
 UTC = timezone.utc
+
+
+def _gates_live(g: int) -> dict:
+    """classify_simd0525_gates-shaped payload with live floor G."""
+    stages = []
+    for st in SIMD0525_STAGES:
+        tgt = st["target_ms"]
+        if tgt == 400:
+            status = "baseline" if g >= 400 else "superseded"
+        elif g >= 400:
+            status = "pending"
+        elif tgt > g:
+            status = "pending"
+        else:
+            status = "live"
+        stages.append({"target_ms": tgt, "status": status})
+    return {"live_target_ms": None if g >= 400 else g, "stages": stages}
+
+
 
 
 class HealthScoreTests(unittest.TestCase):
@@ -70,7 +92,7 @@ class HealthScoreTests(unittest.TestCase):
         }
         validators = {"delinquent_stake_pct": 0.0}
         sdata = {"derived": {"tps_30d_median": 4000.0, "tps_30d_source": "test baseline"}}
-        h = compute_health(cluster, validators, sdata)
+        h = compute_health(cluster, validators, sdata, gates=_gates_live(400))
         self.assertEqual(h["score"], 100)
         by_id = {p["id"]: p for p in h["parts"]}
         self.assertEqual(by_id["rpc"]["points"], 25)
@@ -86,7 +108,8 @@ class HealthScoreTests(unittest.TestCase):
             "slot_time_sec": 0.800, "tps_median": 4000,
         }
         h = compute_health(cluster, {"delinquent_stake_pct": 0.0},
-                           {"derived": {"tps_30d_median": 4000}})
+                           {"derived": {"tps_30d_median": 4000}},
+                           gates=_gates_live(400))
         by_id = {p["id"]: p for p in h["parts"]}
         self.assertEqual(by_id["slot"]["points"], 0.0)
         self.assertEqual(h["score"], 70)  # 25+0+25+20
@@ -97,7 +120,8 @@ class HealthScoreTests(unittest.TestCase):
             "slot_time_sec": 0.600, "tps_median": 4000,
         }
         h = compute_health(cluster, {"delinquent_stake_pct": 0.0},
-                           {"derived": {"tps_30d_median": 4000}})
+                           {"derived": {"tps_30d_median": 4000}},
+                           gates=_gates_live(400))
         by_id = {p["id"]: p for p in h["parts"]}
         self.assertAlmostEqual(by_id["slot"]["points"], 15.0, places=2)
 
@@ -107,7 +131,8 @@ class HealthScoreTests(unittest.TestCase):
             "slot_time_sec": 0.4, "tps_median": 4000,
         }
         h = compute_health(cluster, {"delinquent_stake_pct": 1.0},
-                           {"derived": {"tps_30d_median": 4000}})
+                           {"derived": {"tps_30d_median": 4000}},
+                           gates=_gates_live(400))
         by_id = {p["id"]: p for p in h["parts"]}
         self.assertAlmostEqual(by_id["delinquency"]["points"], 12.5, places=2)
 
@@ -117,7 +142,8 @@ class HealthScoreTests(unittest.TestCase):
             "slot_time_sec": 0.4, "tps_median": 2000,
         }
         h = compute_health(cluster, {"delinquent_stake_pct": 0.0},
-                           {"derived": {"tps_30d_median": 4000}})
+                           {"derived": {"tps_30d_median": 4000}},
+                           gates=_gates_live(400))
         by_id = {p["id"]: p for p in h["parts"]}
         self.assertAlmostEqual(by_id["tps"]["points"], 10.0, places=2)
 
@@ -127,6 +153,17 @@ class HealthScoreTests(unittest.TestCase):
         by_id = {p["id"]: p for p in h["parts"]}
         self.assertEqual(by_id["rpc"]["points"], 0.0)
         self.assertEqual(h["score"], 0)
+
+    def test_400ms_without_gates_is_not_a_perfect_slot_term(self):
+        cluster = {
+            "health": "ok", "slot": 1, "tps_total": 4000,
+            "slot_time_sec": 0.400, "tps_median": 4000,
+        }
+        h = compute_health(cluster, {"delinquent_stake_pct": 0.0},
+                           {"derived": {"tps_30d_median": 4000}})
+        by_id = {p["id"]: p for p in h["parts"]}
+        self.assertEqual(by_id["slot"]["points"], 0.0)
+        self.assertIsNone(live_slot_target_ms(None))
 
 
 class Pct24hTests(unittest.TestCase):
@@ -609,7 +646,8 @@ class InsightBriefTests(unittest.TestCase):
 
     def test_activity_without_stress_and_healthy_verdict(self):
         cluster, validators, market, defi, tx_fees, xs, flags = self._surge_fixture()
-        ins = build_insights(cluster, validators, market, defi, tx_fees, xs, flags)
+        ins = build_insights(cluster, validators, market, defi, tx_fees, xs, flags,
+                             gates=_gates_live(300))
         ids = [x["id"] for x in ins]
         self.assertIn("activity_without_stress", ids)
         self.assertTrue(1 <= len(ins) <= 6)
@@ -619,8 +657,10 @@ class InsightBriefTests(unittest.TestCase):
 
     def test_dex_surge_is_healthy_plus_surge_not_watch(self):
         cluster, validators, market, defi, tx_fees, xs, flags = self._surge_fixture()
-        ins = build_insights(cluster, validators, market, defi, tx_fees, xs, flags)
-        brief = build_brief(cluster, validators, market, defi, {"score": 100, "tps_baseline": 3500}, flags, ins)
+        ins = build_insights(cluster, validators, market, defi, tx_fees, xs, flags,
+                             gates=_gates_live(300))
+        brief = build_brief(cluster, validators, market, defi, {"score": 100, "tps_baseline": 3500}, flags, ins,
+                            gates=_gates_live(300))
         self.assertEqual(brief["network_health"], "HEALTHY")
         self.assertEqual(brief["ecosystem_activity"], "SURGE")
         self.assertNotEqual(brief["verdict"], "WATCH")
@@ -634,12 +674,14 @@ class InsightBriefTests(unittest.TestCase):
 
     def test_degraded_when_slots_are_slow(self):
         cluster = {"tps_total": 500, "slot_time_sec": 0.72, "health": "ok"}
-        brief = build_brief(cluster, {"delinquent_stake_pct": 0.1}, {}, {}, {"score": 40}, [], [])
+        brief = build_brief(cluster, {"delinquent_stake_pct": 0.1}, {}, {},
+                            {"score": 40, "live_slot_target_ms": 400}, [], [])
         self.assertEqual(brief["verdict"], "DEGRADED")
 
     def test_critical_when_slots_are_very_slow(self):
         cluster = {"tps_total": 500, "slot_time_sec": 0.85, "health": "ok"}
-        brief = build_brief(cluster, {"delinquent_stake_pct": 0.1}, {}, {}, {"score": 40}, [], [])
+        brief = build_brief(cluster, {"delinquent_stake_pct": 0.1}, {}, {},
+                            {"score": 40, "live_slot_target_ms": 400}, [], [])
         self.assertEqual(brief["network_health"], "CRITICAL")
         self.assertIn("slot", brief["biggest_risk"].lower())
         self.assertFalse(brief["biggest_risk"].lower().startswith("none"))
@@ -687,7 +729,8 @@ class InsightBriefTests(unittest.TestCase):
     def test_slot_watch_is_the_biggest_risk(self):
         cluster = {"tps_total": 4000, "slot_time_sec": 0.65, "health": "ok", "slot": 1}
         brief = build_brief(
-            cluster, {"delinquent_stake_pct": 0.1}, {}, {}, {"score": 85, "tps_baseline": 3500}, [], [],
+            cluster, {"delinquent_stake_pct": 0.1}, {}, {},
+            {"score": 85, "tps_baseline": 3500, "live_slot_target_ms": 400}, [], [],
         )
         self.assertIn(brief["network_health"], ("WATCH", "DEGRADED"))
         self.assertIn("slot", brief["biggest_risk"].lower())

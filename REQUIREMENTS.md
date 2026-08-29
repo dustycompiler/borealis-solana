@@ -1,4 +1,4 @@
-# Official requirement matrix — Borealis 1.5.6
+# Official requirement matrix — Borealis 1.5.7
 
 Source: live Superteam Canada listing
 https://earn.superteam.fun/listing/develop-solana-ecosystem-auto-updating-report-and-interactive-dashboard

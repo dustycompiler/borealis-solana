@@ -533,6 +533,14 @@ def render_html(snap: dict) -> str:
     status = news.get("status") or {}
     scom = snap.get("solana_com_data") or {}
     hs = snap.get("health_score") or {}
+    _g = hs.get("live_slot_target_ms")
+    _alert = hs.get("slot_alert_ms")
+    if isinstance(_g, (int, float)) and isinstance(_alert, (int, float)):
+        slot_flag_copy = (
+            f"slot &gt;{_alert:g}ms (1.25× live SIMD-0525 {_g:g} ms gate)"
+        )
+    else:
+        slot_flag_copy = "slot vs live SIMD-0525 gate (1.25×G; not a 400/500 ms floor)"
     eco = snap.get("economics") or {}
     hist = snap.get("history") or []
     inc = snap.get("incinerator") or {}
@@ -1243,7 +1251,7 @@ def render_html(snap: dict) -> str:
     <div class="panel">
       <h2>Rolling baseline flags</h2>
       {flag_html}
-      <p class="tiny muted">Last-sample vs 60-window 2.5σ · slot &gt;500ms · llama TVL/DEX/fees |1d|&gt;8% or |7d|&gt;20% · 30d median from solana.com/data · correlation: congestion / risk-off / validator stress. history.jsonl n={e((snap.get("baseline") or {}).get("history_points"))}.</p>
+      <p class="tiny muted">Last-sample vs 60-window 2.5σ · {slot_flag_copy} · llama TVL/DEX/fees |1d|&gt;8% or |7d|&gt;20% · 30d median from solana.com/data · correlation: congestion / risk-off / validator stress. history.jsonl n={e((snap.get("baseline") or {}).get("history_points"))}.</p>
       <p class="tiny muted">Health formula: {e(hs.get("formula") or "")}</p>
       {hist_spark_tps}{hist_spark_px}
     </div>
