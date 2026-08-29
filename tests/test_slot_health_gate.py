@@ -31,10 +31,10 @@ def gates_with_live(g: int) -> dict:
             status = "baseline" if g >= 400 else "superseded"
         elif g >= 400:
             status = "pending"
-        elif tgt > g:
-            status = "pending"
-        else:
+        elif tgt >= g:
             status = "live"
+        else:
+            status = "pending"
         stages.append({
             "target_ms": tgt,
             "feature": st.get("feature"),
@@ -79,6 +79,19 @@ class LiveSlotTargetTests(unittest.TestCase):
         self.assertEqual(live_slot_target_ms(gates_with_live(350)), 350)
         self.assertEqual(live_slot_target_ms(gates_with_live(250)), 250)
         self.assertEqual(live_slot_target_ms(gates_with_live(200)), 200)
+
+    def test_350_and_300_both_live_effective_floor_is_300(self):
+        """Earlier gates stay live; effective floor is the most-reduced LIVE ms."""
+        g = gates_with_live(300)
+        by = {s["target_ms"]: s["status"] for s in g["stages"]}
+        self.assertEqual(by[400], "superseded")
+        self.assertEqual(by[350], "live")
+        self.assertEqual(by[300], "live")
+        self.assertEqual(by[250], "pending")
+        self.assertEqual(g["live_target_ms"], 300)
+        self.assertEqual(live_slot_target_ms(g), 300)
+        stages_only = {"stages": g["stages"], "live_target_ms": None}
+        self.assertEqual(live_slot_target_ms(stages_only), 300)
 
     def test_historical_400_baseline_is_the_floor(self):
         self.assertEqual(live_slot_target_ms(gates_with_live(400)), 400)

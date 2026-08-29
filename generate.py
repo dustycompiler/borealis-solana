@@ -498,17 +498,22 @@ SLOT_CRITICAL_RATIO = 2.0  # old 800 / 400; also slot score zero at 2G
 
 
 def live_slot_target_ms(gates: dict[str, Any] | None) -> int | None:
-    """Highest SIMD-0525 target_ms whose Feature status is LIVE (effective).
+    """Most-reduced SIMD-0525 target_ms whose Feature status is LIVE (effective).
 
-    Reads classify_simd0525_gates / fetch_simd0525_gates output. Never silently
-    returns 400 when gates are missing — callers take a degraded path that
-    cannot award a 400 ms floor as perfect.
+    Prefer classify_simd0525_gates / fetch_simd0525_gates ``live_target_ms``
+    (last LIVE row on the 400→350→300→250→200 path). Earlier gates stay
+    live when a later one activates, so among LIVE stages the effective
+    floor is the smallest ms (300 beats 350). Never silently return 400
+    when gates are missing.
 
     Historical: when no later gate is live and the 400 ms row is still
     ``baseline`` (not superseded), 400 is the live floor.
     """
     if not isinstance(gates, dict):
         return None
+    lt = gates.get("live_target_ms")
+    if isinstance(lt, (int, float)) and lt > 0:
+        return int(lt)
     live: list[int] = []
     baseline_400 = False
     for st in gates.get("stages") or []:
@@ -524,10 +529,7 @@ def live_slot_target_ms(gates: dict[str, Any] | None) -> int | None:
         elif tgt_i == 400 and status == "baseline":
             baseline_400 = True
     if live:
-        return max(live)
-    lt = gates.get("live_target_ms")
-    if isinstance(lt, (int, float)) and lt > 0:
-        return int(lt)
+        return min(live)
     if baseline_400:
         return 400
     return None

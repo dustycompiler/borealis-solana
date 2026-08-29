@@ -71,10 +71,10 @@ def _gates_live(g: int) -> dict:
             status = "baseline" if g >= 400 else "superseded"
         elif g >= 400:
             status = "pending"
-        elif tgt > g:
-            status = "pending"
-        else:
+        elif tgt >= g:
             status = "live"
+        else:
+            status = "pending"
         stages.append({"target_ms": tgt, "status": status})
     return {"live_target_ms": None if g >= 400 else g, "stages": stages}
 
@@ -874,6 +874,7 @@ class Simd525Tests(unittest.TestCase):
         self.assertEqual(by[250], "pending")
         self.assertEqual(by[200], "pending")
         self.assertEqual(g["live_target_ms"], 350)
+        self.assertEqual(live_slot_target_ms(g), 350)
         self.assertEqual(g["kind"], "FEATURE_GATE")
         self.assertNotIn("consistent-with-observed", json_blob(g))
 
@@ -887,6 +888,7 @@ class Simd525Tests(unittest.TestCase):
         self.assertEqual(by[350], "live")
         self.assertEqual(by[300], "live")
         self.assertEqual(g["live_target_ms"], 300)
+        self.assertEqual(live_slot_target_ms(g), 300)
 
     def test_editorial_renders_on_chain_labels(self):
         now = datetime(2026, 8, 27, tzinfo=UTC)
