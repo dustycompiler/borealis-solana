@@ -13,6 +13,10 @@ on:
       - .github/workflows/update.yml
       - .github/workflows/tests.yml
 
+concurrency:
+  group: update-borealis-snapshot
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pages: write
@@ -36,4 +40,6 @@ jobs:
           git add out docs data/history.jsonl
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "chore: refresh Borealis snapshot"
+          git fetch origin main
+          git pull --rebase origin main
           git push
