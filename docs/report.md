@@ -1,11 +1,11 @@
 # Borealis — Solana ecosystem report
 
-**Generated** 2026-09-11T08:26:56Z · 2026-09-11 01:26:56 PT
+**Generated** 2026-09-11T08:41:45Z · 2026-09-11 01:41:45 PT
 **Author** dustycompiler · **Version** 1.5.7 · **License** MIT
 **Live demo** https://dustycompiler.github.io/borealis-solana/
-**Cluster block time** 2026-09-11T08:26:46Z · **RPC health** `ok`
+**Cluster block time** 2026-09-11T08:41:34Z · **RPC health** `ok`
 **Health score** 90 / 100 — `25×rpc_ok + 30×clamp(1 − max(0, slot_ms − 300)/300, 0, 1) + 25×clamp(1 − delinquent_stake_pct/2, 0, 1) + 20×clamp(tps / tps_baseline, 0, 1)`
-**Network health** HEALTHY · **Ecosystem** ELEVATED — SOL 24h -1.38%; DEX 24h $2.95B · 1d -2% · vs-7d-ago +20%; slot 316 ms
+**Network health** HEALTHY · **Ecosystem** ELEVATED — SOL 24h -1.14%; DEX 24h $2.95B · 1d -2% · vs-7d-ago +20%; slot 317 ms
 GitHub Actions snapshot (not a guaranteed 15-minute tick). STALE if snapshot age > 2 hours. The HTML dashboard also runs an on-page LIVE pulse (browser JSON-RPC, at most every 60s) for slot/epoch/TPS.
 
 This file is produced by `python3 generate.py` from public endpoints. Every number
@@ -15,26 +15,26 @@ than filled with a guess.
 ## Anomalies
 
 - **WARN · Large Solana protocol fees 7d move** — DeFiLlama Solana protocol fees 7d change is +25.31%. (threshold: `|7d %| >= 20`)
-- **INFO · Correlation: risk-off (SOL 24h ↓ + TVL 1d ↓ + DEX 1d ↓)** — SOL 24h -1.38%, DeFiLlama TVL 1d -1.10%, DEX 1d -1.73%. (threshold: `SOL 24h < 0 AND TVL 1d < 0 AND DEX 1d < 0`)
-- **INFO · Daily active addresses vs 30d median** — Current 987,010.00 is +24.7% vs 30d median 791,527.00 (solana.com/data). (threshold: `|current − 30d median| / median >= 20%`)
+- **INFO · Correlation: risk-off (SOL 24h ↓ + TVL 1d ↓ + DEX 1d ↓)** — SOL 24h -1.14%, DeFiLlama TVL 1d -0.89%, DEX 1d -1.73%. (threshold: `SOL 24h < 0 AND TVL 1d < 0 AND DEX 1d < 0`)
+- **INFO · Daily active addresses vs 30d median** — Current 987,010.00 is +25.1% vs 30d median 789,133.50 (solana.com/data). (threshold: `|current − 30d median| / median >= 20%`)
 
 ## Cluster
 
 | Metric | Value |
 | --- | ---: |
 | Health | `ok` |
-| Slot | 446,111,287 |
-| Block height | 424,154,518 |
-| Block time | 2026-09-11T08:26:46Z |
-| Epoch | 1,032 (66.50% · slot 287,288/432,000) |
-| Mean TPS (last ~3,600s) | 3,480.0 |
-| Mean non-vote TPS | 1,363.4 |
-| Median TPS (same window) | 3,450.3 |
-| Mean slot time | 316.4 ms |
-| Median slot time | 315.8 ms |
-| Transaction count (cluster) | 547,318,235,832 |
-| Circulating supply | 586,537,609 SOL |
-| Total supply | 633,830,174 SOL |
+| Slot | 446,114,092 |
+| Block height | 424,157,318 |
+| Block time | 2026-09-11T08:41:34Z |
+| Epoch | 1,032 (67.15% · slot 290,092/432,000) |
+| Mean TPS (last ~3,600s) | 3,465.1 |
+| Mean non-vote TPS | 1,351.2 |
+| Median TPS (same window) | 3,447.7 |
+| Mean slot time | 316.7 ms |
+| Median slot time | 314.1 ms |
+| Transaction count (cluster) | 547,321,306,746 |
+| Circulating supply | 586,537,601 SOL |
+| Total supply | 633,830,166 SOL |
 | Burned SOL (incinerator getBalance) | 0.00 SOL |
 
 Native SOL at the Foundation-documented burn address `1nc1nerator11111111111111111111111111111111`.
@@ -78,18 +78,18 @@ TPS = `numTransactions / samplePeriodSecs`. Slot time = `samplePeriodSecs / numS
 
 ### Delinquency alerts
 
-- `pSo1KZXg…` · 1.64M SOL · commission 4% · lag 17712 slots
-- `3YVoK8UN…` · 409.65K SOL · commission 5% · lag 18840 slots
-- `EBk678aQ…` · 95.16K SOL · commission 5% · lag 23419 slots
-- `mrgn2vUP…` · 90.78K SOL · commission 0% · lag 16395 slots
-- `scs2Ra91…` · 58.59K SOL · commission 10% · lag 232205 slots
-- `AYY1TCe3…` · 10.81K SOL · commission 0% · lag 257130 slots
-- `inWVrrYJ…` · 8.46K SOL · commission 0% · lag 412190 slots
-- `xLabscif…` · 3.36K SOL · commission 5% · lag 2322914 slots
-- `5ZjxMYBb…` · 3.21K SOL · commission 0% · lag 2145365 slots
-- `pSoLoZx5…` · 1.51K SOL · commission 4% · lag 316125 slots
-- `4GEEKSwu…` · 326.50 SOL · commission 5% · lag 301675 slots
-- `stacheBm…` · 3.00 SOL · commission 5% · lag 16575604 slots
+- `pSo1KZXg…` · 1.64M SOL · commission 4% · lag 20517 slots
+- `3YVoK8UN…` · 409.65K SOL · commission 5% · lag 21645 slots
+- `EBk678aQ…` · 95.16K SOL · commission 5% · lag 26224 slots
+- `mrgn2vUP…` · 90.78K SOL · commission 0% · lag 19200 slots
+- `scs2Ra91…` · 58.59K SOL · commission 10% · lag 235010 slots
+- `AYY1TCe3…` · 10.81K SOL · commission 0% · lag 259935 slots
+- `inWVrrYJ…` · 8.46K SOL · commission 0% · lag 414995 slots
+- `xLabscif…` · 3.36K SOL · commission 5% · lag 2325719 slots
+- `5ZjxMYBb…` · 3.21K SOL · commission 0% · lag 2148170 slots
+- `pSoLoZx5…` · 1.51K SOL · commission 4% · lag 318930 slots
+- `4GEEKSwu…` · 326.50 SOL · commission 5% · lag 304480 slots
+- `stacheBm…` · 3.00 SOL · commission 5% · lag 16578409 slots
 
 ## Trends
 
@@ -110,27 +110,27 @@ Full network REV (Blockworks/Helius) is in-protocol transaction fees (vote + bas
 | --- | ---: | --- |
 | **In-protocol fees 24h** | **$1.01M** (9,683.4 SOL) | solana.com/data Fees (Allium) MEASURED · USD at solana.com/data SOL Price (DexPaprika) UTC 2026-09-09 |
 | **Solana REV** | **11,493.1 SOL** / **$1.20M** | MEASURED UTC calendar day 2026-09-09: in-protocol fees + gross Jito MEV tips (jito_tips + validator_tips; not a rolling 24h); USD uses solana.com/data SOL Price (DexPaprika) UTC 2026-09-09 · UTC day 2026-09-09 · SOL-USD date 2026-09-09 |
-| Jito tip-floor run-rate (NOT REV) | $19.57K | INVALID as a 24h aggregate · included_in_headline=false · sensitivity (NOT a 24h aggregate, NOT headline REV): invalid run-rate at p50 floor → 19570 USD; at p95 floor → 240546 USD. |
+| Jito tip-floor run-rate (NOT REV) | $11.71K | INVALID as a 24h aggregate · included_in_headline=false · sensitivity (NOT a 24h aggregate, NOT headline REV): invalid run-rate at p50 floor → 11711 USD; at p95 floor → 116758 USD. |
 | Protocol fees 24h | $14.82M | EXCLUDED from REV — DeFiLlama Solana protocol fees 24h (not REV) |
-| Median tx fee p50 | 0.000005 SOL ($0.0005) | NOT a 24h census · ~2.8h · n_tx=2240 window_seconds=9948 |
-| p90 / p99 | 0.000010 / 0.000115 SOL | same sample |
+| Median tx fee p50 | 0.000005 SOL ($0.0005) | NOT a 24h census · ~2.8h · n_tx=2240 window_seconds=9937 |
+| p90 / p99 | 0.000010 / 0.000110 SOL | same sample |
 | Burned SOL | 0.00 SOL | incinerator getBalance |
 
 ## Market
 
 | Metric | Value | Source |
 | --- | ---: | --- |
-| SOL/USD | $99.84 | coingecko.simple_price |
-| 24h change | -1.38% | coingecko.simple_price |
-| Market cap | $58.55B | coingecko.simple_price |
+| SOL/USD | $100.01 | coingecko.simple_price |
+| 24h change | -1.14% | coingecko.simple_price |
+| Market cap | $58.66B | coingecko.simple_price |
 | 24h volume | $2.98B | coingecko.simple_price |
 
 ## DeFi (DeFiLlama)
 
 | Metric | Value |
 | --- | ---: |
-| Solana TVL | $5.79B |
-| TVL 1d / 7d / 30d | -1.10% / -2.35% / +18.82% |
+| Solana TVL | $5.80B |
+| TVL 1d / 7d / 30d | -0.89% / -2.14% / +19.08% |
 | DEX volume 24h | $2.95B · 1d -1.73% · vs-7d-ago +19.88% |
 | 7d DEX volume | $16.62B · +6.42% vs prior 7d |
 | DEX change_7d meaning | percent change of 24h DEX volume vs the 24h from 7 days ago (not 7d-total vs prior 7d) |
@@ -154,15 +154,15 @@ Full network REV (Blockworks/Helius) is in-protocol transaction fees (vote + bas
 
 | Protocol | Category | Solana TVL | 1d | 7d |
 | --- | --- | ---: | ---: | ---: |
-| Sanctum Validator LSTs | Liquid Staking | $1.53B | -2.08% | -3.35% |
-| Kamino Lend | Lending | $1.33B | -0.70% | -0.10% |
+| Sanctum Validator LSTs | Liquid Staking | $1.53B | -1.97% | -3.32% |
+| Kamino Lend | Lending | $1.33B | -0.50% | -0.07% |
 | Raydium AMM | Dexs | $1.11B | -1.26% | -0.68% |
 | Jupiter Lend | Lending | $1.07B | -0.72% | -1.39% |
 | Binance Staked SOL | Liquid Staking | $1.04B | -1.93% | -3.77% |
 | Jito Liquid Staking | Liquid Staking | $1.03B | -1.97% | -2.26% |
 | BlackRock BUIDL | RWA | $992.51M | -0.68% | -0.63% |
-| Jupiter Perpetual Exchange | Derivatives | $740.49M | -1.07% | -2.94% |
-| Jupiter Staked SOL | Liquid Staking | $516.38M | -2.21% | -3.90% |
+| Jupiter Perpetual Exchange | Derivatives | $741.75M | -0.75% | -2.90% |
+| Jupiter Staked SOL | Liquid Staking | $516.41M | -1.23% | -3.65% |
 | Sentora Curator | Risk Curators | $388.10M | -0.33% | -3.40% |
 
 ## Stablecoins
@@ -172,20 +172,20 @@ Solana circulating pegged-USD: **$15.96B**
 
 | Asset | Solana circulating | 1d |
 | --- | ---: | ---: |
-| USDC · USD Coin | $6.99B | -1.56% |
-| USDT · Tether | $2.68B | -3.25% |
+| USDC · USD Coin | $6.99B | -1.59% |
+| USDT · Tether | $2.67B | -3.25% |
 | USDGO · USDGO | $1.38B | +0.73% |
 | USD1 · World Liberty Financial USD | $1.28B | -0.00% |
 | BUIDL · BlackRock USD | $992.51M | +0.03% |
-| PYUSD · PayPal USD | $725.69M | -4.10% |
-| USDG · Global Dollar | $597.63M | -0.69% |
-| USDe · Ethena USDe | $536.48M | +0.16% |
+| PYUSD · PayPal USD | $725.70M | -4.10% |
+| USDG · Global Dollar | $596.94M | -0.79% |
+| USDe · Ethena USDe | $536.46M | +0.16% |
 
 ## Tokenized equities (xStocks)
 
-TimeoutError: The read operation timed out
+HTTP 404 Not Found
 Listed 0 · Solana deployments 0 · priced 0 · priced-subset mcap — (lower bound, not a census).
-24h volume $103.16M — Jupiter-reported xStocks subset 24h activity (stats24h buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX) · 7d volume omitted (no no-key Jupiter/DeFiLlama series).
+24h volume $102.50M — Jupiter-reported xStocks subset 24h activity (stats24h buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX) · 7d volume omitted (no no-key Jupiter/DeFiLlama series).
 DeFiLlama protocol/xstocks Solana TVL — — liquidity census, not mcap, not 24h volume.
 Formula: `quote * circulating * multiplier` with live currentMultiplier (coverage: multiplier_ok None / mcap_computable None of attempted None; missing multiplier → mcap omitted, never silent 1.0).  
 
@@ -198,7 +198,7 @@ This is protocol TVL, not a full on-chain RWA market-cap census (those Llama end
 - **BlackRock BUIDL** (RWA) — $992.51M
 - **OnRe** (RWA) — $309.52M
 - **Ondo Yield Assets** (RWA) — $180.09M
-- **Huma Finance V2** (RWA) — $169.40M
+- **Huma Finance V2** (RWA) — $169.38M
 - **Hastra** (RWA) — $150.78M
 - **Plume Vaults** (RWA) — $27.20M
 - **Ondo Global Markets** (RWA) — $25.29M
@@ -323,9 +323,9 @@ Public X/Nitter-style RSS (xcancel.com, nitter mirrors, rsshub). Not the officia
 
 ## Editorial — SIMD-525 reduced slot times + Alpenglow (SIMD-0326)
 
-_As of 2026-09-11 (2026-09-11 01:26:56 PT). Editorial. Gate labels come from getAccountInfo Feature accounts (effective epoch = activation epoch + 1). Observed slot ms is INFERRED corroboration, not proof. Ignore solana.com/upgrades/reduced-slot-times if it lists 400 ms as current._
+_As of 2026-09-11 (2026-09-11 01:41:45 PT). Editorial. Gate labels come from getAccountInfo Feature accounts (effective epoch = activation epoch + 1). Observed slot ms is INFERRED corroboration, not proof. Ignore solana.com/upgrades/reduced-slot-times if it lists 400 ms as current._
 
-First-party Solana Changelog: August 20, 2026: “Feature gates reduced mainnet slot times from 400ms to 350ms, while Testnet moved from 250ms to 200ms.” On-chain Feature accounts: 400ms=superseded, 350ms=live, 300ms=live, 250ms=pending, 200ms=pending. Observed mean slot ~316 ms is corroboration only — not feature-gate proof. Alpenglow (SIMD-0326) remains the consensus rewrite (Votor / Rotor); it is a separate track from the slot-time feature gates.
+First-party Solana Changelog: August 20, 2026: “Feature gates reduced mainnet slot times from 400ms to 350ms, while Testnet moved from 250ms to 200ms.” On-chain Feature accounts: 400ms=superseded, 350ms=live, 300ms=live, 250ms=pending, 200ms=pending. Observed mean slot ~317 ms is corroboration only — not feature-gate proof. Alpenglow (SIMD-0326) remains the consensus rewrite (Votor / Rotor); it is a separate track from the slot-time feature gates.
 
 _Listing token SIMD-525 is SIMD-0525. Not SIMD-025._
 
@@ -342,7 +342,7 @@ _Listing token SIMD-525 is SIMD-0525. Not SIMD-025._
 - `source` — solana.com/news “Lowering Slot Time and Validators Economic” remains a listing-token write-up for SIMD-525 (SIMD-0525).
 - `2026-05-01` — SIMD-0525 created (Anza). Four feature gates: 350/300/250/200 ms.
 - `on-chain` — On-chain Feature accounts: 400ms=superseded, 350ms=live, 300ms=live, 250ms=pending, 200ms=pending.
-- `observed` — Observed mean slot ~316 ms is corroboration only — not feature-gate proof. INFERRED corroboration, not a feature-gate RPC.
+- `observed` — Observed mean slot ~317 ms is corroboration only — not feature-gate proof. INFERRED corroboration, not a feature-gate RPC.
 - `2026-07-08` — SIMD-0387 (BLS pubkey in vote account) activated on mainnet.
 - `2026-07-22` — SIMD-0357 VAT activated. VAT does not itself turn on Alpenglow consensus.
 
@@ -362,72 +362,72 @@ _Listing token SIMD-525 is SIMD-0525. Not SIMD-025._
 
 ## Omissions
 
-- **Tokenized equities (xStocks)** — TimeoutError: The read operation timed out
+- **Tokenized equities (xStocks)** — HTTP 404 Not Found
 - **xStocks** — asset list failed on backed.fi and xstocks.fi
 
 ## Sources this run
 
-- `rpc.getHealth` [ok] 200 241ms https://api.mainnet-beta.solana.com
-- `rpc.getSlot` [ok] 200 212ms https://api.mainnet-beta.solana.com
-- `rpc.getBlockTime` [ok] 200 213ms https://api.mainnet-beta.solana.com
-- `rpc.getEpochInfo` [ok] 200 210ms https://api.mainnet-beta.solana.com
-- `rpc.getRecentPerformanceSamples` [ok] 200 225ms https://api.mainnet-beta.solana.com
-- `rpc.getSupply` [ok] 200 6264ms https://api.mainnet-beta.solana.com
-- `rpc.getVoteAccounts` [ok] 200 444ms https://api.mainnet-beta.solana.com
-- `coingecko.simple_price` [ok] 200 105ms https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true&include_last_updated_at=true
-- `coinbase.solusd.stats` [ok] 200 22ms https://api.exchange.coinbase.com/products/SOL-USD/stats
-- `llama.chains` [ok] 200 94ms https://api.llama.fi/v2/chains
-- `llama.historical_tvl` [ok] 200 23ms https://api.llama.fi/v2/historicalChainTvl/Solana
-- `llama.dexs` [ok] 200 22ms https://api.llama.fi/overview/dexs/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
-- `llama.fees` [ok] 200 30ms https://api.llama.fi/overview/fees/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
-- `llama.protocols` [ok] 200 58ms https://api.llama.fi/protocols
-- `llama.stablecoinchains` [ok] 200 102ms https://stablecoins.llama.fi/stablecoinchains
-- `llama.stablecoins` [ok] 200 59ms https://stablecoins.llama.fi/stablecoins?includePrices=true
-- `llama.stablecoincharts` [ok] 200 72ms https://stablecoins.llama.fi/stablecoincharts/Solana
-- `solana.com.data_page` [ok] 200 470ms https://solana.com/data
-- `solana.com.databricks` [ok] 200 44ms https://solana.com/api/databricks/data?days=30
-- `solana.com.rpc_data` [ok] 200 576ms https://solana.com/api/rpc/data
-- `status.summary` [ok] 200 94ms https://status.solana.com/api/v2/summary.json
-- `rss.status.atom` [ok] 200 100ms https://status.solana.com/history.atom
-- `rss.news.rss` [ok] 200 46ms https://solana.com/news/rss.xml
-- `rss.anza.medium` [ok] 200 968ms https://medium.com/feed/anza-xyz
-- `rss.xcancel.solana` [ok] 200 783ms https://xcancel.com/solana/rss
-- `rss.xcancel.solana_status` [ok] 200 443ms https://xcancel.com/solana_status/rss
-- `rss.xcancel.anza_xyz` [ok] 200 449ms https://xcancel.com/anza_xyz/rss
-- `rss.xcancel.solana_devs` [ok] 200 1485ms https://xcancel.com/solana_devs/rss
-- `rss.nitter.solana` [ok] 200 291ms https://nitter.perennialte.ch/solana/rss
-- `rss.nitter.solana_status` [ok] 200 139ms https://nitter.perennialte.ch/solana_status/rss
-- `rss.nitter.anza_xyz` [ok] 200 1092ms https://nitter.perennialte.ch/anza_xyz/rss
-- `rss.nitter.solana_devs` [ok] 200 1561ms https://nitter.perennialte.ch/solana_devs/rss
-- `status.incidents` [ok] 200 81ms https://status.solana.com/api/v2/incidents.json
-- `rpc.getBalance` [ok] 200 211ms https://api.mainnet-beta.solana.com
-- `rpc.getBlocks` [ok] 200 207ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 911ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 860ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 1045ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 805ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 866ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 976ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 881ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 1029ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 931ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 1041ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 917ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 802ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 834ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 802ms https://api.mainnet-beta.solana.com
-- `xstocks.assets.p0` [FAIL]  15091ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=0 — TimeoutError: The read operation timed out
-- `xstocks.assets.p0` [FAIL]  15197ms https://api.xstocks.fi/api/v2/public/assets?pageSize=100&page=0 — TimeoutError: The read operation timed out
-- `llama.protocol.xstocks` [ok] 200 20ms https://api.llama.fi/protocol/xstocks
-- `jup.tokens.search.xStock` [ok] 200 47ms https://lite-api.jup.ag/tokens/v2/search?query=xStock
-- `jito.tip_floor` [ok] 200 561ms https://bundles.jito.wtf/api/v1/bundles/tip_floor
-- `dune.public_embed` [ok] 200 394ms https://dune.com/embeds/dashboard/cryptoonchain/solana-explorer
-- `simd.0525.raw` [ok] 200 110ms https://raw.githubusercontent.com/solana-foundation/solana-improvement-documents/main/proposals/0525-reduce-slot-times.md
-- `rpc.getAccountInfo` [ok] 200 206ms https://api.mainnet-beta.solana.com
-- `rpc.getAccountInfo` [ok] 200 253ms https://api.mainnet-beta.solana.com
-- `rpc.getAccountInfo` [ok] 200 219ms https://api.mainnet-beta.solana.com
-- `rpc.getAccountInfo` [ok] 200 199ms https://api.mainnet-beta.solana.com
-- `jito.daily_mev_rewards` [ok] 200 222ms https://kobe.mainnet.jito.network/api/v1/daily_mev_rewards
+- `rpc.getHealth` [ok] 200 63ms https://api.mainnet-beta.solana.com
+- `rpc.getSlot` [ok] 200 40ms https://api.mainnet-beta.solana.com
+- `rpc.getBlockTime` [ok] 200 24ms https://api.mainnet-beta.solana.com
+- `rpc.getEpochInfo` [ok] 200 52ms https://api.mainnet-beta.solana.com
+- `rpc.getRecentPerformanceSamples` [ok] 200 26ms https://api.mainnet-beta.solana.com
+- `rpc.getSupply` [ok] 200 7326ms https://api.mainnet-beta.solana.com
+- `rpc.getVoteAccounts` [ok] 200 59ms https://api.mainnet-beta.solana.com
+- `coingecko.simple_price` [ok] 200 137ms https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true&include_last_updated_at=true
+- `coinbase.solusd.stats` [ok] 200 27ms https://api.exchange.coinbase.com/products/SOL-USD/stats
+- `llama.chains` [ok] 200 54ms https://api.llama.fi/v2/chains
+- `llama.historical_tvl` [ok] 200 29ms https://api.llama.fi/v2/historicalChainTvl/Solana
+- `llama.dexs` [ok] 200 23ms https://api.llama.fi/overview/dexs/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
+- `llama.fees` [ok] 200 859ms https://api.llama.fi/overview/fees/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
+- `llama.protocols` [ok] 200 75ms https://api.llama.fi/protocols
+- `llama.stablecoinchains` [ok] 200 141ms https://stablecoins.llama.fi/stablecoinchains
+- `llama.stablecoins` [ok] 200 42ms https://stablecoins.llama.fi/stablecoins?includePrices=true
+- `llama.stablecoincharts` [ok] 200 85ms https://stablecoins.llama.fi/stablecoincharts/Solana
+- `solana.com.data_page` [ok] 200 266ms https://solana.com/data
+- `solana.com.databricks` [ok] 200 57ms https://solana.com/api/databricks/data?days=30
+- `solana.com.rpc_data` [ok] 200 345ms https://solana.com/api/rpc/data
+- `status.summary` [ok] 200 96ms https://status.solana.com/api/v2/summary.json
+- `rss.status.atom` [ok] 200 176ms https://status.solana.com/history.atom
+- `rss.news.rss` [ok] 200 48ms https://solana.com/news/rss.xml
+- `rss.anza.medium` [ok] 200 98ms https://medium.com/feed/anza-xyz
+- `rss.xcancel.solana` [ok] 200 431ms https://xcancel.com/solana/rss
+- `rss.xcancel.solana_status` [ok] 200 81ms https://xcancel.com/solana_status/rss
+- `rss.xcancel.anza_xyz` [ok] 200 97ms https://xcancel.com/anza_xyz/rss
+- `rss.xcancel.solana_devs` [ok] 200 96ms https://xcancel.com/solana_devs/rss
+- `rss.nitter.solana` [ok] 200 405ms https://nitter.perennialte.ch/solana/rss
+- `rss.nitter.solana_status` [ok] 200 200ms https://nitter.perennialte.ch/solana_status/rss
+- `rss.nitter.anza_xyz` [ok] 200 1523ms https://nitter.perennialte.ch/anza_xyz/rss
+- `rss.nitter.solana_devs` [ok] 200 1338ms https://nitter.perennialte.ch/solana_devs/rss
+- `status.incidents` [ok] 200 159ms https://status.solana.com/api/v2/incidents.json
+- `rpc.getBalance` [ok] 200 34ms https://api.mainnet-beta.solana.com
+- `rpc.getBlocks` [ok] 200 56ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 206ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 230ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 422ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 332ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 426ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 291ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [FAIL] 429 26ms https://api.mainnet-beta.solana.com — HTTP 429 Too Many Requests
+- `rpc.getBlock.fallback` [ok] 200 322ms https://solana-rpc.publicnode.com
+- `rpc.getBlock` [ok] 200 322ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 220ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 368ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 336ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 259ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 327ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 245ms https://api.mainnet-beta.solana.com
+- `xstocks.assets.p0` [FAIL] 404 208ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=0 — HTTP 404 Not Found
+- `llama.protocol.xstocks` [ok] 200 21ms https://api.llama.fi/protocol/xstocks
+- `jup.tokens.search.xStock` [ok] 200 140ms https://lite-api.jup.ag/tokens/v2/search?query=xStock
+- `jito.tip_floor` [ok] 200 262ms https://bundles.jito.wtf/api/v1/bundles/tip_floor
+- `dune.public_embed` [ok] 200 187ms https://dune.com/embeds/dashboard/cryptoonchain/solana-explorer
+- `simd.0525.raw` [ok] 200 86ms https://raw.githubusercontent.com/solana-foundation/solana-improvement-documents/main/proposals/0525-reduce-slot-times.md
+- `rpc.getAccountInfo` [ok] 200 25ms https://api.mainnet-beta.solana.com
+- `rpc.getAccountInfo` [ok] 200 32ms https://api.mainnet-beta.solana.com
+- `rpc.getAccountInfo` [ok] 200 29ms https://api.mainnet-beta.solana.com
+- `rpc.getAccountInfo` [ok] 200 40ms https://api.mainnet-beta.solana.com
+- `jito.daily_mev_rewards` [ok] 200 98ms https://kobe.mainnet.jito.network/api/v1/daily_mev_rewards
 
 ---
 
