@@ -1,11 +1,11 @@
 # Borealis — Solana ecosystem report
 
-**Generated** 2026-09-11T01:51:05Z · 2026-09-10 18:51:05 PT
+**Generated** 2026-09-11T02:06:38Z · 2026-09-10 19:06:38 PT
 **Author** dustycompiler · **Version** 1.5.7 · **License** MIT
 **Live demo** https://dustycompiler.github.io/borealis-solana/
-**Cluster block time** 2026-09-11T01:50:55Z · **RPC health** `ok`
-**Health score** 97 / 100 — `25×rpc_ok + 30×clamp(1 − max(0, slot_ms − 300)/300, 0, 1) + 25×clamp(1 − delinquent_stake_pct/2, 0, 1) + 20×clamp(tps / tps_baseline, 0, 1)`
-**Network health** HEALTHY · **Ecosystem** ELEVATED — SOL 24h -1.79%; DEX 24h $2.95B · 1d -2% · vs-7d-ago +20%; slot 315 ms
+**Cluster block time** 2026-09-11T02:06:28Z · **RPC health** `ok`
+**Health score** 98 / 100 — `25×rpc_ok + 30×clamp(1 − max(0, slot_ms − 300)/300, 0, 1) + 25×clamp(1 − delinquent_stake_pct/2, 0, 1) + 20×clamp(tps / tps_baseline, 0, 1)`
+**Network health** HEALTHY · **Ecosystem** ELEVATED — SOL 24h -1.74%; DEX 24h $2.95B · 1d -2% · vs-7d-ago +20%; slot 314 ms
 GitHub Actions snapshot (not a guaranteed 15-minute tick). STALE if snapshot age > 2 hours. The HTML dashboard also runs an on-page LIVE pulse (browser JSON-RPC, at most every 60s) for slot/epoch/TPS.
 
 This file is produced by `python3 generate.py` from public endpoints. Every number
@@ -15,7 +15,7 @@ than filled with a guess.
 ## Anomalies
 
 - **WARN · Large Solana protocol fees 7d move** — DeFiLlama Solana protocol fees 7d change is +24.13%. (threshold: `|7d %| >= 20`)
-- **INFO · Correlation: risk-off (SOL 24h ↓ + TVL 1d ↓ + DEX 1d ↓)** — SOL 24h -1.79%, DeFiLlama TVL 1d -0.13%, DEX 1d -1.76%. (threshold: `SOL 24h < 0 AND TVL 1d < 0 AND DEX 1d < 0`)
+- **INFO · Correlation: risk-off (SOL 24h ↓ + TVL 1d ↓ + DEX 1d ↓)** — SOL 24h -1.74%, DeFiLlama TVL 1d -0.13%, DEX 1d -1.76%. (threshold: `SOL 24h < 0 AND TVL 1d < 0 AND DEX 1d < 0`)
 - **INFO · Daily active addresses vs 30d median** — Current 987,010.00 is +25.1% vs 30d median 789,133.50 (solana.com/data). (threshold: `|current − 30d median| / median >= 20%`)
 
 ## Cluster
@@ -23,18 +23,18 @@ than filled with a guess.
 | Metric | Value |
 | --- | ---: |
 | Health | `ok` |
-| Slot | 446,036,160 |
-| Block height | 424,079,470 |
-| Block time | 2026-09-11T01:50:55Z |
-| Epoch | 1,032 (49.11% · slot 212,163/432,000) |
-| Mean TPS (last ~3,600s) | 3,833.7 |
-| Mean non-vote TPS | 1,699.9 |
-| Median TPS (same window) | 3,826.0 |
-| Mean slot time | 314.8 ms |
+| Slot | 446,039,118 |
+| Block height | 424,082,427 |
+| Block time | 2026-09-11T02:06:28Z |
+| Epoch | 1,032 (49.80% · slot 215,120/432,000) |
+| Mean TPS (last ~3,600s) | 3,793.1 |
+| Mean non-vote TPS | 1,655.9 |
+| Median TPS (same window) | 3,796.2 |
+| Mean slot time | 314.4 ms |
 | Median slot time | 314.1 ms |
-| Transaction count (cluster) | 547,230,823,283 |
-| Circulating supply | 586,537,839 SOL |
-| Total supply | 633,830,404 SOL |
+| Transaction count (cluster) | 547,234,209,579 |
+| Circulating supply | 586,537,830 SOL |
+| Total supply | 633,830,395 SOL |
 | Burned SOL (incinerator getBalance) | 0.00 SOL |
 
 Native SOL at the Foundation-documented burn address `1nc1nerator11111111111111111111111111111111`.
@@ -47,49 +47,49 @@ TPS = `numTransactions / samplePeriodSecs`. Slot time = `samplePeriodSecs / numS
 
 | Metric | Value |
 | --- | ---: |
-| Active vote accounts | 675 |
-| Delinquent | 14 |
+| Active vote accounts | 677 |
+| Delinquent | 12 |
 | Lagging current (>150 slots) | 0 |
-| Activated stake | 438,644,457 SOL |
-| Delinquent stake | 543,756.46 SOL (0.124%) |
+| Activated stake | 439,082,043 SOL |
+| Delinquent stake | 106,170.00 SOL (0.024%) |
 | Nakamoto (33% / 50% / 67%) | 18 / 41 / 80 |
-| Top 10 / 20 stake share | 24.24% / 35.52% |
+| Top 10 / 20 stake share | 24.22% / 35.49% |
 | Commission min / median / max | 0% / 5.0% / 100% |
 
 ### Top validators by activated stake
 
 | Rank | Node | Stake | Share | Commission | Last vote lag |
 | ---: | --- | ---: | ---: | ---: | ---: |
-| 1 | `Fd7btgyS…` | 17.44M SOL | 3.98% | 7% | 0 |
+| 1 | `Fd7btgyS…` | 17.44M SOL | 3.97% | 7% | 0 |
 | 2 | `HEL1USMZ…` | 16.32M SOL | 3.72% | 0% | 0 |
-| 3 | `DRpbCBMx…` | 12.52M SOL | 2.86% | 0% | 0 |
+| 3 | `DRpbCBMx…` | 12.52M SOL | 2.85% | 0% | 0 |
 | 4 | `JUPiTERr…` | 11.38M SOL | 2.59% | 5% | 0 |
 | 5 | `E1r4Psq8…` | 9.57M SOL | 2.18% | 0% | 0 |
-| 6 | `C8Bey3LK…` | 9.28M SOL | 2.12% | 7% | 0 |
+| 6 | `C8Bey3LK…` | 9.28M SOL | 2.11% | 7% | 0 |
 | 7 | `CAo1dCGY…` | 9.04M SOL | 2.06% | 10% | 0 |
 | 8 | `EvnRmnMr…` | 7.34M SOL | 1.67% | 7% | 0 |
 | 9 | `9eGrDohd…` | 6.88M SOL | 1.57% | 5% | 0 |
 | 10 | `Awes4Tr6…` | 6.55M SOL | 1.49% | 0% | 0 |
-| 11 | `JD549Hsb…` | 6.12M SOL | 1.40% | 0% | 0 |
-| 12 | `9jxgosAf…` | 6.12M SOL | 1.40% | 100% | 0 |
+| 11 | `JD549Hsb…` | 6.12M SOL | 1.39% | 0% | 0 |
+| 12 | `9jxgosAf…` | 6.12M SOL | 1.39% | 100% | 0 |
 | 13 | `5pPRHnie…` | 5.95M SOL | 1.36% | 5% | 0 |
 | 14 | `5Cchr1XG…` | 5.63M SOL | 1.28% | 100% | 0 |
 | 15 | `GnC339vk…` | 4.83M SOL | 1.10% | 7% | 0 |
 
 ### Delinquency alerts
 
-- `5VrW7YNB…` · 346.81K SOL · commission 5% · lag 6658 slots
-- `mrgn2vUP…` · 90.78K SOL · commission 0% · lag 31074 slots
-- `scs2Ra91…` · 58.59K SOL · commission 10% · lag 157078 slots
-- `mrgn4atx…` · 19.89K SOL · commission 0% · lag 71921 slots
-- `AYY1TCe3…` · 10.81K SOL · commission 0% · lag 182003 slots
-- `inWVrrYJ…` · 8.46K SOL · commission 0% · lag 337063 slots
-- `xLabscif…` · 3.36K SOL · commission 5% · lag 2247787 slots
-- `5ZjxMYBb…` · 3.21K SOL · commission 0% · lag 2070238 slots
-- `pSoLoZx5…` · 1.51K SOL · commission 4% · lag 240998 slots
-- `4GEEKSwu…` · 326.50 SOL · commission 5% · lag 226548 slots
-- `stacheBm…` · 3.00 SOL · commission 5% · lag 16500477 slots
-- `6mygxmZx…` · 2.00 SOL · commission 100% · lag 446036160 slots
+- `scs2Ra91…` · 58.59K SOL · commission 10% · lag 160036 slots
+- `mrgn4atx…` · 19.89K SOL · commission 0% · lag 74879 slots
+- `AYY1TCe3…` · 10.81K SOL · commission 0% · lag 184961 slots
+- `inWVrrYJ…` · 8.46K SOL · commission 0% · lag 340021 slots
+- `xLabscif…` · 3.36K SOL · commission 5% · lag 2250745 slots
+- `5ZjxMYBb…` · 3.21K SOL · commission 0% · lag 2073196 slots
+- `pSoLoZx5…` · 1.51K SOL · commission 4% · lag 243956 slots
+- `4GEEKSwu…` · 326.50 SOL · commission 5% · lag 229506 slots
+- `stacheBm…` · 3.00 SOL · commission 5% · lag 16503435 slots
+- `6mygxmZx…` · 2.00 SOL · commission 100% · lag 446039118 slots
+- `Fb77sbwg…` · 1.08 SOL · commission 0% · lag 1200107 slots
+- `4kdjgZKJ…` · 1.05 SOL · commission 100% · lag 446039118 slots
 
 ## Trends
 
@@ -110,19 +110,19 @@ Full network REV (Blockworks/Helius) is in-protocol transaction fees (vote + bas
 | --- | ---: | --- |
 | **In-protocol fees 24h** | **$1.01M** (9,683.4 SOL) | solana.com/data Fees (Allium) MEASURED · USD at solana.com/data SOL Price (DexPaprika) UTC 2026-09-09 |
 | **Solana REV** | **11,493.1 SOL** / **$1.20M** | MEASURED UTC calendar day 2026-09-09: in-protocol fees + gross Jito MEV tips (jito_tips + validator_tips; not a rolling 24h); USD uses solana.com/data SOL Price (DexPaprika) UTC 2026-09-09 · UTC day 2026-09-09 · SOL-USD date 2026-09-09 |
-| Jito tip-floor run-rate (NOT REV) | $14.86K | INVALID as a 24h aggregate · included_in_headline=false · sensitivity (NOT a 24h aggregate, NOT headline REV): invalid run-rate at p50 floor → 14862 USD; at p95 floor → 732434 USD. |
+| Jito tip-floor run-rate (NOT REV) | $47.00K | INVALID as a 24h aggregate · included_in_headline=false · sensitivity (NOT a 24h aggregate, NOT headline REV): invalid run-rate at p50 floor → 47002 USD; at p95 floor → 454899 USD. |
 | Protocol fees 24h | $14.68M | EXCLUDED from REV — DeFiLlama Solana protocol fees 24h (not REV) |
-| Median tx fee p50 | 0.000005 SOL ($0.0005) | NOT a 24h census · ~2.8h · n_tx=2240 window_seconds=10009 |
-| p90 / p99 | 0.000010 / 0.000221 SOL | same sample |
+| Median tx fee p50 | 0.000005 SOL ($0.0005) | NOT a 24h census · ~2.8h · n_tx=2240 window_seconds=10025 |
+| p90 / p99 | 0.000010 / 0.000281 SOL | same sample |
 | Burned SOL | 0.00 SOL | incinerator getBalance |
 
 ## Market
 
 | Metric | Value | Source |
 | --- | ---: | --- |
-| SOL/USD | $99.11 | coingecko.simple_price |
-| 24h change | -1.79% | coingecko.simple_price |
-| Market cap | $58.11B | coingecko.simple_price |
+| SOL/USD | $99.36 | coingecko.simple_price |
+| 24h change | -1.74% | coingecko.simple_price |
+| Market cap | $58.23B | coingecko.simple_price |
 | 24h volume | $3.00B | coingecko.simple_price |
 
 ## DeFi (DeFiLlama)
@@ -183,11 +183,11 @@ Solana circulating pegged-USD: **$15.98B**
 
 ## Tokenized equities (xStocks)
 
-
-Listed 100 · Solana deployments 100 · priced 0 · priced-subset mcap — (lower bound, not a census).
-24h volume $96.50M — Jupiter-reported xStocks subset 24h activity (stats24h buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX) · 7d volume omitted (no no-key Jupiter/DeFiLlama series).
+TimeoutError: The read operation timed out
+Listed 0 · Solana deployments 0 · priced 0 · priced-subset mcap — (lower bound, not a census).
+24h volume $96.97M — Jupiter-reported xStocks subset 24h activity (stats24h buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX) · 7d volume omitted (no no-key Jupiter/DeFiLlama series).
 DeFiLlama protocol/xstocks Solana TVL — — liquidity census, not mcap, not 24h volume.
-Formula: `quote * circulating * multiplier` with live currentMultiplier (coverage: multiplier_ok 11 / mcap_computable 0 of attempted 80; missing multiplier → mcap omitted, never silent 1.0). 100 unique xStocks names with a Solana deployment (catalog; 1:1 with unique underlyings in current API; 100 unique underlyings among 100 Solana rows; not every tokenized equity on Solana). 100 of 100 listed xStocks have a Solana deployment (100 unique underlyings). Count share, not market-cap share.
+Formula: `quote * circulating * multiplier` with live currentMultiplier (coverage: multiplier_ok None / mcap_computable None of attempted None; missing multiplier → mcap omitted, never silent 1.0).  
 
 ## Real-world assets
 
@@ -351,9 +351,9 @@ Public X/Nitter-style RSS (xcancel.com, nitter mirrors, rsshub). Not the officia
 
 ## Editorial — SIMD-525 reduced slot times + Alpenglow (SIMD-0326)
 
-_As of 2026-09-11 (2026-09-10 18:51:05 PT). Editorial. Gate labels come from getAccountInfo Feature accounts (effective epoch = activation epoch + 1). Observed slot ms is INFERRED corroboration, not proof. Ignore solana.com/upgrades/reduced-slot-times if it lists 400 ms as current._
+_As of 2026-09-11 (2026-09-10 19:06:38 PT). Editorial. Gate labels come from getAccountInfo Feature accounts (effective epoch = activation epoch + 1). Observed slot ms is INFERRED corroboration, not proof. Ignore solana.com/upgrades/reduced-slot-times if it lists 400 ms as current._
 
-First-party Solana Changelog: August 20, 2026: “Feature gates reduced mainnet slot times from 400ms to 350ms, while Testnet moved from 250ms to 200ms.” On-chain Feature accounts: 400ms=superseded, 350ms=live, 300ms=live, 250ms=pending, 200ms=pending. Observed mean slot ~315 ms is corroboration only — not feature-gate proof. Alpenglow (SIMD-0326) remains the consensus rewrite (Votor / Rotor); it is a separate track from the slot-time feature gates.
+First-party Solana Changelog: August 20, 2026: “Feature gates reduced mainnet slot times from 400ms to 350ms, while Testnet moved from 250ms to 200ms.” On-chain Feature accounts: 400ms=superseded, 350ms=live, 300ms=live, 250ms=pending, 200ms=pending. Observed mean slot ~314 ms is corroboration only — not feature-gate proof. Alpenglow (SIMD-0326) remains the consensus rewrite (Votor / Rotor); it is a separate track from the slot-time feature gates.
 
 _Listing token SIMD-525 is SIMD-0525. Not SIMD-025._
 
@@ -370,7 +370,7 @@ _Listing token SIMD-525 is SIMD-0525. Not SIMD-025._
 - `source` — solana.com/news “Lowering Slot Time and Validators Economic” remains a listing-token write-up for SIMD-525 (SIMD-0525).
 - `2026-05-01` — SIMD-0525 created (Anza). Four feature gates: 350/300/250/200 ms.
 - `on-chain` — On-chain Feature accounts: 400ms=superseded, 350ms=live, 300ms=live, 250ms=pending, 200ms=pending.
-- `observed` — Observed mean slot ~315 ms is corroboration only — not feature-gate proof. INFERRED corroboration, not a feature-gate RPC.
+- `observed` — Observed mean slot ~314 ms is corroboration only — not feature-gate proof. INFERRED corroboration, not a feature-gate RPC.
 - `2026-07-08` — SIMD-0387 (BLS pubkey in vote account) activated on mainnet.
 - `2026-07-22` — SIMD-0357 VAT activated. VAT does not itself turn on Alpenglow consensus.
 
@@ -390,391 +390,72 @@ _Listing token SIMD-525 is SIMD-0525. Not SIMD-025._
 
 ## Omissions
 
-- **xStocks market cap** — Listed Solana-deployed xStocks but quote and/or circulating missing. Mcap omitted.
-- **xStocks** — priced up to 80 of 100 Solana-deployed symbols (HTTP budget). Priced-subset lower bound, not a census.
-- **xStocks** — METCx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — FLNCx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — QUBTx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — XRXx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — PCTx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — INDIx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — WRLDx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — WGSx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — SAILx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — WYFIx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — BSYx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — BETRx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — AIx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — SCIx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — DRSx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — GSATx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — DCIx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — BXPx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — MPx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — DVAx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — GDDYx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — RYANx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — DYx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — FRHCx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — WMSx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — AMx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — FDSx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — ALSNx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — SMTCx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — SFx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — AXSMx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — EGPx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — BPOPx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — AEISx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — DPZx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — HRLx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — KTOSx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — PAGx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — SEICx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — HIIx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — EHCx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — HALOx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — MGMx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — GFLx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — DOCUx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — WTRGx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — AFGx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — HUBSx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — OCx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — CRx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — BMRNx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — AMHx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — FIVEx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — ITx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — MDGLx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — VNOMx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — UHALx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — AURx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — STRLx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — IVZx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — CORTx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — NWSAx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — Hx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — ARWRx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — NWSx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — MANHx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — CACIx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — RVTYx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — CNAx multiplier missing — mcap omitted (never assumed 1.0)
-- **xStocks** — price, circulating-supply, and/or currentMultiplier missing — market cap omitted (never assumed multiplier=1.0)
+- **Tokenized equities (xStocks)** — TimeoutError: The read operation timed out
+- **xStocks** — asset list failed on backed.fi and xstocks.fi
 
 ## Sources this run
 
-- `rpc.getHealth` [ok] 200 600ms https://api.mainnet-beta.solana.com
-- `rpc.getSlot` [ok] 200 708ms https://api.mainnet-beta.solana.com
-- `rpc.getBlockTime` [ok] 200 632ms https://api.mainnet-beta.solana.com
-- `rpc.getEpochInfo` [ok] 200 457ms https://api.mainnet-beta.solana.com
-- `rpc.getRecentPerformanceSamples` [ok] 200 713ms https://api.mainnet-beta.solana.com
-- `rpc.getSupply` [ok] 200 7239ms https://api.mainnet-beta.solana.com
-- `rpc.getVoteAccounts` [ok] 200 1081ms https://api.mainnet-beta.solana.com
-- `coingecko.simple_price` [ok] 200 82ms https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true&include_last_updated_at=true
-- `coinbase.solusd.stats` [ok] 200 87ms https://api.exchange.coinbase.com/products/SOL-USD/stats
-- `llama.chains` [ok] 200 123ms https://api.llama.fi/v2/chains
-- `llama.historical_tvl` [ok] 200 83ms https://api.llama.fi/v2/historicalChainTvl/Solana
-- `llama.dexs` [ok] 200 752ms https://api.llama.fi/overview/dexs/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
-- `llama.fees` [ok] 200 1008ms https://api.llama.fi/overview/fees/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
-- `llama.protocols` [ok] 200 259ms https://api.llama.fi/protocols
-- `llama.stablecoinchains` [ok] 200 121ms https://stablecoins.llama.fi/stablecoinchains
-- `llama.stablecoins` [ok] 200 103ms https://stablecoins.llama.fi/stablecoins?includePrices=true
-- `llama.stablecoincharts` [ok] 200 177ms https://stablecoins.llama.fi/stablecoincharts/Solana
-- `solana.com.data_page` [ok] 200 325ms https://solana.com/data
-- `solana.com.databricks` [ok] 200 182ms https://solana.com/api/databricks/data?days=30
-- `solana.com.rpc_data` [ok] 200 1065ms https://solana.com/api/rpc/data
-- `status.summary` [ok] 200 164ms https://status.solana.com/api/v2/summary.json
-- `rss.status.atom` [ok] 200 156ms https://status.solana.com/history.atom
-- `rss.news.rss` [ok] 200 133ms https://solana.com/news/rss.xml
-- `rss.anza.medium` [ok] 200 260ms https://medium.com/feed/anza-xyz
-- `rss.xcancel.solana` [ok] 200 643ms https://xcancel.com/solana/rss
-- `rss.xcancel.solana_status` [ok] 200 257ms https://xcancel.com/solana_status/rss
-- `rss.xcancel.anza_xyz` [ok] 200 253ms https://xcancel.com/anza_xyz/rss
-- `rss.xcancel.solana_devs` [ok] 200 322ms https://xcancel.com/solana_devs/rss
-- `rss.nitter.solana` [ok] 200 819ms https://nitter.perennialte.ch/solana/rss
-- `rss.nitter.solana_status` [ok] 200 257ms https://nitter.perennialte.ch/solana_status/rss
-- `rss.nitter.anza_xyz` [ok] 200 1392ms https://nitter.perennialte.ch/anza_xyz/rss
-- `rss.nitter.solana_devs` [ok] 200 1441ms https://nitter.perennialte.ch/solana_devs/rss
-- `status.incidents` [ok] 200 112ms https://status.solana.com/api/v2/incidents.json
-- `rpc.getBalance` [ok] 200 590ms https://api.mainnet-beta.solana.com
-- `rpc.getBlocks` [ok] 200 591ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2511ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2567ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2294ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2441ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 1948ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2256ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2344ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2985ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2240ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2453ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2069ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2395ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2446ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [ok] 200 2777ms https://api.mainnet-beta.solana.com
-- `xstocks.assets.p0` [FAIL]  15105ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=0 — TimeoutError: The read operation timed out
-- `xstocks.assets.p0` [ok] 200 11218ms https://api.xstocks.fi/api/v2/public/assets?pageSize=100&page=0
-- `xstocks.assets.p1` [FAIL]  15051ms https://api.xstocks.fi/api/v2/public/assets?pageSize=100&page=1 — TimeoutError: The read operation timed out
-- `xstocks.price.METCx` [ok] 200 3629ms https://api.xstocks.fi/api/v2/public/assets/METCx/price-data
-- `xstocks.price.FLNCx` [ok] 200 7066ms https://api.xstocks.fi/api/v2/public/assets/FLNCx/price-data
-- `xstocks.price.QUBTx` [ok] 200 7746ms https://api.xstocks.fi/api/v2/public/assets/QUBTx/price-data
-- `xstocks.price.XRXx` [FAIL]  12041ms https://api.xstocks.fi/api/v2/public/assets/XRXx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.PCTx` [FAIL]  12040ms https://api.xstocks.fi/api/v2/public/assets/PCTx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.INDIx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/INDIx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.WRLDx` [FAIL]  12054ms https://api.xstocks.fi/api/v2/public/assets/WRLDx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.WGSx` [FAIL]  12055ms https://api.xstocks.fi/api/v2/public/assets/WGSx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.METCx` [FAIL]  12038ms https://api.xstocks.fi/api/v2/public/assets/METCx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.FLNCx` [FAIL]  12049ms https://api.xstocks.fi/api/v2/public/assets/FLNCx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.QUBTx` [FAIL]  12052ms https://api.xstocks.fi/api/v2/public/assets/QUBTx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.XRXx` [ok] 200 11881ms https://api.xstocks.fi/api/v2/public/assets/XRXx/circulating-supply?format=object
-- `xstocks.circ.PCTx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/PCTx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.INDIx` [FAIL]  12038ms https://api.xstocks.fi/api/v2/public/assets/INDIx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.WRLDx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/WRLDx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.WGSx` [FAIL]  12049ms https://api.xstocks.fi/api/v2/public/assets/WGSx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.METCx` [FAIL]  12053ms https://api.xstocks.fi/api/v2/public/assets/METCx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.FLNCx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/FLNCx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.QUBTx` [FAIL]  12051ms https://api.xstocks.fi/api/v2/public/assets/QUBTx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.XRXx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/XRXx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.PCTx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/PCTx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.INDIx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/INDIx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.WRLDx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/WRLDx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.WGSx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/WGSx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.WYFIx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/WYFIx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.BETRx` [FAIL]  12051ms https://api.xstocks.fi/api/v2/public/assets/BETRx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.AIx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/AIx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.SCIx` [ok] 200 11335ms https://api.xstocks.fi/api/v2/public/assets/SCIx/price-data
-- `xstocks.price.DRSx` [FAIL]  12039ms https://api.xstocks.fi/api/v2/public/assets/DRSx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.SAILx` [FAIL]  12040ms https://api.xstocks.fi/api/v2/public/assets/SAILx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.GSATx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/GSATx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.BSYx` [FAIL]  12052ms https://api.xstocks.fi/api/v2/public/assets/BSYx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.SAILx` [ok] 200 2376ms https://api.xstocks.fi/api/v2/public/assets/SAILx/circulating-supply?format=object
-- `xstocks.circ.WYFIx` [FAIL]  12037ms https://api.xstocks.fi/api/v2/public/assets/WYFIx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.BSYx` [ok] 200 4701ms https://api.xstocks.fi/api/v2/public/assets/BSYx/circulating-supply?format=object
-- `xstocks.circ.BETRx` [FAIL]  12047ms https://api.xstocks.fi/api/v2/public/assets/BETRx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.AIx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/AIx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.SCIx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/SCIx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.DRSx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/DRSx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.GSATx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/GSATx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.SAILx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/SAILx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.WYFIx` [FAIL]  12051ms https://api.xstocks.fi/api/v2/public/assets/WYFIx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.BSYx` [FAIL]  12052ms https://api.xstocks.fi/api/v2/public/assets/BSYx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.DCIx` [ok] 200 904ms https://api.xstocks.fi/api/v2/public/assets/DCIx/price-data
-- `xstocks.mult.BETRx` [FAIL]  12040ms https://api.xstocks.fi/api/v2/public/assets/BETRx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.AIx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/AIx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.SCIx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/SCIx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.DRSx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/DRSx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.GSATx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/GSATx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.BXPx` [ok] 200 1610ms https://api.xstocks.fi/api/v2/public/assets/BXPx/price-data
-- `xstocks.price.MPx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/MPx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.DVAx` [ok] 200 11770ms https://api.xstocks.fi/api/v2/public/assets/DVAx/price-data
-- `xstocks.circ.DCIx` [FAIL]  12041ms https://api.xstocks.fi/api/v2/public/assets/DCIx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.GDDYx` [ok] 200 11501ms https://api.xstocks.fi/api/v2/public/assets/GDDYx/price-data
-- `xstocks.price.RYANx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/RYANx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.FRHCx` [FAIL]  12053ms https://api.xstocks.fi/api/v2/public/assets/FRHCx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.DYx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/DYx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.BXPx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/BXPx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.MPx` [FAIL]  12041ms https://api.xstocks.fi/api/v2/public/assets/MPx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.DVAx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/DVAx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.DCIx` [FAIL]  12059ms https://api.xstocks.fi/api/v2/public/assets/DCIx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.GDDYx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/GDDYx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.RYANx` [FAIL]  12053ms https://api.xstocks.fi/api/v2/public/assets/RYANx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.DYx` [ok] 200 7804ms https://api.xstocks.fi/api/v2/public/assets/DYx/circulating-supply?format=object
-- `xstocks.circ.FRHCx` [FAIL]  12041ms https://api.xstocks.fi/api/v2/public/assets/FRHCx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.BXPx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/BXPx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.MPx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/MPx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.DVAx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/DVAx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.WMSx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/WMSx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.GDDYx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/GDDYx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.RYANx` [FAIL]  12054ms https://api.xstocks.fi/api/v2/public/assets/RYANx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.DYx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/DYx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.FRHCx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/FRHCx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.AMx` [FAIL]  12053ms https://api.xstocks.fi/api/v2/public/assets/AMx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.FDSx` [FAIL]  12035ms https://api.xstocks.fi/api/v2/public/assets/FDSx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.ALSNx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/ALSNx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.WMSx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/WMSx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.SMTCx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/SMTCx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.SFx` [FAIL]  12054ms https://api.xstocks.fi/api/v2/public/assets/SFx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.AXSMx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/AXSMx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.EGPx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/EGPx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.AMx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/AMx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.FDSx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/FDSx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.ALSNx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/ALSNx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.WMSx` [FAIL]  12047ms https://api.xstocks.fi/api/v2/public/assets/WMSx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.SMTCx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/SMTCx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.SFx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/SFx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.AXSMx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/AXSMx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.EGPx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/EGPx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.AMx` [FAIL]  12047ms https://api.xstocks.fi/api/v2/public/assets/AMx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.FDSx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/FDSx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.ALSNx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/ALSNx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.BPOPx` [FAIL]  12051ms https://api.xstocks.fi/api/v2/public/assets/BPOPx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.SMTCx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/SMTCx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.SFx` [FAIL]  12052ms https://api.xstocks.fi/api/v2/public/assets/SFx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.AXSMx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/AXSMx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.EGPx` [FAIL]  12051ms https://api.xstocks.fi/api/v2/public/assets/EGPx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.TTMIx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/TTMIx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.AEISx` [FAIL]  12047ms https://api.xstocks.fi/api/v2/public/assets/AEISx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.DPZx` [FAIL]  12041ms https://api.xstocks.fi/api/v2/public/assets/DPZx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.BPOPx` [FAIL]  12055ms https://api.xstocks.fi/api/v2/public/assets/BPOPx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.HRLx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/HRLx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.KTOSx` [FAIL]  12049ms https://api.xstocks.fi/api/v2/public/assets/KTOSx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.PAGx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/PAGx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.SEICx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/SEICx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.TTMIx` [FAIL]  12041ms https://api.xstocks.fi/api/v2/public/assets/TTMIx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.AEISx` [FAIL]  12049ms https://api.xstocks.fi/api/v2/public/assets/AEISx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.DPZx` [FAIL]  12049ms https://api.xstocks.fi/api/v2/public/assets/DPZx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.BPOPx` [FAIL]  12055ms https://api.xstocks.fi/api/v2/public/assets/BPOPx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.HRLx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/HRLx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.KTOSx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/KTOSx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.PAGx` [FAIL]  12032ms https://api.xstocks.fi/api/v2/public/assets/PAGx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.TTMIx` [ok] 200 9769ms https://api.xstocks.fi/api/v2/public/assets/TTMIx/multiplier?network=Solana
-- `xstocks.circ.SEICx` [FAIL]  12040ms https://api.xstocks.fi/api/v2/public/assets/SEICx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.AEISx` [FAIL]  12047ms https://api.xstocks.fi/api/v2/public/assets/AEISx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.DPZx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/DPZx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.HIIx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/HIIx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.HRLx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/HRLx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.KTOSx` [FAIL]  12047ms https://api.xstocks.fi/api/v2/public/assets/KTOSx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.PAGx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/PAGx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.EHCx` [FAIL]  12041ms https://api.xstocks.fi/api/v2/public/assets/EHCx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.SEICx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/SEICx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.HALOx` [ok] 200 4982ms https://api.xstocks.fi/api/v2/public/assets/HALOx/price-data
-- `xstocks.price.GFLx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/GFLx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.ARx` [FAIL]  12051ms https://api.xstocks.fi/api/v2/public/assets/ARx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.HIIx` [FAIL]  12051ms https://api.xstocks.fi/api/v2/public/assets/HIIx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.MGMx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/MGMx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.DOCUx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/DOCUx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.EHCx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/EHCx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.WTRGx` [FAIL]  12054ms https://api.xstocks.fi/api/v2/public/assets/WTRGx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.HALOx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/HALOx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.MGMx` [ok] 200 6579ms https://api.xstocks.fi/api/v2/public/assets/MGMx/circulating-supply?format=object
-- `xstocks.circ.GFLx` [FAIL]  12055ms https://api.xstocks.fi/api/v2/public/assets/GFLx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.ARx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/ARx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.HIIx` [FAIL]  12069ms https://api.xstocks.fi/api/v2/public/assets/HIIx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.DOCUx` [FAIL]  12053ms https://api.xstocks.fi/api/v2/public/assets/DOCUx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.EHCx` [FAIL]  12049ms https://api.xstocks.fi/api/v2/public/assets/EHCx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.WTRGx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/WTRGx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.HALOx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/HALOx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.MGMx` [FAIL]  12035ms https://api.xstocks.fi/api/v2/public/assets/MGMx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.ARx` [ok] 200 10170ms https://api.xstocks.fi/api/v2/public/assets/ARx/multiplier?network=Solana
-- `xstocks.mult.GFLx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/GFLx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.AFGx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/AFGx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.DOCUx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/DOCUx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.HUBSx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/HUBSx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.WTRGx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/WTRGx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.AMKRx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/AMKRx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.GMEDx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/GMEDx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.JKHYx` [FAIL]  12033ms https://api.xstocks.fi/api/v2/public/assets/JKHYx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.IESCx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/IESCx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.AFGx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/AFGx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.OCx` [FAIL]  12051ms https://api.xstocks.fi/api/v2/public/assets/OCx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.GMEDx` [ok] 200 9181ms https://api.xstocks.fi/api/v2/public/assets/GMEDx/circulating-supply?format=object
-- `xstocks.circ.HUBSx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/HUBSx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.CRx` [FAIL]  12049ms https://api.xstocks.fi/api/v2/public/assets/CRx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.AMKRx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/AMKRx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.JKHYx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/JKHYx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.IESCx` [FAIL]  12041ms https://api.xstocks.fi/api/v2/public/assets/IESCx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.AFGx` [FAIL]  12045ms https://api.xstocks.fi/api/v2/public/assets/AFGx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.OCx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/OCx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.JKHYx` [ok] 200 6551ms https://api.xstocks.fi/api/v2/public/assets/JKHYx/multiplier?network=Solana
-- `xstocks.mult.GMEDx` [ok] 200 12053ms https://api.xstocks.fi/api/v2/public/assets/GMEDx/multiplier?network=Solana
-- `xstocks.mult.AMKRx` [ok] 200 9510ms https://api.xstocks.fi/api/v2/public/assets/AMKRx/multiplier?network=Solana
-- `xstocks.mult.HUBSx` [FAIL]  12054ms https://api.xstocks.fi/api/v2/public/assets/HUBSx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.CRx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/CRx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.IESCx` [ok] 200 11682ms https://api.xstocks.fi/api/v2/public/assets/IESCx/multiplier?network=Solana
-- `xstocks.price.BMRNx` [FAIL]  12056ms https://api.xstocks.fi/api/v2/public/assets/BMRNx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.OCx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/OCx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.JEFx` [FAIL]  12054ms https://api.xstocks.fi/api/v2/public/assets/JEFx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.FIVEx` [FAIL]  12036ms https://api.xstocks.fi/api/v2/public/assets/FIVEx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.AMHx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/AMHx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.ITx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/ITx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.CRx` [FAIL]  12047ms https://api.xstocks.fi/api/v2/public/assets/CRx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.BMRNx` [ok] 200 7339ms https://api.xstocks.fi/api/v2/public/assets/BMRNx/circulating-supply?format=object
-- `xstocks.price.MDGLx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/MDGLx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.VNOMx` [ok] 200 9980ms https://api.xstocks.fi/api/v2/public/assets/VNOMx/price-data
-- `xstocks.circ.JEFx` [FAIL]  12064ms https://api.xstocks.fi/api/v2/public/assets/JEFx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.JEFx` [ok] 200 788ms https://api.xstocks.fi/api/v2/public/assets/JEFx/multiplier?network=Solana
-- `xstocks.circ.FIVEx` [FAIL]  12035ms https://api.xstocks.fi/api/v2/public/assets/FIVEx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.AMHx` [FAIL]  12035ms https://api.xstocks.fi/api/v2/public/assets/AMHx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.ITx` [FAIL]  12055ms https://api.xstocks.fi/api/v2/public/assets/ITx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.UHALx` [FAIL]  12060ms https://api.xstocks.fi/api/v2/public/assets/UHALx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.BMRNx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/BMRNx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.MDGLx` [FAIL]  12061ms https://api.xstocks.fi/api/v2/public/assets/MDGLx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.VNOMx` [FAIL]  12051ms https://api.xstocks.fi/api/v2/public/assets/VNOMx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.AHRx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/AHRx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.AMHx` [FAIL]  12041ms https://api.xstocks.fi/api/v2/public/assets/AMHx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.FIVEx` [FAIL]  12047ms https://api.xstocks.fi/api/v2/public/assets/FIVEx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.ITx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/ITx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.UHALx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/UHALx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.STRLx` [ok] 200 2485ms https://api.xstocks.fi/api/v2/public/assets/STRLx/price-data
-- `xstocks.price.IVZx` [FAIL]  12047ms https://api.xstocks.fi/api/v2/public/assets/IVZx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.MDGLx` [FAIL]  12049ms https://api.xstocks.fi/api/v2/public/assets/MDGLx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.AURx` [ok] 200 1858ms https://api.xstocks.fi/api/v2/public/assets/AURx/price-data
-- `xstocks.mult.VNOMx` [FAIL]  12051ms https://api.xstocks.fi/api/v2/public/assets/VNOMx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.AHRx` [FAIL]  12180ms https://api.xstocks.fi/api/v2/public/assets/AHRx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.CORTx` [ok] 200 11689ms https://api.xstocks.fi/api/v2/public/assets/CORTx/price-data
-- `xstocks.price.NWSAx` [FAIL]  12031ms https://api.xstocks.fi/api/v2/public/assets/NWSAx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.AURx` [ok] 200 7936ms https://api.xstocks.fi/api/v2/public/assets/AURx/circulating-supply?format=object
-- `xstocks.mult.UHALx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/UHALx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.STRLx` [FAIL]  12033ms https://api.xstocks.fi/api/v2/public/assets/STRLx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.IVZx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/IVZx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.AHRx` [ok] 200 6298ms https://api.xstocks.fi/api/v2/public/assets/AHRx/multiplier?network=Solana
-- `xstocks.price.Hx` [FAIL]  12049ms https://api.xstocks.fi/api/v2/public/assets/Hx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.CORTx` [FAIL]  12041ms https://api.xstocks.fi/api/v2/public/assets/CORTx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.NWSAx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/NWSAx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.AURx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/AURx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.ARWRx` [FAIL]  12047ms https://api.xstocks.fi/api/v2/public/assets/ARWRx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.STRLx` [FAIL]  12049ms https://api.xstocks.fi/api/v2/public/assets/STRLx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.IVZx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/IVZx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.GWREx` [FAIL]  12052ms https://api.xstocks.fi/api/v2/public/assets/GWREx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.Hx` [FAIL]  12049ms https://api.xstocks.fi/api/v2/public/assets/Hx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.CORTx` [FAIL]  12051ms https://api.xstocks.fi/api/v2/public/assets/CORTx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.NWSAx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/NWSAx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.NWSx` [FAIL]  12044ms https://api.xstocks.fi/api/v2/public/assets/NWSx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.ARWRx` [FAIL]  12039ms https://api.xstocks.fi/api/v2/public/assets/ARWRx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.MANHx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/MANHx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.CACIx` [FAIL]  12040ms https://api.xstocks.fi/api/v2/public/assets/CACIx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.GWREx` [FAIL]  12042ms https://api.xstocks.fi/api/v2/public/assets/GWREx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.Hx` [FAIL]  12030ms https://api.xstocks.fi/api/v2/public/assets/Hx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.BAXx` [FAIL]  12041ms https://api.xstocks.fi/api/v2/public/assets/BAXx/price-data — TimeoutError: The read operation timed out
-- `xstocks.price.RVTYx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/RVTYx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.NWSx` [FAIL]  12054ms https://api.xstocks.fi/api/v2/public/assets/NWSx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.GWREx` [ok] 200 8578ms https://api.xstocks.fi/api/v2/public/assets/GWREx/multiplier?network=Solana
-- `xstocks.mult.ARWRx` [FAIL]  12035ms https://api.xstocks.fi/api/v2/public/assets/ARWRx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.MANHx` [FAIL]  12054ms https://api.xstocks.fi/api/v2/public/assets/MANHx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.CACIx` [FAIL]  12049ms https://api.xstocks.fi/api/v2/public/assets/CACIx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.price.TXRHx` [FAIL]  12046ms https://api.xstocks.fi/api/v2/public/assets/TXRHx/price-data — TimeoutError: The read operation timed out
-- `xstocks.circ.BAXx` [FAIL]  12052ms https://api.xstocks.fi/api/v2/public/assets/BAXx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.circ.RVTYx` [FAIL]  12043ms https://api.xstocks.fi/api/v2/public/assets/RVTYx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.NWSx` [FAIL]  12048ms https://api.xstocks.fi/api/v2/public/assets/NWSx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.price.CNAx` [FAIL]  12047ms https://api.xstocks.fi/api/v2/public/assets/CNAx/price-data — TimeoutError: The read operation timed out
-- `xstocks.mult.MANHx` [FAIL]  12050ms https://api.xstocks.fi/api/v2/public/assets/MANHx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.mult.CACIx` [FAIL]  12037ms https://api.xstocks.fi/api/v2/public/assets/CACIx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.TXRHx` [FAIL]  12054ms https://api.xstocks.fi/api/v2/public/assets/TXRHx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.BAXx` [ok] 200 11443ms https://api.xstocks.fi/api/v2/public/assets/BAXx/multiplier?network=Solana
-- `xstocks.mult.TXRHx` [ok] 200 3970ms https://api.xstocks.fi/api/v2/public/assets/TXRHx/multiplier?network=Solana
-- `xstocks.mult.RVTYx` [FAIL]  12054ms https://api.xstocks.fi/api/v2/public/assets/RVTYx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `xstocks.circ.CNAx` [FAIL]  12059ms https://api.xstocks.fi/api/v2/public/assets/CNAx/circulating-supply?format=object — TimeoutError: The read operation timed out
-- `xstocks.mult.CNAx` [FAIL]  12056ms https://api.xstocks.fi/api/v2/public/assets/CNAx/multiplier?network=Solana — TimeoutError: The read operation timed out
-- `llama.protocol.xstocks` [ok] 200 3462ms https://api.llama.fi/protocol/xstocks
-- `jup.tokens.search.xStock` [ok] 200 209ms https://lite-api.jup.ag/tokens/v2/search?query=xStock
-- `jup.tokens.search.METCx` [ok] 200 113ms https://lite-api.jup.ag/tokens/v2/search?query=METCx
-- `jup.tokens.search.FLNCx` [ok] 200 120ms https://lite-api.jup.ag/tokens/v2/search?query=FLNCx
-- `jup.tokens.search.QUBTx` [ok] 200 122ms https://lite-api.jup.ag/tokens/v2/search?query=QUBTx
-- `jup.tokens.search.XRXx` [ok] 200 117ms https://lite-api.jup.ag/tokens/v2/search?query=XRXx
-- `jup.tokens.search.PCTx` [ok] 200 102ms https://lite-api.jup.ag/tokens/v2/search?query=PCTx
-- `jup.tokens.search.INDIx` [ok] 200 118ms https://lite-api.jup.ag/tokens/v2/search?query=INDIx
-- `jup.tokens.search.WRLDx` [ok] 200 106ms https://lite-api.jup.ag/tokens/v2/search?query=WRLDx
-- `jup.tokens.search.WGSx` [ok] 200 86ms https://lite-api.jup.ag/tokens/v2/search?query=WGSx
-- `jito.tip_floor` [ok] 200 156ms https://bundles.jito.wtf/api/v1/bundles/tip_floor
-- `dune.public_embed` [ok] 200 344ms https://dune.com/embeds/dashboard/cryptoonchain/solana-explorer
-- `simd.0525.raw` [ok] 200 153ms https://raw.githubusercontent.com/solana-foundation/solana-improvement-documents/main/proposals/0525-reduce-slot-times.md
-- `rpc.getAccountInfo` [ok] 200 285ms https://api.mainnet-beta.solana.com
-- `rpc.getAccountInfo` [ok] 200 136ms https://api.mainnet-beta.solana.com
-- `rpc.getAccountInfo` [ok] 200 149ms https://api.mainnet-beta.solana.com
-- `rpc.getAccountInfo` [ok] 200 165ms https://api.mainnet-beta.solana.com
-- `jito.daily_mev_rewards` [ok] 200 749ms https://kobe.mainnet.jito.network/api/v1/daily_mev_rewards
+- `rpc.getHealth` [ok] 200 261ms https://api.mainnet-beta.solana.com
+- `rpc.getSlot` [ok] 200 340ms https://api.mainnet-beta.solana.com
+- `rpc.getBlockTime` [ok] 200 225ms https://api.mainnet-beta.solana.com
+- `rpc.getEpochInfo` [ok] 200 239ms https://api.mainnet-beta.solana.com
+- `rpc.getRecentPerformanceSamples` [ok] 200 207ms https://api.mainnet-beta.solana.com
+- `rpc.getSupply` [ok] 200 7948ms https://api.mainnet-beta.solana.com
+- `rpc.getVoteAccounts` [ok] 200 397ms https://api.mainnet-beta.solana.com
+- `coingecko.simple_price` [ok] 200 127ms https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true&include_last_updated_at=true
+- `coinbase.solusd.stats` [ok] 200 83ms https://api.exchange.coinbase.com/products/SOL-USD/stats
+- `llama.chains` [ok] 200 122ms https://api.llama.fi/v2/chains
+- `llama.historical_tvl` [ok] 200 68ms https://api.llama.fi/v2/historicalChainTvl/Solana
+- `llama.dexs` [ok] 200 1010ms https://api.llama.fi/overview/dexs/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
+- `llama.fees` [ok] 200 70ms https://api.llama.fi/overview/fees/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
+- `llama.protocols` [ok] 200 299ms https://api.llama.fi/protocols
+- `llama.stablecoinchains` [ok] 200 109ms https://stablecoins.llama.fi/stablecoinchains
+- `llama.stablecoins` [ok] 200 102ms https://stablecoins.llama.fi/stablecoins?includePrices=true
+- `llama.stablecoincharts` [ok] 200 126ms https://stablecoins.llama.fi/stablecoincharts/Solana
+- `solana.com.data_page` [ok] 200 457ms https://solana.com/data
+- `solana.com.databricks` [ok] 200 533ms https://solana.com/api/databricks/data?days=30
+- `solana.com.rpc_data` [ok] 200 843ms https://solana.com/api/rpc/data
+- `status.summary` [ok] 200 143ms https://status.solana.com/api/v2/summary.json
+- `rss.status.atom` [ok] 200 203ms https://status.solana.com/history.atom
+- `rss.news.rss` [ok] 200 111ms https://solana.com/news/rss.xml
+- `rss.anza.medium` [ok] 200 496ms https://medium.com/feed/anza-xyz
+- `rss.xcancel.solana` [ok] 200 817ms https://xcancel.com/solana/rss
+- `rss.xcancel.solana_status` [ok] 200 362ms https://xcancel.com/solana_status/rss
+- `rss.xcancel.anza_xyz` [ok] 200 372ms https://xcancel.com/anza_xyz/rss
+- `rss.xcancel.solana_devs` [ok] 200 362ms https://xcancel.com/solana_devs/rss
+- `rss.nitter.solana` [ok] 200 217ms https://nitter.perennialte.ch/solana/rss
+- `rss.nitter.solana_status` [ok] 200 189ms https://nitter.perennialte.ch/solana_status/rss
+- `rss.nitter.anza_xyz` [ok] 200 1791ms https://nitter.perennialte.ch/anza_xyz/rss
+- `rss.nitter.solana_devs` [ok] 200 1325ms https://nitter.perennialte.ch/solana_devs/rss
+- `status.incidents` [ok] 200 59ms https://status.solana.com/api/v2/incidents.json
+- `rpc.getBalance` [ok] 200 205ms https://api.mainnet-beta.solana.com
+- `rpc.getBlocks` [ok] 200 188ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 889ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 947ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 809ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 1058ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 996ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 1335ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 947ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 919ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 830ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 1216ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 869ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 880ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 882ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [ok] 200 889ms https://api.mainnet-beta.solana.com
+- `xstocks.assets.p0` [FAIL]  15134ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=0 — TimeoutError: The read operation timed out
+- `xstocks.assets.p0` [FAIL]  15122ms https://api.xstocks.fi/api/v2/public/assets?pageSize=100&page=0 — TimeoutError: The read operation timed out
+- `llama.protocol.xstocks` [ok] 200 66ms https://api.llama.fi/protocol/xstocks
+- `jup.tokens.search.xStock` [ok] 200 199ms https://lite-api.jup.ag/tokens/v2/search?query=xStock
+- `jito.tip_floor` [ok] 200 160ms https://bundles.jito.wtf/api/v1/bundles/tip_floor
+- `dune.public_embed` [ok] 200 511ms https://dune.com/embeds/dashboard/cryptoonchain/solana-explorer
+- `simd.0525.raw` [ok] 200 135ms https://raw.githubusercontent.com/solana-foundation/solana-improvement-documents/main/proposals/0525-reduce-slot-times.md
+- `rpc.getAccountInfo` [ok] 200 185ms https://api.mainnet-beta.solana.com
+- `rpc.getAccountInfo` [ok] 200 205ms https://api.mainnet-beta.solana.com
+- `rpc.getAccountInfo` [ok] 200 186ms https://api.mainnet-beta.solana.com
+- `rpc.getAccountInfo` [ok] 200 193ms https://api.mainnet-beta.solana.com
+- `jito.daily_mev_rewards` [ok] 200 195ms https://kobe.mainnet.jito.network/api/v1/daily_mev_rewards
 
 ---
 
