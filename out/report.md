@@ -1,11 +1,11 @@
 # Borealis — Solana ecosystem report
 
-**Generated** 2026-09-24T08:50:20Z · 2026-09-24 01:50:20 PT
+**Generated** 2026-09-24T09:01:25Z · 2026-09-24 02:01:25 PT
 **Author** dustycompiler · **Version** 1.5.7 · **License** MIT
 **Live demo** https://dustycompiler.github.io/borealis-solana/
-**Cluster block time** 2026-09-24T08:50:11Z · **RPC health** `ok`
+**Cluster block time** 2026-09-24T09:01:16Z · **RPC health** `ok`
 **Health score** 98 / 100 — `25×rpc_ok + 30×clamp(1 − max(0, slot_ms − 250)/250, 0, 1) + 25×clamp(1 − delinquent_stake_pct/2, 0, 1) + 20×clamp(tps / tps_baseline, 0, 1)`
-**Network health** HEALTHY · **Ecosystem** CONTRACTION — SOL 24h -3.22%; DEX 24h $2.68B · 1d -16% · vs-7d-ago -4%; slot 265 ms
+**Network health** HEALTHY · **Ecosystem** CONTRACTION — SOL 24h -2.96%; DEX 24h $2.68B · 1d -16% · vs-7d-ago -4%; slot 265 ms
 GitHub Actions snapshot (not a guaranteed 15-minute tick). STALE if snapshot age > 2 hours. The HTML dashboard also runs an on-page LIVE pulse (browser JSON-RPC, at most every 60s) for slot/epoch/TPS.
 
 This file is produced by `python3 generate.py` from public endpoints. Every number
@@ -15,25 +15,25 @@ than filled with a guess.
 ## Anomalies
 
 - **ALERT · Large Solana DEX volume 1d move** — DeFiLlama Solana DEX volume 1d change is -16.03%. (threshold: `|1d %| >= 8`)
-- **WARN · Correlation: risk-off (SOL 24h ↓ + TVL 1d ↓ + DEX 1d ↓)** — SOL 24h -3.22%, DeFiLlama TVL 1d -2.03%, DEX 1d -16.03%. (threshold: `SOL 24h < 0 AND TVL 1d < 0 AND DEX 1d < 0`)
+- **WARN · Correlation: risk-off (SOL 24h ↓ + TVL 1d ↓ + DEX 1d ↓)** — SOL 24h -2.96%, DeFiLlama TVL 1d -2.03%, DEX 1d -16.03%. (threshold: `SOL 24h < 0 AND TVL 1d < 0 AND DEX 1d < 0`)
 
 ## Cluster
 
 | Metric | Value |
 | --- | ---: |
 | Health | `ok` |
-| Slot | 449,979,468 |
-| Block height | 428,019,589 |
-| Block time | 2026-09-24T08:50:11Z |
-| Epoch | 1,041 (61.91% · slot 267,469/432,000) |
-| Mean TPS (last ~3,600s) | 4,117.4 |
-| Mean non-vote TPS | 1,578.2 |
-| Median TPS (same window) | 4,072.7 |
+| Slot | 449,981,966 |
+| Block height | 428,022,087 |
+| Block time | 2026-09-24T09:01:16Z |
+| Epoch | 1,041 (62.49% · slot 269,967/432,000) |
+| Mean TPS (last ~3,600s) | 4,211.7 |
+| Mean non-vote TPS | 1,672.9 |
+| Median TPS (same window) | 4,159.0 |
 | Mean slot time | 265.2 ms |
-| Median slot time | 265.5 ms |
-| Transaction count (cluster) | 552,031,328,189 |
-| Circulating supply | 587,577,338 SOL |
-| Total supply | 634,608,450 SOL |
+| Median slot time | 264.3 ms |
+| Transaction count (cluster) | 552,034,235,755 |
+| Circulating supply | 587,577,331 SOL |
+| Total supply | 634,608,443 SOL |
 | Burned SOL (incinerator getBalance) | 0.00 SOL |
 
 Native SOL at the Foundation-documented burn address `1nc1nerator11111111111111111111111111111111`.
@@ -77,17 +77,17 @@ TPS = `numTransactions / samplePeriodSecs`. Slot time = `samplePeriodSecs / numS
 
 ### Delinquency alerts
 
-- `6DTkuiey…` · 89.15K SOL · commission 100% · lag 449979468 slots
-- `HDRqPft5…` · 71.15K SOL · commission 100% · lag 449979468 slots
-- `t23p8aBQ…` · 14.37K SOL · commission 0% · lag 2384232 slots
-- `AYY1TCe3…` · 10.70K SOL · commission 0% · lag 47627 slots
-- `NWY18yrP…` · 9.76K SOL · commission 10% · lag 1180758 slots
-- `mrgn4atx…` · 2.21K SOL · commission 0% · lag 1382063 slots
-- `pSoLoZx5…` · 1.51K SOL · commission 4% · lag 2104716 slots
-- `Hgozywot…` · 797.43 SOL · commission 100% · lag 1486597 slots
-- `9fTWmMqV…` · 23.86 SOL · commission 0% · lag 1217093 slots
-- `R1parD2C…` · 2.87 SOL · commission 5% · lag 65930598 slots
-- `6mygxmZx…` · 2.00 SOL · commission 100% · lag 74960 slots
+- `6DTkuiey…` · 89.15K SOL · commission 100% · lag 449981966 slots
+- `HDRqPft5…` · 71.15K SOL · commission 100% · lag 449981966 slots
+- `t23p8aBQ…` · 14.37K SOL · commission 0% · lag 2386730 slots
+- `AYY1TCe3…` · 10.70K SOL · commission 0% · lag 50125 slots
+- `NWY18yrP…` · 9.76K SOL · commission 10% · lag 1183256 slots
+- `mrgn4atx…` · 2.21K SOL · commission 0% · lag 1384561 slots
+- `pSoLoZx5…` · 1.51K SOL · commission 4% · lag 2107214 slots
+- `Hgozywot…` · 797.43 SOL · commission 100% · lag 1489095 slots
+- `9fTWmMqV…` · 23.86 SOL · commission 0% · lag 1219591 slots
+- `R1parD2C…` · 2.87 SOL · commission 5% · lag 65933096 slots
+- `6mygxmZx…` · 2.00 SOL · commission 100% · lag 77458 slots
 
 ## Trends
 
@@ -108,7 +108,7 @@ Full network REV (Blockworks/Helius) is in-protocol transaction fees (vote + bas
 | --- | ---: | --- |
 | **In-protocol fees 24h** | **$1.09M** (9,201.0 SOL) | solana.com/data Fees (Allium) MEASURED · USD at solana.com/data SOL Price (DexPaprika) UTC 2026-09-22 |
 | **Solana REV** | **11,385.8 SOL** / **$1.34M** | MEASURED UTC calendar day 2026-09-22: in-protocol fees + gross Jito MEV tips (jito_tips + validator_tips; not a rolling 24h); USD uses solana.com/data SOL Price (DexPaprika) UTC 2026-09-22 · UTC day 2026-09-22 · SOL-USD date 2026-09-22 |
-| Jito tip-floor run-rate (NOT REV) | $41.80K | INVALID as a 24h aggregate · included_in_headline=false · sensitivity (NOT a 24h aggregate, NOT headline REV): invalid run-rate at p50 floor → 41800 USD; at p95 floor → 1644310 USD. |
+| Jito tip-floor run-rate (NOT REV) | $78.35K | INVALID as a 24h aggregate · included_in_headline=false · sensitivity (NOT a 24h aggregate, NOT headline REV): invalid run-rate at p50 floor → 78354 USD; at p95 floor → 1556517 USD. |
 | Protocol fees 24h | $16.52M | EXCLUDED from REV — DeFiLlama Solana protocol fees 24h (not REV) |
 | Median tx fee p50 | — SOL (—) | NOT a 24h census · ~2–3h target · n_tx=0 window_seconds=None |
 | p90 / p99 | — / — SOL | same sample |
@@ -118,10 +118,10 @@ Full network REV (Blockworks/Helius) is in-protocol transaction fees (vote + bas
 
 | Metric | Value | Source |
 | --- | ---: | --- |
-| SOL/USD | $113.79 | coingecko.simple_price |
-| 24h change | -3.22% | coingecko.simple_price |
-| Market cap | $66.85B | coingecko.simple_price |
-| 24h volume | $4.79B | coingecko.simple_price |
+| SOL/USD | $113.90 | coingecko.simple_price |
+| 24h change | -2.96% | coingecko.simple_price |
+| Market cap | $66.95B | coingecko.simple_price |
+| 24h volume | $4.77B | coingecko.simple_price |
 
 ## DeFi (DeFiLlama)
 
@@ -152,15 +152,15 @@ Full network REV (Blockworks/Helius) is in-protocol transaction fees (vote + bas
 
 | Protocol | Category | Solana TVL | 1d | 7d |
 | --- | --- | ---: | ---: | ---: |
-| Sanctum Validator LSTs | Liquid Staking | $1.85B | -1.76% | +16.83% |
+| Sanctum Validator LSTs | Liquid Staking | $1.85B | -1.86% | +16.37% |
 | Kamino Lend | Lending | $1.41B | -1.28% | +5.11% |
 | Raydium AMM | Dexs | $1.31B | -2.67% | +17.47% |
-| Jito Liquid Staking | Liquid Staking | $1.19B | -2.75% | +15.98% |
-| Binance Staked SOL | Liquid Staking | $1.18B | -3.26% | +14.34% |
-| Jupiter Lend | Lending | $1.17B | -2.44% | +7.87% |
-| Jupiter Perpetual Exchange | Derivatives | $804.09M | -2.19% | +8.45% |
-| Jupiter Staked SOL | Liquid Staking | $596.60M | -2.63% | +15.78% |
-| Marinade Native | Staking Pool | $442.46M | -2.76% | +16.52% |
+| Jito Liquid Staking | Liquid Staking | $1.20B | -2.37% | +16.12% |
+| Binance Staked SOL | Liquid Staking | $1.18B | -2.59% | +14.18% |
+| Jupiter Lend | Lending | $1.17B | -2.28% | +7.94% |
+| Jupiter Perpetual Exchange | Derivatives | $805.32M | -2.11% | +8.50% |
+| Jupiter Staked SOL | Liquid Staking | $598.09M | -2.60% | +15.94% |
+| Marinade Native | Staking Pool | $443.56M | -2.74% | +16.66% |
 | PumpSwap | Dexs | $376.74M | -1.35% | +17.40% |
 
 ## Stablecoins
@@ -183,14 +183,14 @@ Solana circulating pegged-USD: **$16.13B**
 
 HTTP 503 Service Unavailable
 Listed 0 · Solana deployments 0 · priced 0 · priced-subset mcap — (lower bound, not a census).
-24h volume $151.93M — Jupiter-reported xStocks subset 24h activity (stats24h buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX) · 7d volume omitted (no no-key Jupiter/DeFiLlama series).
+24h volume $152.07M — Jupiter-reported xStocks subset 24h activity (stats24h buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX) · 7d volume omitted (no no-key Jupiter/DeFiLlama series).
 DeFiLlama protocol/xstocks Solana TVL — — liquidity census, not mcap, not 24h volume.
 Formula: `quote * circulating * multiplier` with live currentMultiplier (coverage: multiplier_ok None / mcap_computable None of attempted None; missing multiplier → mcap omitted, never silent 1.0).  
 
 ## Real-world assets
 
 Sum of DeFiLlama `chainTvls.Solana` for protocols tagged **RWA** or **RWA Lending**:
-**$543.25M** across 16 protocols.
+**$543.26M** across 16 protocols.
 This is protocol TVL, not a full on-chain RWA market-cap census (those Llama endpoints are Pro-only).
 
 - **OnRe** (RWA) — $301.16M
@@ -200,7 +200,7 @@ This is protocol TVL, not a full on-chain RWA market-cap census (those Llama end
 - **Mansory** (RWA) — $2.98M
 - **VNX** (RWA) — $2.70M
 - **Oro Finance** (RWA) — $2.49M
-- **International Stable Currency** (RWA) — $2.42M
+- **International Stable Currency** (RWA) — $2.44M
 
 ## Daily active addresses
 
@@ -245,7 +245,7 @@ Public X/Nitter-style RSS (xcancel.com, nitter mirrors, rsshub). Not the officia
 
 ## Editorial — SIMD-525 reduced slot times + Alpenglow (SIMD-0326)
 
-_As of 2026-09-24 (2026-09-24 01:50:20 PT). Editorial. Gate labels come from getAccountInfo Feature accounts (effective epoch = activation epoch + 1). Observed slot ms is INFERRED corroboration, not proof. Ignore solana.com/upgrades/reduced-slot-times if it lists 400 ms as current._
+_As of 2026-09-24 (2026-09-24 02:01:25 PT). Editorial. Gate labels come from getAccountInfo Feature accounts (effective epoch = activation epoch + 1). Observed slot ms is INFERRED corroboration, not proof. Ignore solana.com/upgrades/reduced-slot-times if it lists 400 ms as current._
 
 First-party Solana Changelog: August 20, 2026: “Feature gates reduced mainnet slot times from 400ms to 350ms, while Testnet moved from 250ms to 200ms.” On-chain Feature accounts: 400ms=superseded, 350ms=live, 300ms=live, 250ms=live, 200ms=pending. Observed mean slot ~265 ms is corroboration only — not feature-gate proof. Alpenglow (SIMD-0326) remains the consensus rewrite (Votor / Rotor); it is a separate track from the slot-time feature gates.
 
@@ -291,82 +291,82 @@ _Listing token SIMD-525 is SIMD-0525. Not SIMD-025._
 
 ## Sources this run
 
-- `rpc.getHealth` [ok] 200 143ms https://api.mainnet-beta.solana.com
-- `rpc.getSlot` [ok] 200 92ms https://api.mainnet-beta.solana.com
-- `rpc.getBlockTime` [ok] 200 199ms https://api.mainnet-beta.solana.com
-- `rpc.getEpochInfo` [ok] 200 88ms https://api.mainnet-beta.solana.com
-- `rpc.getRecentPerformanceSamples` [ok] 200 97ms https://api.mainnet-beta.solana.com
-- `rpc.getSupply` [ok] 200 5293ms https://api.mainnet-beta.solana.com
-- `rpc.getVoteAccounts` [ok] 200 149ms https://api.mainnet-beta.solana.com
-- `coingecko.simple_price` [ok] 200 161ms https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true&include_last_updated_at=true
-- `coinbase.solusd.stats` [ok] 200 63ms https://api.exchange.coinbase.com/products/SOL-USD/stats
-- `llama.chains` [ok] 200 85ms https://api.llama.fi/v2/chains
-- `llama.historical_tvl` [ok] 200 53ms https://api.llama.fi/v2/historicalChainTvl/Solana
-- `llama.dexs` [ok] 200 52ms https://api.llama.fi/overview/dexs/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
-- `llama.fees` [ok] 200 1313ms https://api.llama.fi/overview/fees/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
-- `llama.protocols` [ok] 200 166ms https://api.llama.fi/protocols
-- `llama.stablecoinchains` [ok] 200 86ms https://stablecoins.llama.fi/stablecoinchains
-- `llama.stablecoins` [ok] 200 92ms https://stablecoins.llama.fi/stablecoins?includePrices=true
-- `llama.stablecoincharts` [ok] 200 116ms https://stablecoins.llama.fi/stablecoincharts/Solana
-- `solana.com.data_page` [ok] 200 429ms https://solana.com/data
-- `solana.com.databricks` [ok] 200 433ms https://solana.com/api/databricks/data?days=30
-- `solana.com.rpc_data` [ok] 200 1900ms https://solana.com/api/rpc/data
-- `status.summary` [ok] 200 133ms https://status.solana.com/api/v2/summary.json
-- `rss.status.atom` [ok] 200 112ms https://status.solana.com/history.atom
-- `rss.news.rss` [ok] 200 117ms https://solana.com/news/rss.xml
-- `rss.anza.medium` [ok] 200 374ms https://medium.com/feed/anza-xyz
-- `rss.xcancel.solana` [FAIL] 451 404ms https://xcancel.com/solana/rss — HTTP 451 
-- `rss.xcancel.solana_status` [FAIL] 451 208ms https://xcancel.com/solana_status/rss — HTTP 451 
-- `rss.xcancel.anza_xyz` [FAIL] 451 225ms https://xcancel.com/anza_xyz/rss — HTTP 451 
-- `rss.xcancel.solana_devs` [FAIL] 451 207ms https://xcancel.com/solana_devs/rss — HTTP 451 
-- `rss.nitter.solana` [ok] 200 5033ms https://nitter.perennialte.ch/solana/rss
-- `rss.nitter.solana_status` [ok] 200 1471ms https://nitter.perennialte.ch/solana_status/rss
-- `rss.nitter.anza_xyz` [ok] 200 113ms https://nitter.perennialte.ch/anza_xyz/rss
-- `rss.nitter.solana_devs` [ok] 200 481ms https://nitter.perennialte.ch/solana_devs/rss
-- `rss.rsshub.solana` [FAIL] 404 279ms https://rsshub.app/twitter/user/solana — HTTP 404 Not Found
-- `status.incidents` [ok] 200 262ms https://status.solana.com/api/v2/incidents.json
-- `rpc.getBalance` [ok] 200 72ms https://api.mainnet-beta.solana.com
-- `rpc.getBlocks` [ok] 200 62ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [FAIL] 200 122ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 172ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 97ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 148ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 308ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 298ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 178ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 202ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 174ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 242ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 173ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 191ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 429 64ms https://api.mainnet-beta.solana.com — HTTP 429 Too Many Requests
-- `rpc.getBlock.fallback` [FAIL] 200 285ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 161ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 282ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 263ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 192ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 157ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 180ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 190ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 195ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getHealth` [ok] 200 131ms https://api.mainnet-beta.solana.com
+- `rpc.getSlot` [ok] 200 133ms https://api.mainnet-beta.solana.com
+- `rpc.getBlockTime` [ok] 200 84ms https://api.mainnet-beta.solana.com
+- `rpc.getEpochInfo` [ok] 200 58ms https://api.mainnet-beta.solana.com
+- `rpc.getRecentPerformanceSamples` [ok] 200 49ms https://api.mainnet-beta.solana.com
+- `rpc.getSupply` [ok] 200 6118ms https://api.mainnet-beta.solana.com
+- `rpc.getVoteAccounts` [ok] 200 92ms https://api.mainnet-beta.solana.com
+- `coingecko.simple_price` [ok] 200 64ms https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true&include_last_updated_at=true
+- `coinbase.solusd.stats` [ok] 200 39ms https://api.exchange.coinbase.com/products/SOL-USD/stats
+- `llama.chains` [ok] 200 57ms https://api.llama.fi/v2/chains
+- `llama.historical_tvl` [ok] 200 24ms https://api.llama.fi/v2/historicalChainTvl/Solana
+- `llama.dexs` [ok] 200 25ms https://api.llama.fi/overview/dexs/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
+- `llama.fees` [ok] 200 3942ms https://api.llama.fi/overview/fees/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
+- `llama.protocols` [ok] 200 212ms https://api.llama.fi/protocols
+- `llama.stablecoinchains` [ok] 200 224ms https://stablecoins.llama.fi/stablecoinchains
+- `llama.stablecoins` [ok] 200 45ms https://stablecoins.llama.fi/stablecoins?includePrices=true
+- `llama.stablecoincharts` [ok] 200 76ms https://stablecoins.llama.fi/stablecoincharts/Solana
+- `solana.com.data_page` [ok] 200 218ms https://solana.com/data
+- `solana.com.databricks` [ok] 200 193ms https://solana.com/api/databricks/data?days=30
+- `solana.com.rpc_data` [ok] 200 461ms https://solana.com/api/rpc/data
+- `status.summary` [ok] 200 169ms https://status.solana.com/api/v2/summary.json
+- `rss.status.atom` [ok] 200 44ms https://status.solana.com/history.atom
+- `rss.news.rss` [ok] 200 57ms https://solana.com/news/rss.xml
+- `rss.anza.medium` [ok] 200 94ms https://medium.com/feed/anza-xyz
+- `rss.xcancel.solana` [FAIL] 451 235ms https://xcancel.com/solana/rss — HTTP 451 
+- `rss.xcancel.solana_status` [FAIL] 451 59ms https://xcancel.com/solana_status/rss — HTTP 451 
+- `rss.xcancel.anza_xyz` [FAIL] 451 61ms https://xcancel.com/anza_xyz/rss — HTTP 451 
+- `rss.xcancel.solana_devs` [FAIL] 451 59ms https://xcancel.com/solana_devs/rss — HTTP 451 
+- `rss.nitter.solana` [ok] 200 143ms https://nitter.perennialte.ch/solana/rss
+- `rss.nitter.solana_status` [ok] 200 708ms https://nitter.perennialte.ch/solana_status/rss
+- `rss.nitter.anza_xyz` [ok] 200 38ms https://nitter.perennialte.ch/anza_xyz/rss
+- `rss.nitter.solana_devs` [ok] 200 36ms https://nitter.perennialte.ch/solana_devs/rss
+- `rss.rsshub.solana` [FAIL] 404 236ms https://rsshub.app/twitter/user/solana — HTTP 404 Not Found
+- `status.incidents` [ok] 200 107ms https://status.solana.com/api/v2/incidents.json
+- `rpc.getBalance` [ok] 200 95ms https://api.mainnet-beta.solana.com
+- `rpc.getBlocks` [ok] 200 30ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [FAIL] 200 130ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 210ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 53ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 68ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 159ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 117ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 206ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 139ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 202ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 425ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
 - `rpc.getBlock` [FAIL] 200 125ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 180ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 114ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 177ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 96ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 196ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `xstocks.assets.p0` [FAIL] 503 266ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=0 — HTTP 503 Service Unavailable
-- `xstocks.assets.p0` [FAIL] 503 574ms https://api.xstocks.fi/api/v2/public/assets?pageSize=100&page=0 — HTTP 503 Service Unavailable
-- `llama.protocol.xstocks` [ok] 200 54ms https://api.llama.fi/protocol/xstocks
-- `jup.tokens.search.xStock` [ok] 200 252ms https://lite-api.jup.ag/tokens/v2/search?query=xStock
-- `jito.tip_floor` [ok] 200 160ms https://bundles.jito.wtf/api/v1/bundles/tip_floor
-- `dune.public_embed` [ok] 200 348ms https://dune.com/embeds/dashboard/cryptoonchain/solana-explorer
-- `simd.0525.raw` [ok] 200 312ms https://raw.githubusercontent.com/solana-foundation/solana-improvement-documents/main/proposals/0525-reduce-slot-times.md
-- `rpc.getAccountInfo` [ok] 200 116ms https://api.mainnet-beta.solana.com
-- `rpc.getAccountInfo` [ok] 200 60ms https://api.mainnet-beta.solana.com
-- `rpc.getAccountInfo` [ok] 200 107ms https://api.mainnet-beta.solana.com
-- `rpc.getAccountInfo` [ok] 200 66ms https://api.mainnet-beta.solana.com
-- `jito.daily_mev_rewards` [ok] 200 2181ms https://kobe.mainnet.jito.network/api/v1/daily_mev_rewards
+- `rpc.getBlock.fallback` [FAIL] 200 125ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 429 44ms https://api.mainnet-beta.solana.com — HTTP 429 Too Many Requests
+- `rpc.getBlock.fallback` [FAIL] 200 171ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 162ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 169ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 185ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 164ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 206ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 79ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 109ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 118ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 80ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 89ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 91ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 123ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 80ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 109ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `xstocks.assets.p0` [FAIL] 503 141ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=0 — HTTP 503 Service Unavailable
+- `xstocks.assets.p0` [FAIL] 503 221ms https://api.xstocks.fi/api/v2/public/assets?pageSize=100&page=0 — HTTP 503 Service Unavailable
+- `llama.protocol.xstocks` [ok] 200 25ms https://api.llama.fi/protocol/xstocks
+- `jup.tokens.search.xStock` [ok] 200 127ms https://lite-api.jup.ag/tokens/v2/search?query=xStock
+- `jito.tip_floor` [ok] 200 120ms https://bundles.jito.wtf/api/v1/bundles/tip_floor
+- `dune.public_embed` [ok] 200 326ms https://dune.com/embeds/dashboard/cryptoonchain/solana-explorer
+- `simd.0525.raw` [ok] 200 53ms https://raw.githubusercontent.com/solana-foundation/solana-improvement-documents/main/proposals/0525-reduce-slot-times.md
+- `rpc.getAccountInfo` [ok] 200 30ms https://api.mainnet-beta.solana.com
+- `rpc.getAccountInfo` [ok] 200 176ms https://api.mainnet-beta.solana.com
+- `rpc.getAccountInfo` [ok] 200 25ms https://api.mainnet-beta.solana.com
+- `rpc.getAccountInfo` [ok] 200 35ms https://api.mainnet-beta.solana.com
+- `jito.daily_mev_rewards` [ok] 200 141ms https://kobe.mainnet.jito.network/api/v1/daily_mev_rewards
 
 ---
 
