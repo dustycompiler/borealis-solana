@@ -1,11 +1,11 @@
 # Borealis — Solana ecosystem report
 
-**Generated** 2026-09-24T20:49:55Z · 2026-09-24 13:49:55 PT
+**Generated** 2026-09-24T21:01:12Z · 2026-09-24 14:01:12 PT
 **Author** dustycompiler · **Version** 1.5.7 · **License** MIT
 **Live demo** https://dustycompiler.github.io/borealis-solana/
-**Cluster block time** 2026-09-24T20:49:46Z · **RPC health** `ok`
+**Cluster block time** 2026-09-24T21:01:03Z · **RPC health** `ok`
 **Health score** 98 / 100 — `25×rpc_ok + 30×clamp(1 − max(0, slot_ms − 250)/250, 0, 1) + 25×clamp(1 − delinquent_stake_pct/2, 0, 1) + 20×clamp(tps / tps_baseline, 0, 1)`
-**Network health** HEALTHY · **Ecosystem** CONTRACTION — SOL 24h +2.34%; DEX 24h $2.55B · 1d -20% · vs-7d-ago -9%; slot 268 ms
+**Network health** HEALTHY · **Ecosystem** CONTRACTION — SOL 24h +2.41%; DEX 24h $2.55B · 1d -20% · vs-7d-ago -9%; slot 267 ms
 GitHub Actions snapshot (not a guaranteed 15-minute tick). STALE if snapshot age > 2 hours. The HTML dashboard also runs an on-page LIVE pulse (browser JSON-RPC, at most every 60s) for slot/epoch/TPS.
 
 This file is produced by `python3 generate.py` from public endpoints. Every number
@@ -15,25 +15,25 @@ than filled with a guess.
 ## Anomalies
 
 - **ALERT · Large Solana DEX volume 1d move** — DeFiLlama Solana DEX volume 1d change is -20.10%. (threshold: `|1d %| >= 8`)
-- **INFO · TPS vs 30d median (solana.com/data tx/86400)** — Current 4,918.37 TPS is +22.4% vs 30d median 4,019.38 TPS (solana.com/data). (threshold: `|current − 30d median| / median >= 20%`)
+- **INFO · TPS vs 30d median (solana.com/data tx/86400)** — Current 4,887.64 TPS is +21.6% vs 30d median 4,019.38 TPS (solana.com/data). (threshold: `|current − 30d median| / median >= 20%`)
 
 ## Cluster
 
 | Metric | Value |
 | --- | ---: |
 | Health | `ok` |
-| Slot | 450,141,677 |
-| Block height | 428,181,700 |
-| Block time | 2026-09-24T20:49:46Z |
-| Epoch | 1,041 (99.46% · slot 429,678/432,000) |
-| Mean TPS (last ~3,600s) | 4,918.4 |
-| Mean non-vote TPS | 2,407.6 |
-| Median TPS (same window) | 4,936.5 |
-| Mean slot time | 267.6 ms |
-| Median slot time | 267.9 ms |
-| Transaction count (cluster) | 552,232,160,686 |
-| Circulating supply | 587,576,812 SOL |
-| Total supply | 634,607,923 SOL |
+| Slot | 450,144,219 |
+| Block height | 428,184,243 |
+| Block time | 2026-09-24T21:01:03Z |
+| Epoch | 1,042 (0.05% · slot 221/432,000) |
+| Mean TPS (last ~3,600s) | 4,887.6 |
+| Mean non-vote TPS | 2,365.1 |
+| Median TPS (same window) | 4,884.4 |
+| Mean slot time | 266.9 ms |
+| Median slot time | 266.7 ms |
+| Transaction count (cluster) | 552,235,384,950 |
+| Circulating supply | 587,621,452 SOL |
+| Total supply | 634,656,496 SOL |
 | Burned SOL (incinerator getBalance) | 0.00 SOL |
 
 Native SOL at the Foundation-documented burn address `1nc1nerator11111111111111111111111111111111`.
@@ -47,46 +47,45 @@ TPS = `numTransactions / samplePeriodSecs`. Slot time = `samplePeriodSecs / numS
 | Metric | Value |
 | --- | ---: |
 | Active vote accounts | 676 |
-| Delinquent | 10 |
+| Delinquent | 9 |
 | Lagging current (>150 slots) | 0 |
-| Activated stake | 439,924,688 SOL |
-| Delinquent stake | 39,448.94 SOL (0.009%) |
+| Activated stake | 440,586,998 SOL |
+| Delinquent stake | 23,609.72 SOL (0.005%) |
 | Nakamoto (33% / 50% / 67%) | 18 / 41 / 80 |
-| Top 10 / 20 stake share | 24.39% / 35.67% |
+| Top 10 / 20 stake share | 24.40% / 35.63% |
 | Commission min / median / max | 0% / 5.0% / 100% |
 
 ### Top validators by activated stake
 
 | Rank | Node | Stake | Share | Commission | Last vote lag |
 | ---: | --- | ---: | ---: | ---: | ---: |
-| 1 | `Fd7btgyS…` | 17.84M SOL | 4.06% | 7% | 0 |
-| 2 | `HEL1USMZ…` | 15.84M SOL | 3.60% | 0% | 0 |
-| 3 | `DRpbCBMx…` | 12.36M SOL | 2.81% | 0% | 0 |
-| 4 | `JUPiTERr…` | 11.26M SOL | 2.56% | 5% | 0 |
-| 5 | `E1r4Psq8…` | 10.34M SOL | 2.35% | 0% | 0 |
-| 6 | `C8Bey3LK…` | 9.23M SOL | 2.10% | 7% | 0 |
+| 1 | `Fd7btgyS…` | 17.82M SOL | 4.04% | 7% | 0 |
+| 2 | `HEL1USMZ…` | 15.82M SOL | 3.59% | 0% | 0 |
+| 3 | `DRpbCBMx…` | 12.39M SOL | 2.81% | 0% | 0 |
+| 4 | `JUPiTERr…` | 11.27M SOL | 2.56% | 5% | 0 |
+| 5 | `E1r4Psq8…` | 10.59M SOL | 2.40% | 0% | 0 |
+| 6 | `C8Bey3LK…` | 9.22M SOL | 2.09% | 7% | 0 |
 | 7 | `CAo1dCGY…` | 9.16M SOL | 2.08% | 10% | 0 |
-| 8 | `EvnRmnMr…` | 7.60M SOL | 1.73% | 7% | 0 |
+| 8 | `EvnRmnMr…` | 7.60M SOL | 1.72% | 7% | 0 |
 | 9 | `9eGrDohd…` | 7.09M SOL | 1.61% | 5% | 0 |
 | 10 | `Awes4Tr6…` | 6.56M SOL | 1.49% | 0% | 0 |
-| 11 | `JD549Hsb…` | 6.22M SOL | 1.41% | 0% | 0 |
-| 12 | `9jxgosAf…` | 6.13M SOL | 1.39% | 100% | 0 |
+| 11 | `JD549Hsb…` | 6.15M SOL | 1.40% | 0% | 0 |
+| 12 | `9jxgosAf…` | 6.00M SOL | 1.36% | 100% | 0 |
 | 13 | `5pPRHnie…` | 5.94M SOL | 1.35% | 5% | 0 |
-| 14 | `5Cchr1XG…` | 5.61M SOL | 1.27% | 100% | 0 |
+| 14 | `5Cchr1XG…` | 5.62M SOL | 1.28% | 100% | 0 |
 | 15 | `GnC339vk…` | 4.83M SOL | 1.10% | 7% | 0 |
 
 ### Delinquency alerts
 
-- `t23p8aBQ…` · 14.37K SOL · commission 0% · lag 2546441 slots
-- `AYY1TCe3…` · 10.70K SOL · commission 0% · lag 126521 slots
-- `NWY18yrP…` · 9.76K SOL · commission 10% · lag 1342967 slots
-- `mrgn4atx…` · 2.21K SOL · commission 0% · lag 1544272 slots
-- `pSoLoZx5…` · 1.51K SOL · commission 4% · lag 2266925 slots
-- `Hgozywot…` · 797.43 SOL · commission 100% · lag 1648806 slots
-- `ARKk6Rgi…` · 63.92 SOL · commission 10% · lag 119523 slots
-- `9fTWmMqV…` · 23.86 SOL · commission 0% · lag 1379302 slots
-- `R1parD2C…` · 2.87 SOL · commission 5% · lag 66092807 slots
-- `6mygxmZx…` · 2.00 SOL · commission 100% · lag 237169 slots
+- `AYY1TCe3…` · 10.70K SOL · commission 0% · lag 129063 slots
+- `NWY18yrP…` · 9.76K SOL · commission 10% · lag 1345509 slots
+- `mrgn4atx…` · 2.21K SOL · commission 0% · lag 1546814 slots
+- `Hgozywot…` · 797.43 SOL · commission 100% · lag 1651348 slots
+- `ARKk6Rgi…` · 63.92 SOL · commission 10% · lag 122065 slots
+- `BbCQMWnf…` · 45.00 SOL · commission 0% · lag 29653 slots
+- `9fTWmMqV…` · 23.86 SOL · commission 0% · lag 1381844 slots
+- `stacheBm…` · 3.00 SOL · commission 5% · lag 20608536 slots
+- `6mygxmZx…` · 2.00 SOL · commission 100% · lag 239711 slots
 
 ## Trends
 
@@ -107,7 +106,7 @@ Full network REV (Blockworks/Helius) is in-protocol transaction fees (vote + bas
 | --- | ---: | --- |
 | **In-protocol fees 24h** | **$1.02M** (8,787.2 SOL) | solana.com/data Fees (Allium) MEASURED · USD at solana.com/data SOL Price (DexPaprika) UTC 2026-09-23 |
 | **Solana REV** | **10,711.2 SOL** / **$1.25M** | MEASURED UTC calendar day 2026-09-23: in-protocol fees + gross Jito MEV tips (jito_tips + validator_tips; not a rolling 24h); USD uses solana.com/data SOL Price (DexPaprika) UTC 2026-09-23 · UTC day 2026-09-23 · SOL-USD date 2026-09-23 |
-| Jito tip-floor run-rate (NOT REV) | $71.78K | INVALID as a 24h aggregate · included_in_headline=false · sensitivity (NOT a 24h aggregate, NOT headline REV): invalid run-rate at p50 floor → 71784 USD; at p95 floor → 655914 USD. |
+| Jito tip-floor run-rate (NOT REV) | $132.68K | INVALID as a 24h aggregate · included_in_headline=false · sensitivity (NOT a 24h aggregate, NOT headline REV): invalid run-rate at p50 floor → 132680 USD; at p95 floor → 1169469 USD. |
 | Protocol fees 24h | $16.12M | EXCLUDED from REV — DeFiLlama Solana protocol fees 24h (not REV) |
 | Median tx fee p50 | — SOL (—) | NOT a 24h census · ~2–3h target · n_tx=0 window_seconds=None |
 | p90 / p99 | — / — SOL | same sample |
@@ -117,10 +116,10 @@ Full network REV (Blockworks/Helius) is in-protocol transaction fees (vote + bas
 
 | Metric | Value | Source |
 | --- | ---: | --- |
-| SOL/USD | $116.90 | coingecko.simple_price |
-| 24h change | +2.34% | coingecko.simple_price |
-| Market cap | $68.69B | coingecko.simple_price |
-| 24h volume | $4.32B | coingecko.simple_price |
+| SOL/USD | $116.76 | coingecko.simple_price |
+| 24h change | +2.41% | coingecko.simple_price |
+| Market cap | $68.59B | coingecko.simple_price |
+| 24h volume | $4.31B | coingecko.simple_price |
 
 ## DeFi (DeFiLlama)
 
@@ -138,13 +137,13 @@ Full network REV (Blockworks/Helius) is in-protocol transaction fees (vote + bas
 
 | DEX | 24h volume | 1d |
 | --- | ---: | ---: |
-| Raydium AMM | $344.04M | -27.70% |
+| Raydium AMM | $349.87M | -26.48% |
 | BisonFi | $323.94M | -12.01% |
-| Orca DEX | $318.45M | -13.37% |
+| Orca DEX | $319.94M | -12.97% |
 | PumpSwap | $270.19M | -57.39% |
 | Meteora DLMM | $233.66M | -12.43% |
 | pump.fun | $115.24M | -4.78% |
-| fomo Wallet | $114.42M | -22.60% |
+| fomo Wallet | $113.34M | -23.33% |
 | Scorch | $113.00M | -12.68% |
 
 ### Top Solana protocols by chain TVL
@@ -181,8 +180,8 @@ Solana circulating pegged-USD: **$15.96B**
 ## Tokenized equities (xStocks)
 
 Priced-subset lower bound: quote × circulating × live currentMultiplier over 11 of 800 Solana-deployed listed symbols (multiplier ok 80/80; 800 unique underlyings; attempted 80). Not a 715-name census, and not a census of every tokenized equity on Solana. Missing currentMultiplier → mcap omitted (never silent 1.0).
-Listed 800 · Solana deployments 800 · priced 11 · priced-subset mcap $113.15K (lower bound, not a census).
-24h volume $150.38M — Jupiter-reported xStocks subset 24h activity (stats24h buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX) · 7d volume omitted (no no-key Jupiter/DeFiLlama series).
+Listed 800 · Solana deployments 800 · priced 11 · priced-subset mcap $113.13K (lower bound, not a census).
+24h volume $149.24M — Jupiter-reported xStocks subset 24h activity (stats24h buy+sell per mint; a swap is buy XOR sell of that mint, not a double-count; not all 715, not all Solana DEX) · 7d volume omitted (no no-key Jupiter/DeFiLlama series).
 DeFiLlama protocol/xstocks Solana TVL — — liquidity census, not mcap, not 24h volume.
 Formula: `quote * circulating * multiplier` with live currentMultiplier (coverage: multiplier_ok 80 / mcap_computable 11 of attempted 80; missing multiplier → mcap omitted, never silent 1.0). 800 unique xStocks names with a Solana deployment (catalog; 1:1 with unique underlyings in current API; 800 unique underlyings among 800 Solana rows; not every tokenized equity on Solana). 800 of 800 listed xStocks have a Solana deployment (800 unique underlyings). Count share, not market-cap share.
 
@@ -243,9 +242,9 @@ Public X/Nitter-style RSS (xcancel.com, nitter mirrors, rsshub). Not the officia
 
 ## Editorial — SIMD-525 reduced slot times + Alpenglow (SIMD-0326)
 
-_As of 2026-09-24 (2026-09-24 13:49:55 PT). Editorial. Gate labels come from getAccountInfo Feature accounts (effective epoch = activation epoch + 1). Observed slot ms is INFERRED corroboration, not proof. Ignore solana.com/upgrades/reduced-slot-times if it lists 400 ms as current._
+_As of 2026-09-24 (2026-09-24 14:01:12 PT). Editorial. Gate labels come from getAccountInfo Feature accounts (effective epoch = activation epoch + 1). Observed slot ms is INFERRED corroboration, not proof. Ignore solana.com/upgrades/reduced-slot-times if it lists 400 ms as current._
 
-First-party Solana Changelog: August 20, 2026: “Feature gates reduced mainnet slot times from 400ms to 350ms, while Testnet moved from 250ms to 200ms.” On-chain Feature accounts: 400ms=superseded, 350ms=live, 300ms=live, 250ms=live, 200ms=pending. Observed mean slot ~268 ms is corroboration only — not feature-gate proof. Alpenglow (SIMD-0326) remains the consensus rewrite (Votor / Rotor); it is a separate track from the slot-time feature gates.
+First-party Solana Changelog: August 20, 2026: “Feature gates reduced mainnet slot times from 400ms to 350ms, while Testnet moved from 250ms to 200ms.” On-chain Feature accounts: 400ms=superseded, 350ms=live, 300ms=live, 250ms=live, 200ms=pending. Observed mean slot ~267 ms is corroboration only — not feature-gate proof. Alpenglow (SIMD-0326) remains the consensus rewrite (Votor / Rotor); it is a separate track from the slot-time feature gates.
 
 _Listing token SIMD-525 is SIMD-0525. Not SIMD-025._
 
@@ -262,7 +261,7 @@ _Listing token SIMD-525 is SIMD-0525. Not SIMD-025._
 - `source` — solana.com/news “Lowering Slot Time and Validators Economic” remains a listing-token write-up for SIMD-525 (SIMD-0525).
 - `2026-05-01` — SIMD-0525 created (Anza). Four feature gates: 350/300/250/200 ms.
 - `on-chain` — On-chain Feature accounts: 400ms=superseded, 350ms=live, 300ms=live, 250ms=live, 200ms=pending.
-- `observed` — Observed mean slot ~268 ms is corroboration only — not feature-gate proof. INFERRED corroboration, not a feature-gate RPC.
+- `observed` — Observed mean slot ~267 ms is corroboration only — not feature-gate proof. INFERRED corroboration, not a feature-gate RPC.
 - `2026-07-08` — SIMD-0387 (BLS pubkey in vote account) activated on mainnet.
 - `2026-07-22` — SIMD-0357 VAT activated. VAT does not itself turn on Alpenglow consensus.
 
@@ -288,336 +287,336 @@ _Listing token SIMD-525 is SIMD-0525. Not SIMD-025._
 
 ## Sources this run
 
-- `rpc.getHealth` [ok] 200 130ms https://api.mainnet-beta.solana.com
-- `rpc.getSlot` [ok] 200 51ms https://api.mainnet-beta.solana.com
-- `rpc.getBlockTime` [ok] 200 60ms https://api.mainnet-beta.solana.com
-- `rpc.getEpochInfo` [ok] 200 48ms https://api.mainnet-beta.solana.com
-- `rpc.getRecentPerformanceSamples` [ok] 200 68ms https://api.mainnet-beta.solana.com
-- `rpc.getSupply` [ok] 200 5479ms https://api.mainnet-beta.solana.com
-- `rpc.getVoteAccounts` [ok] 200 91ms https://api.mainnet-beta.solana.com
-- `coingecko.simple_price` [ok] 200 79ms https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true&include_last_updated_at=true
-- `coinbase.solusd.stats` [ok] 200 43ms https://api.exchange.coinbase.com/products/SOL-USD/stats
-- `llama.chains` [ok] 200 59ms https://api.llama.fi/v2/chains
+- `rpc.getHealth` [ok] 200 185ms https://api.mainnet-beta.solana.com
+- `rpc.getSlot` [ok] 200 191ms https://api.mainnet-beta.solana.com
+- `rpc.getBlockTime` [ok] 200 147ms https://api.mainnet-beta.solana.com
+- `rpc.getEpochInfo` [ok] 200 188ms https://api.mainnet-beta.solana.com
+- `rpc.getRecentPerformanceSamples` [ok] 200 134ms https://api.mainnet-beta.solana.com
+- `rpc.getSupply` [ok] 200 7280ms https://api.mainnet-beta.solana.com
+- `rpc.getVoteAccounts` [ok] 200 250ms https://api.mainnet-beta.solana.com
+- `coingecko.simple_price` [ok] 200 43ms https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true&include_last_updated_at=true
+- `coinbase.solusd.stats` [ok] 200 84ms https://api.exchange.coinbase.com/products/SOL-USD/stats
+- `llama.chains` [ok] 200 60ms https://api.llama.fi/v2/chains
 - `llama.historical_tvl` [ok] 200 46ms https://api.llama.fi/v2/historicalChainTvl/Solana
-- `llama.dexs` [ok] 200 58ms https://api.llama.fi/overview/dexs/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
-- `llama.fees` [ok] 200 35ms https://api.llama.fi/overview/fees/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
-- `llama.protocols` [ok] 200 96ms https://api.llama.fi/protocols
-- `llama.stablecoinchains` [ok] 200 33ms https://stablecoins.llama.fi/stablecoinchains
-- `llama.stablecoins` [ok] 200 53ms https://stablecoins.llama.fi/stablecoins?includePrices=true
-- `llama.stablecoincharts` [ok] 200 466ms https://stablecoins.llama.fi/stablecoincharts/Solana
-- `solana.com.data_page` [ok] 200 422ms https://solana.com/data
-- `solana.com.databricks` [ok] 200 82ms https://solana.com/api/databricks/data?days=30
-- `solana.com.rpc_data` [ok] 200 549ms https://solana.com/api/rpc/data
-- `status.summary` [ok] 200 104ms https://status.solana.com/api/v2/summary.json
-- `rss.status.atom` [ok] 200 47ms https://status.solana.com/history.atom
-- `rss.news.rss` [ok] 200 83ms https://solana.com/news/rss.xml
-- `rss.anza.medium` [ok] 200 114ms https://medium.com/feed/anza-xyz
-- `rss.xcancel.solana` [FAIL] 451 159ms https://xcancel.com/solana/rss — HTTP 451 
-- `rss.xcancel.solana_status` [FAIL] 451 67ms https://xcancel.com/solana_status/rss — HTTP 451 
-- `rss.xcancel.anza_xyz` [FAIL] 451 56ms https://xcancel.com/anza_xyz/rss — HTTP 451 
-- `rss.xcancel.solana_devs` [FAIL] 451 54ms https://xcancel.com/solana_devs/rss — HTTP 451 
-- `rss.nitter.solana` [ok] 200 313ms https://nitter.perennialte.ch/solana/rss
-- `rss.nitter.solana_status` [ok] 200 45ms https://nitter.perennialte.ch/solana_status/rss
-- `rss.nitter.anza_xyz` [ok] 200 1442ms https://nitter.perennialte.ch/anza_xyz/rss
-- `rss.nitter.solana_devs` [ok] 200 27ms https://nitter.perennialte.ch/solana_devs/rss
-- `rss.rsshub.solana` [FAIL] 404 198ms https://rsshub.app/twitter/user/solana — HTTP 404 Not Found
-- `status.incidents` [ok] 200 56ms https://status.solana.com/api/v2/incidents.json
-- `rpc.getBalance` [ok] 200 48ms https://api.mainnet-beta.solana.com
-- `rpc.getBlocks` [ok] 200 106ms https://api.mainnet-beta.solana.com
-- `rpc.getBlock` [FAIL] 200 94ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 105ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 96ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 62ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 133ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 179ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `llama.dexs` [ok] 200 2143ms https://api.llama.fi/overview/dexs/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
+- `llama.fees` [ok] 200 55ms https://api.llama.fi/overview/fees/Solana?excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true
+- `llama.protocols` [ok] 200 98ms https://api.llama.fi/protocols
+- `llama.stablecoinchains` [ok] 200 85ms https://stablecoins.llama.fi/stablecoinchains
+- `llama.stablecoins` [ok] 200 65ms https://stablecoins.llama.fi/stablecoins?includePrices=true
+- `llama.stablecoincharts` [ok] 200 86ms https://stablecoins.llama.fi/stablecoincharts/Solana
+- `solana.com.data_page` [ok] 200 443ms https://solana.com/data
+- `solana.com.databricks` [ok] 200 101ms https://solana.com/api/databricks/data?days=30
+- `solana.com.rpc_data` [ok] 200 5525ms https://solana.com/api/rpc/data
+- `status.summary` [ok] 200 166ms https://status.solana.com/api/v2/summary.json
+- `rss.status.atom` [ok] 200 165ms https://status.solana.com/history.atom
+- `rss.news.rss` [ok] 200 85ms https://solana.com/news/rss.xml
+- `rss.anza.medium` [ok] 200 306ms https://medium.com/feed/anza-xyz
+- `rss.xcancel.solana` [FAIL] 451 311ms https://xcancel.com/solana/rss — HTTP 451 
+- `rss.xcancel.solana_status` [FAIL] 451 86ms https://xcancel.com/solana_status/rss — HTTP 451 
+- `rss.xcancel.anza_xyz` [FAIL] 451 92ms https://xcancel.com/anza_xyz/rss — HTTP 451 
+- `rss.xcancel.solana_devs` [FAIL] 451 88ms https://xcancel.com/solana_devs/rss — HTTP 451 
+- `rss.nitter.solana` [ok] 200 3673ms https://nitter.perennialte.ch/solana/rss
+- `rss.nitter.solana_status` [ok] 200 3369ms https://nitter.perennialte.ch/solana_status/rss
+- `rss.nitter.anza_xyz` [ok] 200 3128ms https://nitter.perennialte.ch/anza_xyz/rss
+- `rss.nitter.solana_devs` [ok] 200 2698ms https://nitter.perennialte.ch/solana_devs/rss
+- `rss.rsshub.solana` [FAIL] 404 184ms https://rsshub.app/twitter/user/solana — HTTP 404 Not Found
+- `status.incidents` [ok] 200 227ms https://status.solana.com/api/v2/incidents.json
+- `rpc.getBalance` [ok] 200 115ms https://api.mainnet-beta.solana.com
+- `rpc.getBlocks` [ok] 200 165ms https://api.mainnet-beta.solana.com
+- `rpc.getBlock` [FAIL] 200 178ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 93ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 134ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 101ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
 - `rpc.getBlock` [FAIL] 200 220ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 311ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 291ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 228ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 236ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 202ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 199ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 194ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 429 241ms https://api.mainnet-beta.solana.com — HTTP 429 Too Many Requests
 - `rpc.getBlock.fallback` [FAIL] 200 199ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 180ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 211ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 149ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 173ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 429 141ms https://api.mainnet-beta.solana.com — HTTP 429 Too Many Requests
-- `rpc.getBlock.fallback` [FAIL] 200 198ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 148ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 257ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 182ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 244ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 127ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 365ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 152ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 175ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 116ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 339ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 124ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 134ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock` [FAIL] 200 109ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `rpc.getBlock.fallback` [FAIL] 200 118ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
-- `xstocks.assets.p0` [ok] 200 1406ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=0
-- `xstocks.assets.p1` [ok] 200 1852ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=1
-- `xstocks.assets.p2` [ok] 200 2429ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=2
-- `xstocks.assets.p3` [ok] 200 1945ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=3
-- `xstocks.assets.p4` [ok] 200 2308ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=4
-- `xstocks.assets.p5` [ok] 200 1475ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=5
-- `xstocks.assets.p6` [ok] 200 2492ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=6
-- `xstocks.assets.p7` [ok] 200 1508ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=7
-- `xstocks.price.PCTx` [ok] 200 127ms https://api.backed.fi/api/v2/public/assets/PCTx/price-data
-- `xstocks.price.XRXx` [ok] 200 258ms https://api.backed.fi/api/v2/public/assets/XRXx/price-data
-- `xstocks.circ.PCTx` [ok] 200 146ms https://api.backed.fi/api/v2/public/assets/PCTx/circulating-supply?format=object
-- `xstocks.price.QUBTx` [ok] 200 301ms https://api.backed.fi/api/v2/public/assets/QUBTx/price-data
-- `xstocks.price.INDIx` [ok] 200 329ms https://api.backed.fi/api/v2/public/assets/INDIx/price-data
-- `xstocks.circ.XRXx` [ok] 200 117ms https://api.backed.fi/api/v2/public/assets/XRXx/circulating-supply?format=object
-- `xstocks.price.WRLDx` [ok] 200 386ms https://api.backed.fi/api/v2/public/assets/WRLDx/price-data
-- `xstocks.mult.PCTx` [ok] 200 140ms https://api.backed.fi/api/v2/public/assets/PCTx/multiplier?network=Solana
-- `xstocks.circ.WRLDx` [ok] 200 167ms https://api.backed.fi/api/v2/public/assets/WRLDx/circulating-supply?format=object
-- `xstocks.circ.QUBTx` [ok] 200 254ms https://api.backed.fi/api/v2/public/assets/QUBTx/circulating-supply?format=object
-- `xstocks.price.WYFIx` [ok] 200 161ms https://api.backed.fi/api/v2/public/assets/WYFIx/price-data
-- `xstocks.price.FLNCx` [ok] 200 746ms https://api.backed.fi/api/v2/public/assets/FLNCx/price-data
-- `xstocks.mult.XRXx` [ok] 200 384ms https://api.backed.fi/api/v2/public/assets/XRXx/multiplier?network=Solana
-- `xstocks.mult.WRLDx` [ok] 200 236ms https://api.backed.fi/api/v2/public/assets/WRLDx/multiplier?network=Solana
-- `xstocks.circ.WYFIx` [ok] 200 296ms https://api.backed.fi/api/v2/public/assets/WYFIx/circulating-supply?format=object
-- `xstocks.price.BETRx` [ok] 200 180ms https://api.backed.fi/api/v2/public/assets/BETRx/price-data
-- `xstocks.circ.FLNCx` [ok] 200 226ms https://api.backed.fi/api/v2/public/assets/FLNCx/circulating-supply?format=object
-- `xstocks.circ.INDIx` [ok] 200 693ms https://api.backed.fi/api/v2/public/assets/INDIx/circulating-supply?format=object
-- `xstocks.mult.WYFIx` [ok] 200 171ms https://api.backed.fi/api/v2/public/assets/WYFIx/multiplier?network=Solana
-- `xstocks.price.METCx` [ok] 200 1051ms https://api.backed.fi/api/v2/public/assets/METCx/price-data
-- `xstocks.circ.BETRx` [ok] 200 119ms https://api.backed.fi/api/v2/public/assets/BETRx/circulating-supply?format=object
-- `xstocks.mult.QUBTx` [ok] 200 508ms https://api.backed.fi/api/v2/public/assets/QUBTx/multiplier?network=Solana
-- `xstocks.mult.FLNCx` [ok] 200 127ms https://api.backed.fi/api/v2/public/assets/FLNCx/multiplier?network=Solana
-- `xstocks.price.AIx` [ok] 200 413ms https://api.backed.fi/api/v2/public/assets/AIx/price-data
-- `xstocks.circ.METCx` [ok] 200 170ms https://api.backed.fi/api/v2/public/assets/METCx/circulating-supply?format=object
-- `xstocks.price.WGSx` [ok] 200 1235ms https://api.backed.fi/api/v2/public/assets/WGSx/price-data
-- `xstocks.mult.BETRx` [ok] 200 196ms https://api.backed.fi/api/v2/public/assets/BETRx/multiplier?network=Solana
-- `xstocks.price.RITMx` [ok] 200 184ms https://api.backed.fi/api/v2/public/assets/RITMx/price-data
-- `xstocks.mult.INDIx` [ok] 200 285ms https://api.backed.fi/api/v2/public/assets/INDIx/multiplier?network=Solana
-- `xstocks.price.ALMx` [ok] 200 259ms https://api.backed.fi/api/v2/public/assets/ALMx/price-data
-- `xstocks.circ.WGSx` [ok] 200 118ms https://api.backed.fi/api/v2/public/assets/WGSx/circulating-supply?format=object
-- `xstocks.circ.AIx` [ok] 200 169ms https://api.backed.fi/api/v2/public/assets/AIx/circulating-supply?format=object
-- `xstocks.price.RNGx` [ok] 200 130ms https://api.backed.fi/api/v2/public/assets/RNGx/price-data
-- `xstocks.mult.WGSx` [ok] 200 148ms https://api.backed.fi/api/v2/public/assets/WGSx/multiplier?network=Solana
-- `xstocks.mult.AIx` [ok] 200 155ms https://api.backed.fi/api/v2/public/assets/AIx/multiplier?network=Solana
-- `xstocks.circ.ALMx` [ok] 200 202ms https://api.backed.fi/api/v2/public/assets/ALMx/circulating-supply?format=object
-- `xstocks.circ.RNGx` [ok] 200 145ms https://api.backed.fi/api/v2/public/assets/RNGx/circulating-supply?format=object
-- `xstocks.price.WHx` [ok] 200 160ms https://api.backed.fi/api/v2/public/assets/WHx/price-data
+- `rpc.getBlock` [FAIL] 200 194ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 282ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 200ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 204ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 348ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 341ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 184ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 222ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 173ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 196ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 178ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 154ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock` [FAIL] 200 154ms https://api.mainnet-beta.solana.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `rpc.getBlock.fallback` [FAIL] 200 176ms https://solana-rpc.publicnode.com — {'code': -32015, 'message': 'Transaction version (1) is not supported by the requesting client. Please try the request again with the following configuration parameter: "maxSupportedTransactionVersion": 1'}
+- `xstocks.assets.p0` [ok] 200 1741ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=0
+- `xstocks.assets.p1` [ok] 200 1746ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=1
+- `xstocks.assets.p2` [ok] 200 3412ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=2
+- `xstocks.assets.p3` [ok] 200 1877ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=3
+- `xstocks.assets.p4` [ok] 200 1814ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=4
+- `xstocks.assets.p5` [ok] 200 1832ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=5
+- `xstocks.assets.p6` [ok] 200 1598ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=6
+- `xstocks.assets.p7` [ok] 200 1282ms https://api.backed.fi/api/v2/public/assets?pageSize=100&page=7
+- `xstocks.price.FLNCx` [ok] 200 154ms https://api.backed.fi/api/v2/public/assets/FLNCx/price-data
+- `xstocks.price.WGSx` [ok] 200 154ms https://api.backed.fi/api/v2/public/assets/WGSx/price-data
+- `xstocks.price.QUBTx` [ok] 200 369ms https://api.backed.fi/api/v2/public/assets/QUBTx/price-data
+- `xstocks.price.WRLDx` [ok] 200 387ms https://api.backed.fi/api/v2/public/assets/WRLDx/price-data
+- `xstocks.price.PCTx` [ok] 200 485ms https://api.backed.fi/api/v2/public/assets/PCTx/price-data
+- `xstocks.price.METCx` [ok] 200 494ms https://api.backed.fi/api/v2/public/assets/METCx/price-data
+- `xstocks.price.XRXx` [ok] 200 508ms https://api.backed.fi/api/v2/public/assets/XRXx/price-data
+- `xstocks.circ.QUBTx` [ok] 200 172ms https://api.backed.fi/api/v2/public/assets/QUBTx/circulating-supply?format=object
+- `xstocks.circ.FLNCx` [ok] 200 411ms https://api.backed.fi/api/v2/public/assets/FLNCx/circulating-supply?format=object
+- `xstocks.circ.WGSx` [ok] 200 487ms https://api.backed.fi/api/v2/public/assets/WGSx/circulating-supply?format=object
+- `xstocks.circ.XRXx` [ok] 200 182ms https://api.backed.fi/api/v2/public/assets/XRXx/circulating-supply?format=object
+- `xstocks.circ.WRLDx` [ok] 200 349ms https://api.backed.fi/api/v2/public/assets/WRLDx/circulating-supply?format=object
+- `xstocks.mult.FLNCx` [ok] 200 172ms https://api.backed.fi/api/v2/public/assets/FLNCx/multiplier?network=Solana
+- `xstocks.mult.WGSx` [ok] 200 163ms https://api.backed.fi/api/v2/public/assets/WGSx/multiplier?network=Solana
+- `xstocks.mult.WRLDx` [ok] 200 161ms https://api.backed.fi/api/v2/public/assets/WRLDx/multiplier?network=Solana
+- `xstocks.circ.PCTx` [ok] 200 412ms https://api.backed.fi/api/v2/public/assets/PCTx/circulating-supply?format=object
+- `xstocks.price.WYFIx` [ok] 200 192ms https://api.backed.fi/api/v2/public/assets/WYFIx/price-data
+- `xstocks.mult.XRXx` [ok] 200 283ms https://api.backed.fi/api/v2/public/assets/XRXx/multiplier?network=Solana
+- `xstocks.mult.PCTx` [ok] 200 181ms https://api.backed.fi/api/v2/public/assets/PCTx/multiplier?network=Solana
+- `xstocks.circ.WYFIx` [ok] 200 316ms https://api.backed.fi/api/v2/public/assets/WYFIx/circulating-supply?format=object
+- `xstocks.price.AIx` [ok] 200 450ms https://api.backed.fi/api/v2/public/assets/AIx/price-data
+- `xstocks.price.ALMx` [ok] 200 389ms https://api.backed.fi/api/v2/public/assets/ALMx/price-data
+- `xstocks.circ.METCx` [ok] 200 1001ms https://api.backed.fi/api/v2/public/assets/METCx/circulating-supply?format=object
+- `xstocks.mult.QUBTx` [ok] 200 981ms https://api.backed.fi/api/v2/public/assets/QUBTx/multiplier?network=Solana
+- `xstocks.price.BETRx` [ok] 200 779ms https://api.backed.fi/api/v2/public/assets/BETRx/price-data
+- `xstocks.circ.AIx` [ok] 200 242ms https://api.backed.fi/api/v2/public/assets/AIx/circulating-supply?format=object
+- `xstocks.circ.ALMx` [ok] 200 247ms https://api.backed.fi/api/v2/public/assets/ALMx/circulating-supply?format=object
+- `xstocks.mult.METCx` [ok] 200 270ms https://api.backed.fi/api/v2/public/assets/METCx/multiplier?network=Solana
+- `xstocks.price.RITMx` [ok] 200 288ms https://api.backed.fi/api/v2/public/assets/RITMx/price-data
+- `xstocks.circ.BETRx` [ok] 200 232ms https://api.backed.fi/api/v2/public/assets/BETRx/circulating-supply?format=object
+- `xstocks.mult.ALMx` [ok] 200 172ms https://api.backed.fi/api/v2/public/assets/ALMx/multiplier?network=Solana
+- `xstocks.mult.WYFIx` [ok] 200 687ms https://api.backed.fi/api/v2/public/assets/WYFIx/multiplier?network=Solana
+- `xstocks.price.SHCx` [ok] 200 164ms https://api.backed.fi/api/v2/public/assets/SHCx/price-data
+- `xstocks.circ.RITMx` [ok] 200 283ms https://api.backed.fi/api/v2/public/assets/RITMx/circulating-supply?format=object
+- `xstocks.price.WHx` [ok] 200 175ms https://api.backed.fi/api/v2/public/assets/WHx/price-data
+- `xstocks.price.RNGx` [ok] 200 401ms https://api.backed.fi/api/v2/public/assets/RNGx/price-data
+- `xstocks.mult.BETRx` [ok] 200 419ms https://api.backed.fi/api/v2/public/assets/BETRx/multiplier?network=Solana
+- `xstocks.mult.AIx` [ok] 200 748ms https://api.backed.fi/api/v2/public/assets/AIx/multiplier?network=Solana
+- `xstocks.mult.RITMx` [ok] 200 296ms https://api.backed.fi/api/v2/public/assets/RITMx/multiplier?network=Solana
 - `xstocks.price.REYNx` [ok] 200 170ms https://api.backed.fi/api/v2/public/assets/REYNx/price-data
-- `xstocks.circ.REYNx` [ok] 200 128ms https://api.backed.fi/api/v2/public/assets/REYNx/circulating-supply?format=object
-- `xstocks.price.MIDDx` [ok] 200 814ms https://api.backed.fi/api/v2/public/assets/MIDDx/price-data
-- `xstocks.mult.REYNx` [ok] 200 134ms https://api.backed.fi/api/v2/public/assets/REYNx/multiplier?network=Solana
-- `xstocks.mult.ALMx` [ok] 200 451ms https://api.backed.fi/api/v2/public/assets/ALMx/multiplier?network=Solana
-- `xstocks.circ.MIDDx` [ok] 200 192ms https://api.backed.fi/api/v2/public/assets/MIDDx/circulating-supply?format=object
-- `xstocks.price.SHCx` [ok] 200 759ms https://api.backed.fi/api/v2/public/assets/SHCx/price-data
-- `xstocks.mult.METCx` [ok] 200 847ms https://api.backed.fi/api/v2/public/assets/METCx/multiplier?network=Solana
-- `xstocks.price.CARx` [ok] 200 211ms https://api.backed.fi/api/v2/public/assets/CARx/price-data
-- `xstocks.price.VSNTx` [ok] 200 233ms https://api.backed.fi/api/v2/public/assets/VSNTx/price-data
-- `xstocks.circ.SHCx` [ok] 200 127ms https://api.backed.fi/api/v2/public/assets/SHCx/circulating-supply?format=object
-- `xstocks.mult.RNGx` [ok] 200 671ms https://api.backed.fi/api/v2/public/assets/RNGx/multiplier?network=Solana
-- `xstocks.price.OZKx` [ok] 200 158ms https://api.backed.fi/api/v2/public/assets/OZKx/price-data
-- `xstocks.mult.MIDDx` [ok] 200 290ms https://api.backed.fi/api/v2/public/assets/MIDDx/multiplier?network=Solana
-- `xstocks.circ.RITMx` [ok] 200 1102ms https://api.backed.fi/api/v2/public/assets/RITMx/circulating-supply?format=object
-- `xstocks.price.GXOx` [ok] 200 131ms https://api.backed.fi/api/v2/public/assets/GXOx/price-data
-- `xstocks.price.IRDMx` [ok] 200 284ms https://api.backed.fi/api/v2/public/assets/IRDMx/price-data
-- `xstocks.circ.CARx` [ok] 200 334ms https://api.backed.fi/api/v2/public/assets/CARx/circulating-supply?format=object
-- `xstocks.circ.OZKx` [ok] 200 333ms https://api.backed.fi/api/v2/public/assets/OZKx/circulating-supply?format=object
-- `xstocks.mult.CARx` [ok] 200 150ms https://api.backed.fi/api/v2/public/assets/CARx/multiplier?network=Solana
-- `xstocks.mult.OZKx` [ok] 200 215ms https://api.backed.fi/api/v2/public/assets/OZKx/multiplier?network=Solana
-- `xstocks.circ.IRDMx` [ok] 200 292ms https://api.backed.fi/api/v2/public/assets/IRDMx/circulating-supply?format=object
-- `xstocks.mult.SHCx` [ok] 200 695ms https://api.backed.fi/api/v2/public/assets/SHCx/multiplier?network=Solana
-- `xstocks.circ.WHx` [ok] 200 1237ms https://api.backed.fi/api/v2/public/assets/WHx/circulating-supply?format=object
-- `xstocks.price.FBINx` [ok] 200 262ms https://api.backed.fi/api/v2/public/assets/FBINx/price-data
-- `xstocks.mult.IRDMx` [ok] 200 165ms https://api.backed.fi/api/v2/public/assets/IRDMx/multiplier?network=Solana
-- `xstocks.price.AMTMx` [ok] 200 187ms https://api.backed.fi/api/v2/public/assets/AMTMx/price-data
-- `xstocks.mult.RITMx` [ok] 200 586ms https://api.backed.fi/api/v2/public/assets/RITMx/multiplier?network=Solana
-- `xstocks.mult.WHx` [ok] 200 130ms https://api.backed.fi/api/v2/public/assets/WHx/multiplier?network=Solana
-- `xstocks.price.PSNx` [ok] 200 145ms https://api.backed.fi/api/v2/public/assets/PSNx/price-data
-- `xstocks.price.SAICx` [ok] 200 154ms https://api.backed.fi/api/v2/public/assets/SAICx/price-data
-- `xstocks.price.MTNx` [ok] 200 431ms https://api.backed.fi/api/v2/public/assets/MTNx/price-data
-- `xstocks.price.PEGAx` [ok] 200 870ms https://api.backed.fi/api/v2/public/assets/PEGAx/price-data
-- `xstocks.circ.VSNTx` [ok] 200 1651ms https://api.backed.fi/api/v2/public/assets/VSNTx/circulating-supply?format=object
-- `xstocks.circ.GXOx` [ok] 200 1387ms https://api.backed.fi/api/v2/public/assets/GXOx/circulating-supply?format=object
-- `xstocks.mult.VSNTx` [ok] 200 193ms https://api.backed.fi/api/v2/public/assets/VSNTx/multiplier?network=Solana
-- `xstocks.circ.AMTMx` [ok] 200 1171ms https://api.backed.fi/api/v2/public/assets/AMTMx/circulating-supply?format=object
-- `xstocks.circ.SAICx` [ok] 200 973ms https://api.backed.fi/api/v2/public/assets/SAICx/circulating-supply?format=object
-- `xstocks.circ.PSNx` [ok] 200 1193ms https://api.backed.fi/api/v2/public/assets/PSNx/circulating-supply?format=object
-- `xstocks.circ.PEGAx` [ok] 200 487ms https://api.backed.fi/api/v2/public/assets/PEGAx/circulating-supply?format=object
-- `xstocks.price.EXLSx` [ok] 200 298ms https://api.backed.fi/api/v2/public/assets/EXLSx/price-data
-- `xstocks.mult.SAICx` [ok] 200 190ms https://api.backed.fi/api/v2/public/assets/SAICx/multiplier?network=Solana
-- `xstocks.circ.FBINx` [ok] 200 1487ms https://api.backed.fi/api/v2/public/assets/FBINx/circulating-supply?format=object
-- `xstocks.price.EPAMx` [ok] 200 157ms https://api.backed.fi/api/v2/public/assets/EPAMx/price-data
-- `xstocks.mult.PSNx` [ok] 200 247ms https://api.backed.fi/api/v2/public/assets/PSNx/multiplier?network=Solana
-- `xstocks.mult.FBINx` [ok] 200 150ms https://api.backed.fi/api/v2/public/assets/FBINx/multiplier?network=Solana
-- `xstocks.mult.PEGAx` [ok] 200 352ms https://api.backed.fi/api/v2/public/assets/PEGAx/multiplier?network=Solana
-- `xstocks.price.Mx` [ok] 200 132ms https://api.backed.fi/api/v2/public/assets/Mx/price-data
-- `xstocks.price.CRUSx` [ok] 200 335ms https://api.backed.fi/api/v2/public/assets/CRUSx/price-data
-- `xstocks.mult.AMTMx` [ok] 200 735ms https://api.backed.fi/api/v2/public/assets/AMTMx/multiplier?network=Solana
-- `xstocks.price.ELFx` [ok] 200 200ms https://api.backed.fi/api/v2/public/assets/ELFx/price-data
-- `xstocks.mult.GXOx` [ok] 200 1139ms https://api.backed.fi/api/v2/public/assets/GXOx/multiplier?network=Solana
-- `xstocks.price.SNDRx` [ok] 200 140ms https://api.backed.fi/api/v2/public/assets/SNDRx/price-data
-- `xstocks.price.VNOx` [ok] 200 187ms https://api.backed.fi/api/v2/public/assets/VNOx/price-data
-- `xstocks.circ.EXLSx` [ok] 200 923ms https://api.backed.fi/api/v2/public/assets/EXLSx/circulating-supply?format=object
-- `xstocks.circ.EPAMx` [ok] 200 1019ms https://api.backed.fi/api/v2/public/assets/EPAMx/circulating-supply?format=object
-- `xstocks.mult.EPAMx` [ok] 200 138ms https://api.backed.fi/api/v2/public/assets/EPAMx/multiplier?network=Solana
-- `xstocks.circ.ELFx` [ok] 200 979ms https://api.backed.fi/api/v2/public/assets/ELFx/circulating-supply?format=object
-- `xstocks.mult.ELFx` [ok] 200 129ms https://api.backed.fi/api/v2/public/assets/ELFx/multiplier?network=Solana
-- `xstocks.price.EXPx` [ok] 200 388ms https://api.backed.fi/api/v2/public/assets/EXPx/price-data
-- `xstocks.price.VIRTx` [ok] 200 122ms https://api.backed.fi/api/v2/public/assets/VIRTx/price-data
-- `xstocks.circ.MTNx` [ok] 200 2799ms https://api.backed.fi/api/v2/public/assets/MTNx/circulating-supply?format=object
-- `xstocks.circ.VIRTx` [ok] 200 146ms https://api.backed.fi/api/v2/public/assets/VIRTx/circulating-supply?format=object
-- `xstocks.circ.EXPx` [ok] 200 230ms https://api.backed.fi/api/v2/public/assets/EXPx/circulating-supply?format=object
-- `xstocks.circ.SNDRx` [ok] 200 1300ms https://api.backed.fi/api/v2/public/assets/SNDRx/circulating-supply?format=object
-- `xstocks.mult.MTNx` [ok] 200 209ms https://api.backed.fi/api/v2/public/assets/MTNx/multiplier?network=Solana
-- `xstocks.circ.VNOx` [ok] 200 1181ms https://api.backed.fi/api/v2/public/assets/VNOx/circulating-supply?format=object
-- `xstocks.mult.SNDRx` [ok] 200 150ms https://api.backed.fi/api/v2/public/assets/SNDRx/multiplier?network=Solana
-- `xstocks.mult.VIRTx` [ok] 200 212ms https://api.backed.fi/api/v2/public/assets/VIRTx/multiplier?network=Solana
-- `xstocks.mult.VNOx` [ok] 200 193ms https://api.backed.fi/api/v2/public/assets/VNOx/multiplier?network=Solana
-- `xstocks.price.CPBx` [ok] 200 128ms https://api.backed.fi/api/v2/public/assets/CPBx/price-data
-- `xstocks.price.VFCx` [ok] 200 128ms https://api.backed.fi/api/v2/public/assets/VFCx/price-data
-- `xstocks.circ.CPBx` [ok] 200 159ms https://api.backed.fi/api/v2/public/assets/CPBx/circulating-supply?format=object
-- `xstocks.circ.CRUSx` [ok] 200 1927ms https://api.backed.fi/api/v2/public/assets/CRUSx/circulating-supply?format=object
-- `xstocks.circ.VFCx` [ok] 200 155ms https://api.backed.fi/api/v2/public/assets/VFCx/circulating-supply?format=object
-- `xstocks.mult.CPBx` [ok] 200 151ms https://api.backed.fi/api/v2/public/assets/CPBx/multiplier?network=Solana
-- `xstocks.mult.EXPx` [ok] 200 730ms https://api.backed.fi/api/v2/public/assets/EXPx/multiplier?network=Solana
-- `xstocks.circ.Mx` [ok] 200 2361ms https://api.backed.fi/api/v2/public/assets/Mx/circulating-supply?format=object
-- `xstocks.mult.CRUSx` [ok] 200 352ms https://api.backed.fi/api/v2/public/assets/CRUSx/multiplier?network=Solana
-- `xstocks.price.ADTx` [ok] 200 147ms https://api.backed.fi/api/v2/public/assets/ADTx/price-data
-- `xstocks.price.HXLx` [ok] 200 741ms https://api.backed.fi/api/v2/public/assets/HXLx/price-data
-- `xstocks.price.NXSTx` [ok] 200 299ms https://api.backed.fi/api/v2/public/assets/NXSTx/price-data
-- `xstocks.mult.Mx` [ok] 200 228ms https://api.backed.fi/api/v2/public/assets/Mx/multiplier?network=Solana
-- `xstocks.circ.HXLx` [ok] 200 118ms https://api.backed.fi/api/v2/public/assets/HXLx/circulating-supply?format=object
-- `xstocks.circ.NXSTx` [ok] 200 158ms https://api.backed.fi/api/v2/public/assets/NXSTx/circulating-supply?format=object
-- `xstocks.price.BCx` [ok] 200 295ms https://api.backed.fi/api/v2/public/assets/BCx/price-data
-- `xstocks.price.ACIx` [ok] 200 150ms https://api.backed.fi/api/v2/public/assets/ACIx/price-data
-- `xstocks.mult.HXLx` [ok] 200 212ms https://api.backed.fi/api/v2/public/assets/HXLx/multiplier?network=Solana
-- `xstocks.mult.NXSTx` [ok] 200 165ms https://api.backed.fi/api/v2/public/assets/NXSTx/multiplier?network=Solana
-- `xstocks.mult.EXLSx` [ok] 200 2385ms https://api.backed.fi/api/v2/public/assets/EXLSx/multiplier?network=Solana
-- `xstocks.price.MKTXx` [ok] 200 1320ms https://api.backed.fi/api/v2/public/assets/MKTXx/price-data
-- `xstocks.price.KRMNx` [ok] 200 119ms https://api.backed.fi/api/v2/public/assets/KRMNx/price-data
-- `xstocks.price.GTESx` [ok] 200 161ms https://api.backed.fi/api/v2/public/assets/GTESx/price-data
-- `xstocks.circ.MKTXx` [ok] 200 124ms https://api.backed.fi/api/v2/public/assets/MKTXx/circulating-supply?format=object
-- `xstocks.price.HRBx` [ok] 200 186ms https://api.backed.fi/api/v2/public/assets/HRBx/price-data
-- `xstocks.mult.MKTXx` [ok] 200 186ms https://api.backed.fi/api/v2/public/assets/MKTXx/multiplier?network=Solana
-- `xstocks.circ.HRBx` [ok] 200 152ms https://api.backed.fi/api/v2/public/assets/HRBx/circulating-supply?format=object
-- `xstocks.circ.ADTx` [ok] 200 929ms https://api.backed.fi/api/v2/public/assets/ADTx/circulating-supply?format=object
-- `xstocks.price.AXSx` [ok] 200 131ms https://api.backed.fi/api/v2/public/assets/AXSx/price-data
-- `xstocks.circ.AXSx` [ok] 200 118ms https://api.backed.fi/api/v2/public/assets/AXSx/circulating-supply?format=object
-- `xstocks.mult.ADTx` [ok] 200 165ms https://api.backed.fi/api/v2/public/assets/ADTx/multiplier?network=Solana
-- `xstocks.mult.HRBx` [ok] 200 293ms https://api.backed.fi/api/v2/public/assets/HRBx/multiplier?network=Solana
-- `xstocks.mult.AXSx` [ok] 200 187ms https://api.backed.fi/api/v2/public/assets/AXSx/multiplier?network=Solana
-- `xstocks.price.RYNx` [ok] 200 141ms https://api.backed.fi/api/v2/public/assets/RYNx/price-data
-- `xstocks.price.POOLx` [ok] 200 127ms https://api.backed.fi/api/v2/public/assets/POOLx/price-data
-- `xstocks.mult.VFCx` [ok] 200 1765ms https://api.backed.fi/api/v2/public/assets/VFCx/multiplier?network=Solana
-- `xstocks.price.DLBx` [ok] 200 371ms https://api.backed.fi/api/v2/public/assets/DLBx/price-data
-- `xstocks.circ.KRMNx` [ok] 200 1115ms https://api.backed.fi/api/v2/public/assets/KRMNx/circulating-supply?format=object
-- `xstocks.circ.DLBx` [ok] 200 158ms https://api.backed.fi/api/v2/public/assets/DLBx/circulating-supply?format=object
-- `xstocks.circ.GTESx` [ok] 200 1138ms https://api.backed.fi/api/v2/public/assets/GTESx/circulating-supply?format=object
-- `xstocks.mult.KRMNx` [ok] 200 132ms https://api.backed.fi/api/v2/public/assets/KRMNx/multiplier?network=Solana
-- `xstocks.mult.DLBx` [ok] 200 175ms https://api.backed.fi/api/v2/public/assets/DLBx/multiplier?network=Solana
-- `xstocks.price.LWx` [ok] 200 126ms https://api.backed.fi/api/v2/public/assets/LWx/price-data
-- `xstocks.circ.ACIx` [ok] 200 1770ms https://api.backed.fi/api/v2/public/assets/ACIx/circulating-supply?format=object
-- `xstocks.mult.GTESx` [ok] 200 431ms https://api.backed.fi/api/v2/public/assets/GTESx/multiplier?network=Solana
-- `xstocks.circ.BCx` [ok] 200 1858ms https://api.backed.fi/api/v2/public/assets/BCx/circulating-supply?format=object
-- `xstocks.price.AAONx` [ok] 200 468ms https://api.backed.fi/api/v2/public/assets/AAONx/price-data
-- `xstocks.price.TFXx` [ok] 200 818ms https://api.backed.fi/api/v2/public/assets/TFXx/price-data
-- `xstocks.price.SONx` [ok] 200 211ms https://api.backed.fi/api/v2/public/assets/SONx/price-data
-- `xstocks.circ.POOLx` [ok] 200 1129ms https://api.backed.fi/api/v2/public/assets/POOLx/circulating-supply?format=object
-- `xstocks.circ.SONx` [ok] 200 230ms https://api.backed.fi/api/v2/public/assets/SONx/circulating-supply?format=object
-- `xstocks.mult.POOLx` [ok] 200 198ms https://api.backed.fi/api/v2/public/assets/POOLx/multiplier?network=Solana
-- `xstocks.mult.BCx` [ok] 200 578ms https://api.backed.fi/api/v2/public/assets/BCx/multiplier?network=Solana
-- `xstocks.circ.RYNx` [ok] 200 1477ms https://api.backed.fi/api/v2/public/assets/RYNx/circulating-supply?format=object
-- `xstocks.mult.SONx` [ok] 200 259ms https://api.backed.fi/api/v2/public/assets/SONx/multiplier?network=Solana
-- `xstocks.mult.RYNx` [ok] 200 167ms https://api.backed.fi/api/v2/public/assets/RYNx/multiplier?network=Solana
-- `xstocks.price.HRx` [ok] 200 145ms https://api.backed.fi/api/v2/public/assets/HRx/price-data
-- `xstocks.price.RLIx` [ok] 200 130ms https://api.backed.fi/api/v2/public/assets/RLIx/price-data
-- `xstocks.circ.RLIx` [ok] 200 137ms https://api.backed.fi/api/v2/public/assets/RLIx/circulating-supply?format=object
-- `xstocks.price.INGMx` [ok] 200 608ms https://api.backed.fi/api/v2/public/assets/INGMx/price-data
-- `xstocks.price.TTDx` [ok] 200 625ms https://api.backed.fi/api/v2/public/assets/TTDx/price-data
-- `xstocks.mult.RLIx` [ok] 200 243ms https://api.backed.fi/api/v2/public/assets/RLIx/multiplier?network=Solana
-- `xstocks.circ.INGMx` [ok] 200 119ms https://api.backed.fi/api/v2/public/assets/INGMx/circulating-supply?format=object
-- `xstocks.circ.HRx` [ok] 200 563ms https://api.backed.fi/api/v2/public/assets/HRx/circulating-supply?format=object
-- `xstocks.circ.TFXx` [ok] 200 1252ms https://api.backed.fi/api/v2/public/assets/TFXx/circulating-supply?format=object
-- `xstocks.price.CLFx` [ok] 200 139ms https://api.backed.fi/api/v2/public/assets/CLFx/price-data
-- `xstocks.circ.TTDx` [ok] 200 222ms https://api.backed.fi/api/v2/public/assets/TTDx/circulating-supply?format=object
-- `xstocks.mult.ACIx` [ok] 200 1652ms https://api.backed.fi/api/v2/public/assets/ACIx/multiplier?network=Solana
-- `xstocks.mult.HRx` [ok] 200 201ms https://api.backed.fi/api/v2/public/assets/HRx/multiplier?network=Solana
-- `xstocks.circ.LWx` [ok] 200 1899ms https://api.backed.fi/api/v2/public/assets/LWx/circulating-supply?format=object
-- `xstocks.mult.TTDx` [ok] 200 222ms https://api.backed.fi/api/v2/public/assets/TTDx/multiplier?network=Solana
-- `xstocks.price.STWDx` [ok] 200 137ms https://api.backed.fi/api/v2/public/assets/STWDx/price-data
-- `xstocks.circ.AAONx` [ok] 200 1585ms https://api.backed.fi/api/v2/public/assets/AAONx/circulating-supply?format=object
-- `xstocks.circ.CLFx` [ok] 200 313ms https://api.backed.fi/api/v2/public/assets/CLFx/circulating-supply?format=object
-- `xstocks.price.MSMx` [ok] 200 164ms https://api.backed.fi/api/v2/public/assets/MSMx/price-data
-- `xstocks.price.CZRx` [ok] 200 121ms https://api.backed.fi/api/v2/public/assets/CZRx/price-data
-- `xstocks.mult.TFXx` [ok] 200 396ms https://api.backed.fi/api/v2/public/assets/TFXx/multiplier?network=Solana
-- `xstocks.circ.MSMx` [ok] 200 154ms https://api.backed.fi/api/v2/public/assets/MSMx/circulating-supply?format=object
-- `xstocks.price.OMFx` [ok] 200 135ms https://api.backed.fi/api/v2/public/assets/OMFx/price-data
-- `xstocks.mult.AAONx` [ok] 200 225ms https://api.backed.fi/api/v2/public/assets/AAONx/multiplier?network=Solana
-- `xstocks.mult.CLFx` [ok] 200 274ms https://api.backed.fi/api/v2/public/assets/CLFx/multiplier?network=Solana
-- `xstocks.mult.MSMx` [ok] 200 153ms https://api.backed.fi/api/v2/public/assets/MSMx/multiplier?network=Solana
-- `xstocks.circ.OMFx` [ok] 200 153ms https://api.backed.fi/api/v2/public/assets/OMFx/circulating-supply?format=object
-- `xstocks.circ.STWDx` [ok] 200 375ms https://api.backed.fi/api/v2/public/assets/STWDx/circulating-supply?format=object
-- `xstocks.mult.LWx` [ok] 200 503ms https://api.backed.fi/api/v2/public/assets/LWx/multiplier?network=Solana
-- `xstocks.price.CROXx` [ok] 200 190ms https://api.backed.fi/api/v2/public/assets/CROXx/price-data
-- `xstocks.mult.STWDx` [ok] 200 140ms https://api.backed.fi/api/v2/public/assets/STWDx/multiplier?network=Solana
-- `xstocks.price.Gx` [ok] 200 195ms https://api.backed.fi/api/v2/public/assets/Gx/price-data
-- `xstocks.circ.Gx` [ok] 200 128ms https://api.backed.fi/api/v2/public/assets/Gx/circulating-supply?format=object
-- `xstocks.mult.OMFx` [ok] 200 361ms https://api.backed.fi/api/v2/public/assets/OMFx/multiplier?network=Solana
-- `xstocks.mult.INGMx` [ok] 200 1190ms https://api.backed.fi/api/v2/public/assets/INGMx/multiplier?network=Solana
-- `xstocks.price.MTGx` [ok] 200 301ms https://api.backed.fi/api/v2/public/assets/MTGx/price-data
-- `xstocks.price.MTDRx` [ok] 200 130ms https://api.backed.fi/api/v2/public/assets/MTDRx/price-data
-- `xstocks.price.CHEx` [ok] 200 684ms https://api.backed.fi/api/v2/public/assets/CHEx/price-data
-- `xstocks.price.BEPCx` [ok] 200 265ms https://api.backed.fi/api/v2/public/assets/BEPCx/price-data
-- `xstocks.price.ALGMx` [ok] 200 693ms https://api.backed.fi/api/v2/public/assets/ALGMx/price-data
-- `xstocks.mult.Gx` [ok] 200 513ms https://api.backed.fi/api/v2/public/assets/Gx/multiplier?network=Solana
-- `xstocks.circ.BEPCx` [ok] 200 218ms https://api.backed.fi/api/v2/public/assets/BEPCx/circulating-supply?format=object
-- `xstocks.circ.ALGMx` [ok] 200 161ms https://api.backed.fi/api/v2/public/assets/ALGMx/circulating-supply?format=object
-- `xstocks.circ.CZRx` [ok] 200 1220ms https://api.backed.fi/api/v2/public/assets/CZRx/circulating-supply?format=object
-- `xstocks.mult.CZRx` [ok] 200 143ms https://api.backed.fi/api/v2/public/assets/CZRx/multiplier?network=Solana
-- `xstocks.circ.CROXx` [ok] 200 1004ms https://api.backed.fi/api/v2/public/assets/CROXx/circulating-supply?format=object
-- `xstocks.mult.ALGMx` [ok] 200 222ms https://api.backed.fi/api/v2/public/assets/ALGMx/multiplier?network=Solana
-- `xstocks.mult.CROXx` [ok] 200 138ms https://api.backed.fi/api/v2/public/assets/CROXx/multiplier?network=Solana
-- `xstocks.price.LYFTx` [ok] 200 287ms https://api.backed.fi/api/v2/public/assets/LYFTx/price-data
-- `xstocks.price.BYDx` [ok] 200 252ms https://api.backed.fi/api/v2/public/assets/BYDx/price-data
-- `xstocks.mult.BEPCx` [ok] 200 556ms https://api.backed.fi/api/v2/public/assets/BEPCx/multiplier?network=Solana
-- `xstocks.circ.LYFTx` [ok] 200 197ms https://api.backed.fi/api/v2/public/assets/LYFTx/circulating-supply?format=object
-- `xstocks.circ.CHEx` [ok] 200 985ms https://api.backed.fi/api/v2/public/assets/CHEx/circulating-supply?format=object
-- `xstocks.price.INGRx` [ok] 200 806ms https://api.backed.fi/api/v2/public/assets/INGRx/price-data
-- `xstocks.circ.MTDRx` [ok] 200 1103ms https://api.backed.fi/api/v2/public/assets/MTDRx/circulating-supply?format=object
-- `xstocks.price.FNBx` [ok] 200 268ms https://api.backed.fi/api/v2/public/assets/FNBx/price-data
-- `xstocks.mult.LYFTx` [ok] 200 182ms https://api.backed.fi/api/v2/public/assets/LYFTx/multiplier?network=Solana
-- `xstocks.price.STAGx` [ok] 200 646ms https://api.backed.fi/api/v2/public/assets/STAGx/price-data
-- `xstocks.price.MBGLx` [ok] 200 127ms https://api.backed.fi/api/v2/public/assets/MBGLx/price-data
-- `xstocks.mult.MTDRx` [ok] 200 229ms https://api.backed.fi/api/v2/public/assets/MTDRx/multiplier?network=Solana
-- `xstocks.mult.CHEx` [ok] 200 601ms https://api.backed.fi/api/v2/public/assets/CHEx/multiplier?network=Solana
-- `xstocks.price.CACCx` [ok] 200 445ms https://api.backed.fi/api/v2/public/assets/CACCx/price-data
-- `xstocks.circ.FNBx` [ok] 200 780ms https://api.backed.fi/api/v2/public/assets/FNBx/circulating-supply?format=object
-- `xstocks.circ.CACCx` [ok] 200 197ms https://api.backed.fi/api/v2/public/assets/CACCx/circulating-supply?format=object
-- `xstocks.circ.BYDx` [ok] 200 1172ms https://api.backed.fi/api/v2/public/assets/BYDx/circulating-supply?format=object
-- `xstocks.mult.FNBx` [ok] 200 147ms https://api.backed.fi/api/v2/public/assets/FNBx/multiplier?network=Solana
-- `xstocks.mult.CACCx` [ok] 200 150ms https://api.backed.fi/api/v2/public/assets/CACCx/multiplier?network=Solana
-- `xstocks.circ.STAGx` [ok] 200 906ms https://api.backed.fi/api/v2/public/assets/STAGx/circulating-supply?format=object
-- `xstocks.circ.MBGLx` [ok] 200 1057ms https://api.backed.fi/api/v2/public/assets/MBGLx/circulating-supply?format=object
-- `xstocks.circ.MTGx` [ok] 200 2510ms https://api.backed.fi/api/v2/public/assets/MTGx/circulating-supply?format=object
-- `xstocks.mult.STAGx` [ok] 200 218ms https://api.backed.fi/api/v2/public/assets/STAGx/multiplier?network=Solana
-- `xstocks.circ.INGRx` [ok] 200 1383ms https://api.backed.fi/api/v2/public/assets/INGRx/circulating-supply?format=object
-- `xstocks.mult.MBGLx` [ok] 200 122ms https://api.backed.fi/api/v2/public/assets/MBGLx/multiplier?network=Solana
-- `xstocks.mult.INGRx` [ok] 200 133ms https://api.backed.fi/api/v2/public/assets/INGRx/multiplier?network=Solana
-- `xstocks.mult.MTGx` [ok] 200 393ms https://api.backed.fi/api/v2/public/assets/MTGx/multiplier?network=Solana
-- `xstocks.mult.BYDx` [ok] 200 847ms https://api.backed.fi/api/v2/public/assets/BYDx/multiplier?network=Solana
-- `llama.protocol.xstocks` [ok] 200 20ms https://api.llama.fi/protocol/xstocks
-- `jup.tokens.search.xStock` [ok] 200 91ms https://lite-api.jup.ag/tokens/v2/search?query=xStock
-- `jup.tokens.search.XRXx` [ok] 200 45ms https://lite-api.jup.ag/tokens/v2/search?query=XRXx
-- `jup.tokens.search.QUBTx` [ok] 200 53ms https://lite-api.jup.ag/tokens/v2/search?query=QUBTx
-- `jup.tokens.search.BETRx` [ok] 200 48ms https://lite-api.jup.ag/tokens/v2/search?query=BETRx
-- `jup.tokens.search.FLNCx` [ok] 200 57ms https://lite-api.jup.ag/tokens/v2/search?query=FLNCx
-- `jup.tokens.search.WGSx` [ok] 200 44ms https://lite-api.jup.ag/tokens/v2/search?query=WGSx
-- `jup.tokens.search.WYFIx` [ok] 200 48ms https://lite-api.jup.ag/tokens/v2/search?query=WYFIx
-- `jup.tokens.search.AIx` [ok] 200 49ms https://lite-api.jup.ag/tokens/v2/search?query=AIx
-- `jup.tokens.search.INDIx` [ok] 200 53ms https://lite-api.jup.ag/tokens/v2/search?query=INDIx
-- `jito.tip_floor` [ok] 200 266ms https://bundles.jito.wtf/api/v1/bundles/tip_floor
-- `dune.public_embed` [ok] 200 211ms https://dune.com/embeds/dashboard/cryptoonchain/solana-explorer
-- `simd.0525.raw` [ok] 200 57ms https://raw.githubusercontent.com/solana-foundation/solana-improvement-documents/main/proposals/0525-reduce-slot-times.md
-- `rpc.getAccountInfo` [ok] 200 55ms https://api.mainnet-beta.solana.com
-- `rpc.getAccountInfo` [ok] 200 69ms https://api.mainnet-beta.solana.com
-- `rpc.getAccountInfo` [ok] 200 79ms https://api.mainnet-beta.solana.com
-- `rpc.getAccountInfo` [ok] 200 57ms https://api.mainnet-beta.solana.com
-- `jito.daily_mev_rewards` [ok] 200 190ms https://kobe.mainnet.jito.network/api/v1/daily_mev_rewards
+- `xstocks.circ.RNGx` [ok] 200 250ms https://api.backed.fi/api/v2/public/assets/RNGx/circulating-supply?format=object
+- `xstocks.circ.WHx` [ok] 200 363ms https://api.backed.fi/api/v2/public/assets/WHx/circulating-supply?format=object
+- `xstocks.price.VSNTx` [ok] 200 307ms https://api.backed.fi/api/v2/public/assets/VSNTx/price-data
+- `xstocks.circ.REYNx` [ok] 200 291ms https://api.backed.fi/api/v2/public/assets/REYNx/circulating-supply?format=object
+- `xstocks.mult.RNGx` [ok] 200 378ms https://api.backed.fi/api/v2/public/assets/RNGx/multiplier?network=Solana
+- `xstocks.mult.REYNx` [ok] 200 168ms https://api.backed.fi/api/v2/public/assets/REYNx/multiplier?network=Solana
+- `xstocks.circ.VSNTx` [ok] 200 354ms https://api.backed.fi/api/v2/public/assets/VSNTx/circulating-supply?format=object
+- `xstocks.price.OZKx` [ok] 200 229ms https://api.backed.fi/api/v2/public/assets/OZKx/price-data
+- `xstocks.price.MIDDx` [ok] 200 2190ms https://api.backed.fi/api/v2/public/assets/MIDDx/price-data
+- `xstocks.circ.OZKx` [ok] 200 139ms https://api.backed.fi/api/v2/public/assets/OZKx/circulating-supply?format=object
+- `xstocks.mult.WHx` [ok] 200 766ms https://api.backed.fi/api/v2/public/assets/WHx/multiplier?network=Solana
+- `xstocks.mult.VSNTx` [ok] 200 322ms https://api.backed.fi/api/v2/public/assets/VSNTx/multiplier?network=Solana
+- `xstocks.price.INDIx` [ok] 200 3331ms https://api.backed.fi/api/v2/public/assets/INDIx/price-data
+- `xstocks.circ.SHCx` [ok] 200 1302ms https://api.backed.fi/api/v2/public/assets/SHCx/circulating-supply?format=object
+- `xstocks.price.CARx` [ok] 200 964ms https://api.backed.fi/api/v2/public/assets/CARx/price-data
+- `xstocks.price.GXOx` [ok] 200 183ms https://api.backed.fi/api/v2/public/assets/GXOx/price-data
+- `xstocks.mult.SHCx` [ok] 200 152ms https://api.backed.fi/api/v2/public/assets/SHCx/multiplier?network=Solana
+- `xstocks.mult.OZKx` [ok] 200 351ms https://api.backed.fi/api/v2/public/assets/OZKx/multiplier?network=Solana
+- `xstocks.circ.CARx` [ok] 200 183ms https://api.backed.fi/api/v2/public/assets/CARx/circulating-supply?format=object
+- `xstocks.price.FBINx` [ok] 200 226ms https://api.backed.fi/api/v2/public/assets/FBINx/price-data
+- `xstocks.circ.GXOx` [ok] 200 179ms https://api.backed.fi/api/v2/public/assets/GXOx/circulating-supply?format=object
+- `xstocks.price.AMTMx` [ok] 200 141ms https://api.backed.fi/api/v2/public/assets/AMTMx/price-data
+- `xstocks.price.MTNx` [ok] 200 169ms https://api.backed.fi/api/v2/public/assets/MTNx/price-data
+- `xstocks.circ.MIDDx` [ok] 200 536ms https://api.backed.fi/api/v2/public/assets/MIDDx/circulating-supply?format=object
+- `xstocks.mult.CARx` [ok] 200 171ms https://api.backed.fi/api/v2/public/assets/CARx/multiplier?network=Solana
+- `xstocks.circ.INDIx` [ok] 200 508ms https://api.backed.fi/api/v2/public/assets/INDIx/circulating-supply?format=object
+- `xstocks.price.PSNx` [ok] 200 141ms https://api.backed.fi/api/v2/public/assets/PSNx/price-data
+- `xstocks.circ.MTNx` [ok] 200 187ms https://api.backed.fi/api/v2/public/assets/MTNx/circulating-supply?format=object
+- `xstocks.mult.MIDDx` [ok] 200 198ms https://api.backed.fi/api/v2/public/assets/MIDDx/multiplier?network=Solana
+- `xstocks.circ.FBINx` [ok] 200 353ms https://api.backed.fi/api/v2/public/assets/FBINx/circulating-supply?format=object
+- `xstocks.mult.GXOx` [ok] 200 304ms https://api.backed.fi/api/v2/public/assets/GXOx/multiplier?network=Solana
+- `xstocks.price.IRDMx` [ok] 200 1117ms https://api.backed.fi/api/v2/public/assets/IRDMx/price-data
+- `xstocks.circ.AMTMx` [ok] 200 342ms https://api.backed.fi/api/v2/public/assets/AMTMx/circulating-supply?format=object
+- `xstocks.mult.INDIx` [ok] 200 159ms https://api.backed.fi/api/v2/public/assets/INDIx/multiplier?network=Solana
+- `xstocks.price.PEGAx` [ok] 200 169ms https://api.backed.fi/api/v2/public/assets/PEGAx/price-data
+- `xstocks.mult.MTNx` [ok] 200 197ms https://api.backed.fi/api/v2/public/assets/MTNx/multiplier?network=Solana
+- `xstocks.price.SAICx` [ok] 200 171ms https://api.backed.fi/api/v2/public/assets/SAICx/price-data
+- `xstocks.circ.SAICx` [ok] 200 168ms https://api.backed.fi/api/v2/public/assets/SAICx/circulating-supply?format=object
+- `xstocks.price.EXLSx` [ok] 200 337ms https://api.backed.fi/api/v2/public/assets/EXLSx/price-data
+- `xstocks.mult.AMTMx` [ok] 200 409ms https://api.backed.fi/api/v2/public/assets/AMTMx/multiplier?network=Solana
+- `xstocks.mult.SAICx` [ok] 200 202ms https://api.backed.fi/api/v2/public/assets/SAICx/multiplier?network=Solana
+- `xstocks.circ.PSNx` [ok] 200 677ms https://api.backed.fi/api/v2/public/assets/PSNx/circulating-supply?format=object
+- `xstocks.circ.EXLSx` [ok] 200 197ms https://api.backed.fi/api/v2/public/assets/EXLSx/circulating-supply?format=object
+- `xstocks.mult.FBINx` [ok] 200 676ms https://api.backed.fi/api/v2/public/assets/FBINx/multiplier?network=Solana
+- `xstocks.price.Mx` [ok] 200 171ms https://api.backed.fi/api/v2/public/assets/Mx/price-data
+- `xstocks.price.CRUSx` [ok] 200 223ms https://api.backed.fi/api/v2/public/assets/CRUSx/price-data
+- `xstocks.mult.EXLSx` [ok] 200 142ms https://api.backed.fi/api/v2/public/assets/EXLSx/multiplier?network=Solana
+- `xstocks.price.EPAMx` [ok] 200 645ms https://api.backed.fi/api/v2/public/assets/EPAMx/price-data
+- `xstocks.circ.Mx` [ok] 200 142ms https://api.backed.fi/api/v2/public/assets/Mx/circulating-supply?format=object
+- `xstocks.circ.CRUSx` [ok] 200 290ms https://api.backed.fi/api/v2/public/assets/CRUSx/circulating-supply?format=object
+- `xstocks.circ.EPAMx` [ok] 200 204ms https://api.backed.fi/api/v2/public/assets/EPAMx/circulating-supply?format=object
+- `xstocks.price.ELFx` [ok] 200 401ms https://api.backed.fi/api/v2/public/assets/ELFx/price-data
+- `xstocks.mult.Mx` [ok] 200 271ms https://api.backed.fi/api/v2/public/assets/Mx/multiplier?network=Solana
+- `xstocks.circ.IRDMx` [ok] 200 1059ms https://api.backed.fi/api/v2/public/assets/IRDMx/circulating-supply?format=object
+- `xstocks.mult.EPAMx` [ok] 200 180ms https://api.backed.fi/api/v2/public/assets/EPAMx/multiplier?network=Solana
+- `xstocks.mult.CRUSx` [ok] 200 210ms https://api.backed.fi/api/v2/public/assets/CRUSx/multiplier?network=Solana
+- `xstocks.price.VNOx` [ok] 200 169ms https://api.backed.fi/api/v2/public/assets/VNOx/price-data
+- `xstocks.mult.IRDMx` [ok] 200 175ms https://api.backed.fi/api/v2/public/assets/IRDMx/multiplier?network=Solana
+- `xstocks.circ.PEGAx` [ok] 200 1211ms https://api.backed.fi/api/v2/public/assets/PEGAx/circulating-supply?format=object
+- `xstocks.price.SNDRx` [ok] 200 640ms https://api.backed.fi/api/v2/public/assets/SNDRx/price-data
+- `xstocks.price.VIRTx` [ok] 200 191ms https://api.backed.fi/api/v2/public/assets/VIRTx/price-data
+- `xstocks.circ.VNOx` [ok] 200 147ms https://api.backed.fi/api/v2/public/assets/VNOx/circulating-supply?format=object
+- `xstocks.circ.ELFx` [ok] 200 401ms https://api.backed.fi/api/v2/public/assets/ELFx/circulating-supply?format=object
+- `xstocks.price.EXPx` [ok] 200 291ms https://api.backed.fi/api/v2/public/assets/EXPx/price-data
+- `xstocks.price.MKTXx` [ok] 200 184ms https://api.backed.fi/api/v2/public/assets/MKTXx/price-data
+- `xstocks.mult.PSNx` [ok] 200 882ms https://api.backed.fi/api/v2/public/assets/PSNx/multiplier?network=Solana
+- `xstocks.mult.PEGAx` [ok] 200 168ms https://api.backed.fi/api/v2/public/assets/PEGAx/multiplier?network=Solana
+- `xstocks.circ.SNDRx` [ok] 200 139ms https://api.backed.fi/api/v2/public/assets/SNDRx/circulating-supply?format=object
+- `xstocks.circ.MKTXx` [ok] 200 149ms https://api.backed.fi/api/v2/public/assets/MKTXx/circulating-supply?format=object
+- `xstocks.mult.ELFx` [ok] 200 184ms https://api.backed.fi/api/v2/public/assets/ELFx/multiplier?network=Solana
+- `xstocks.circ.VIRTx` [ok] 200 255ms https://api.backed.fi/api/v2/public/assets/VIRTx/circulating-supply?format=object
+- `xstocks.price.HXLx` [ok] 200 248ms https://api.backed.fi/api/v2/public/assets/HXLx/price-data
+- `xstocks.mult.SNDRx` [ok] 200 220ms https://api.backed.fi/api/v2/public/assets/SNDRx/multiplier?network=Solana
+- `xstocks.mult.MKTXx` [ok] 200 134ms https://api.backed.fi/api/v2/public/assets/MKTXx/multiplier?network=Solana
+- `xstocks.circ.EXPx` [ok] 200 304ms https://api.backed.fi/api/v2/public/assets/EXPx/circulating-supply?format=object
+- `xstocks.mult.VIRTx` [ok] 200 139ms https://api.backed.fi/api/v2/public/assets/VIRTx/multiplier?network=Solana
+- `xstocks.price.CPBx` [ok] 200 343ms https://api.backed.fi/api/v2/public/assets/CPBx/price-data
+- `xstocks.price.ADTx` [ok] 200 151ms https://api.backed.fi/api/v2/public/assets/ADTx/price-data
+- `xstocks.mult.EXPx` [ok] 200 171ms https://api.backed.fi/api/v2/public/assets/EXPx/multiplier?network=Solana
+- `xstocks.price.NXSTx` [ok] 200 196ms https://api.backed.fi/api/v2/public/assets/NXSTx/price-data
+- `xstocks.price.VFCx` [ok] 200 338ms https://api.backed.fi/api/v2/public/assets/VFCx/price-data
+- `xstocks.price.ACIx` [ok] 200 151ms https://api.backed.fi/api/v2/public/assets/ACIx/price-data
+- `xstocks.price.BCx` [ok] 200 311ms https://api.backed.fi/api/v2/public/assets/BCx/price-data
+- `xstocks.circ.NXSTx` [ok] 200 160ms https://api.backed.fi/api/v2/public/assets/NXSTx/circulating-supply?format=object
+- `xstocks.circ.ADTx` [ok] 200 208ms https://api.backed.fi/api/v2/public/assets/ADTx/circulating-supply?format=object
+- `xstocks.circ.VFCx` [ok] 200 163ms https://api.backed.fi/api/v2/public/assets/VFCx/circulating-supply?format=object
+- `xstocks.circ.CPBx` [ok] 200 288ms https://api.backed.fi/api/v2/public/assets/CPBx/circulating-supply?format=object
+- `xstocks.circ.HXLx` [ok] 200 563ms https://api.backed.fi/api/v2/public/assets/HXLx/circulating-supply?format=object
+- `xstocks.mult.VFCx` [ok] 200 156ms https://api.backed.fi/api/v2/public/assets/VFCx/multiplier?network=Solana
+- `xstocks.mult.CPBx` [ok] 200 164ms https://api.backed.fi/api/v2/public/assets/CPBx/multiplier?network=Solana
+- `xstocks.price.KRMNx` [ok] 200 147ms https://api.backed.fi/api/v2/public/assets/KRMNx/price-data
+- `xstocks.mult.HXLx` [ok] 200 152ms https://api.backed.fi/api/v2/public/assets/HXLx/multiplier?network=Solana
+- `xstocks.price.GTESx` [ok] 200 141ms https://api.backed.fi/api/v2/public/assets/GTESx/price-data
+- `xstocks.mult.NXSTx` [ok] 200 362ms https://api.backed.fi/api/v2/public/assets/NXSTx/multiplier?network=Solana
+- `xstocks.circ.BCx` [ok] 200 455ms https://api.backed.fi/api/v2/public/assets/BCx/circulating-supply?format=object
+- `xstocks.circ.ACIx` [ok] 200 480ms https://api.backed.fi/api/v2/public/assets/ACIx/circulating-supply?format=object
+- `xstocks.circ.KRMNx` [ok] 200 153ms https://api.backed.fi/api/v2/public/assets/KRMNx/circulating-supply?format=object
+- `xstocks.mult.VNOx` [ok] 200 1208ms https://api.backed.fi/api/v2/public/assets/VNOx/multiplier?network=Solana
+- `xstocks.mult.BCx` [ok] 200 162ms https://api.backed.fi/api/v2/public/assets/BCx/multiplier?network=Solana
+- `xstocks.price.HRBx` [ok] 200 277ms https://api.backed.fi/api/v2/public/assets/HRBx/price-data
+- `xstocks.mult.KRMNx` [ok] 200 140ms https://api.backed.fi/api/v2/public/assets/KRMNx/multiplier?network=Solana
+- `xstocks.price.AXSx` [ok] 200 477ms https://api.backed.fi/api/v2/public/assets/AXSx/price-data
+- `xstocks.price.RYNx` [ok] 200 241ms https://api.backed.fi/api/v2/public/assets/RYNx/price-data
+- `xstocks.circ.GTESx` [ok] 200 574ms https://api.backed.fi/api/v2/public/assets/GTESx/circulating-supply?format=object
+- `xstocks.mult.ADTx` [ok] 200 964ms https://api.backed.fi/api/v2/public/assets/ADTx/multiplier?network=Solana
+- `xstocks.circ.HRBx` [ok] 200 494ms https://api.backed.fi/api/v2/public/assets/HRBx/circulating-supply?format=object
+- `xstocks.price.TFXx` [ok] 200 206ms https://api.backed.fi/api/v2/public/assets/TFXx/price-data
+- `xstocks.price.POOLx` [ok] 200 557ms https://api.backed.fi/api/v2/public/assets/POOLx/price-data
+- `xstocks.mult.HRBx` [ok] 200 145ms https://api.backed.fi/api/v2/public/assets/HRBx/multiplier?network=Solana
+- `xstocks.mult.GTESx` [ok] 200 351ms https://api.backed.fi/api/v2/public/assets/GTESx/multiplier?network=Solana
+- `xstocks.mult.ACIx` [ok] 200 828ms https://api.backed.fi/api/v2/public/assets/ACIx/multiplier?network=Solana
+- `xstocks.circ.AXSx` [ok] 200 487ms https://api.backed.fi/api/v2/public/assets/AXSx/circulating-supply?format=object
+- `xstocks.circ.TFXx` [ok] 200 154ms https://api.backed.fi/api/v2/public/assets/TFXx/circulating-supply?format=object
+- `xstocks.circ.POOLx` [ok] 200 167ms https://api.backed.fi/api/v2/public/assets/POOLx/circulating-supply?format=object
+- `xstocks.price.DLBx` [ok] 200 851ms https://api.backed.fi/api/v2/public/assets/DLBx/price-data
+- `xstocks.circ.RYNx` [ok] 200 572ms https://api.backed.fi/api/v2/public/assets/RYNx/circulating-supply?format=object
+- `xstocks.price.LWx` [ok] 200 191ms https://api.backed.fi/api/v2/public/assets/LWx/price-data
+- `xstocks.circ.DLBx` [ok] 200 146ms https://api.backed.fi/api/v2/public/assets/DLBx/circulating-supply?format=object
+- `xstocks.mult.TFXx` [ok] 200 206ms https://api.backed.fi/api/v2/public/assets/TFXx/multiplier?network=Solana
+- `xstocks.mult.POOLx` [ok] 200 188ms https://api.backed.fi/api/v2/public/assets/POOLx/multiplier?network=Solana
+- `xstocks.circ.LWx` [ok] 200 128ms https://api.backed.fi/api/v2/public/assets/LWx/circulating-supply?format=object
+- `xstocks.price.INGMx` [ok] 200 141ms https://api.backed.fi/api/v2/public/assets/INGMx/price-data
+- `xstocks.mult.AXSx` [ok] 200 381ms https://api.backed.fi/api/v2/public/assets/AXSx/multiplier?network=Solana
+- `xstocks.mult.RYNx` [ok] 200 296ms https://api.backed.fi/api/v2/public/assets/RYNx/multiplier?network=Solana
+- `xstocks.price.SONx` [ok] 200 455ms https://api.backed.fi/api/v2/public/assets/SONx/price-data
+- `xstocks.mult.LWx` [ok] 200 203ms https://api.backed.fi/api/v2/public/assets/LWx/multiplier?network=Solana
+- `xstocks.price.AAONx` [ok] 200 509ms https://api.backed.fi/api/v2/public/assets/AAONx/price-data
+- `xstocks.price.HRx` [ok] 200 141ms https://api.backed.fi/api/v2/public/assets/HRx/price-data
+- `xstocks.circ.INGMx` [ok] 200 167ms https://api.backed.fi/api/v2/public/assets/INGMx/circulating-supply?format=object
+- `xstocks.circ.AAONx` [ok] 200 139ms https://api.backed.fi/api/v2/public/assets/AAONx/circulating-supply?format=object
+- `xstocks.circ.SONx` [ok] 200 185ms https://api.backed.fi/api/v2/public/assets/SONx/circulating-supply?format=object
+- `xstocks.mult.AAONx` [ok] 200 130ms https://api.backed.fi/api/v2/public/assets/AAONx/multiplier?network=Solana
+- `xstocks.mult.INGMx` [ok] 200 241ms https://api.backed.fi/api/v2/public/assets/INGMx/multiplier?network=Solana
+- `xstocks.mult.SONx` [ok] 200 172ms https://api.backed.fi/api/v2/public/assets/SONx/multiplier?network=Solana
+- `xstocks.mult.DLBx` [ok] 200 681ms https://api.backed.fi/api/v2/public/assets/DLBx/multiplier?network=Solana
+- `xstocks.price.STWDx` [ok] 200 152ms https://api.backed.fi/api/v2/public/assets/STWDx/price-data
+- `xstocks.price.RLIx` [ok] 200 503ms https://api.backed.fi/api/v2/public/assets/RLIx/price-data
+- `xstocks.price.MSMx` [ok] 200 128ms https://api.backed.fi/api/v2/public/assets/MSMx/price-data
+- `xstocks.price.CLFx` [ok] 200 448ms https://api.backed.fi/api/v2/public/assets/CLFx/price-data
+- `xstocks.price.CZRx` [ok] 200 165ms https://api.backed.fi/api/v2/public/assets/CZRx/price-data
+- `xstocks.circ.CLFx` [ok] 200 178ms https://api.backed.fi/api/v2/public/assets/CLFx/circulating-supply?format=object
+- `xstocks.circ.MSMx` [ok] 200 258ms https://api.backed.fi/api/v2/public/assets/MSMx/circulating-supply?format=object
+- `xstocks.price.OMFx` [ok] 200 319ms https://api.backed.fi/api/v2/public/assets/OMFx/price-data
+- `xstocks.circ.CZRx` [ok] 200 257ms https://api.backed.fi/api/v2/public/assets/CZRx/circulating-supply?format=object
+- `xstocks.mult.MSMx` [ok] 200 138ms https://api.backed.fi/api/v2/public/assets/MSMx/multiplier?network=Solana
+- `xstocks.mult.CZRx` [ok] 200 132ms https://api.backed.fi/api/v2/public/assets/CZRx/multiplier?network=Solana
+- `xstocks.circ.RLIx` [ok] 200 444ms https://api.backed.fi/api/v2/public/assets/RLIx/circulating-supply?format=object
+- `xstocks.mult.CLFx` [ok] 200 268ms https://api.backed.fi/api/v2/public/assets/CLFx/multiplier?network=Solana
+- `xstocks.circ.OMFx` [ok] 200 198ms https://api.backed.fi/api/v2/public/assets/OMFx/circulating-supply?format=object
+- `xstocks.circ.HRx` [ok] 200 882ms https://api.backed.fi/api/v2/public/assets/HRx/circulating-supply?format=object
+- `xstocks.price.Gx` [ok] 200 179ms https://api.backed.fi/api/v2/public/assets/Gx/price-data
+- `xstocks.mult.HRx` [ok] 200 179ms https://api.backed.fi/api/v2/public/assets/HRx/multiplier?network=Solana
+- `xstocks.price.ALGMx` [ok] 200 143ms https://api.backed.fi/api/v2/public/assets/ALGMx/price-data
+- `xstocks.price.TTDx` [ok] 200 1528ms https://api.backed.fi/api/v2/public/assets/TTDx/price-data
+- `xstocks.price.CHEx` [ok] 200 477ms https://api.backed.fi/api/v2/public/assets/CHEx/price-data
+- `xstocks.circ.ALGMx` [ok] 200 131ms https://api.backed.fi/api/v2/public/assets/ALGMx/circulating-supply?format=object
+- `xstocks.circ.Gx` [ok] 200 349ms https://api.backed.fi/api/v2/public/assets/Gx/circulating-supply?format=object
+- `xstocks.price.CROXx` [ok] 200 617ms https://api.backed.fi/api/v2/public/assets/CROXx/price-data
+- `xstocks.circ.TTDx` [ok] 200 197ms https://api.backed.fi/api/v2/public/assets/TTDx/circulating-supply?format=object
+- `xstocks.mult.RLIx` [ok] 200 611ms https://api.backed.fi/api/v2/public/assets/RLIx/multiplier?network=Solana
+- `xstocks.circ.CHEx` [ok] 200 168ms https://api.backed.fi/api/v2/public/assets/CHEx/circulating-supply?format=object
+- `xstocks.mult.OMFx` [ok] 200 657ms https://api.backed.fi/api/v2/public/assets/OMFx/multiplier?network=Solana
+- `xstocks.circ.CROXx` [ok] 200 169ms https://api.backed.fi/api/v2/public/assets/CROXx/circulating-supply?format=object
+- `xstocks.mult.TTDx` [ok] 200 171ms https://api.backed.fi/api/v2/public/assets/TTDx/multiplier?network=Solana
+- `xstocks.mult.CHEx` [ok] 200 147ms https://api.backed.fi/api/v2/public/assets/CHEx/multiplier?network=Solana
+- `xstocks.mult.ALGMx` [ok] 200 287ms https://api.backed.fi/api/v2/public/assets/ALGMx/multiplier?network=Solana
+- `xstocks.price.MTGx` [ok] 200 263ms https://api.backed.fi/api/v2/public/assets/MTGx/price-data
+- `xstocks.price.INGRx` [ok] 200 145ms https://api.backed.fi/api/v2/public/assets/INGRx/price-data
+- `xstocks.price.MTDRx` [ok] 200 163ms https://api.backed.fi/api/v2/public/assets/MTDRx/price-data
+- `xstocks.mult.CROXx` [ok] 200 282ms https://api.backed.fi/api/v2/public/assets/CROXx/multiplier?network=Solana
+- `xstocks.circ.MTGx` [ok] 200 159ms https://api.backed.fi/api/v2/public/assets/MTGx/circulating-supply?format=object
+- `xstocks.circ.INGRx` [ok] 200 153ms https://api.backed.fi/api/v2/public/assets/INGRx/circulating-supply?format=object
+- `xstocks.mult.Gx` [ok] 200 559ms https://api.backed.fi/api/v2/public/assets/Gx/multiplier?network=Solana
+- `xstocks.circ.MTDRx` [ok] 200 175ms https://api.backed.fi/api/v2/public/assets/MTDRx/circulating-supply?format=object
+- `xstocks.price.BYDx` [ok] 200 154ms https://api.backed.fi/api/v2/public/assets/BYDx/price-data
+- `xstocks.mult.MTGx` [ok] 200 193ms https://api.backed.fi/api/v2/public/assets/MTGx/multiplier?network=Solana
+- `xstocks.mult.INGRx` [ok] 200 157ms https://api.backed.fi/api/v2/public/assets/INGRx/multiplier?network=Solana
+- `xstocks.price.MBGLx` [ok] 200 136ms https://api.backed.fi/api/v2/public/assets/MBGLx/price-data
+- `xstocks.price.LYFTx` [ok] 200 602ms https://api.backed.fi/api/v2/public/assets/LYFTx/price-data
+- `xstocks.circ.BYDx` [ok] 200 342ms https://api.backed.fi/api/v2/public/assets/BYDx/circulating-supply?format=object
+- `xstocks.mult.MTDRx` [ok] 200 405ms https://api.backed.fi/api/v2/public/assets/MTDRx/multiplier?network=Solana
+- `xstocks.mult.BYDx` [ok] 200 132ms https://api.backed.fi/api/v2/public/assets/BYDx/multiplier?network=Solana
+- `xstocks.price.BEPCx` [ok] 200 1117ms https://api.backed.fi/api/v2/public/assets/BEPCx/price-data
+- `xstocks.price.STAGx` [ok] 200 825ms https://api.backed.fi/api/v2/public/assets/STAGx/price-data
+- `xstocks.price.CACCx` [ok] 200 404ms https://api.backed.fi/api/v2/public/assets/CACCx/price-data
+- `xstocks.circ.MBGLx` [ok] 200 554ms https://api.backed.fi/api/v2/public/assets/MBGLx/circulating-supply?format=object
+- `xstocks.circ.STAGx` [ok] 200 123ms https://api.backed.fi/api/v2/public/assets/STAGx/circulating-supply?format=object
+- `xstocks.circ.STWDx` [ok] 200 2557ms https://api.backed.fi/api/v2/public/assets/STWDx/circulating-supply?format=object
+- `xstocks.price.FNBx` [ok] 200 892ms https://api.backed.fi/api/v2/public/assets/FNBx/price-data
+- `xstocks.circ.BEPCx` [ok] 200 297ms https://api.backed.fi/api/v2/public/assets/BEPCx/circulating-supply?format=object
+- `xstocks.circ.FNBx` [ok] 200 141ms https://api.backed.fi/api/v2/public/assets/FNBx/circulating-supply?format=object
+- `xstocks.mult.BEPCx` [ok] 200 146ms https://api.backed.fi/api/v2/public/assets/BEPCx/multiplier?network=Solana
+- `xstocks.mult.MBGLx` [ok] 200 446ms https://api.backed.fi/api/v2/public/assets/MBGLx/multiplier?network=Solana
+- `xstocks.mult.STAGx` [ok] 200 468ms https://api.backed.fi/api/v2/public/assets/STAGx/multiplier?network=Solana
+- `xstocks.mult.STWDx` [ok] 200 494ms https://api.backed.fi/api/v2/public/assets/STWDx/multiplier?network=Solana
+- `xstocks.mult.FNBx` [ok] 200 713ms https://api.backed.fi/api/v2/public/assets/FNBx/multiplier?network=Solana
+- `xstocks.circ.CACCx` [ok] 200 1267ms https://api.backed.fi/api/v2/public/assets/CACCx/circulating-supply?format=object
+- `xstocks.mult.CACCx` [ok] 200 240ms https://api.backed.fi/api/v2/public/assets/CACCx/multiplier?network=Solana
+- `xstocks.circ.LYFTx` [ok] 200 2404ms https://api.backed.fi/api/v2/public/assets/LYFTx/circulating-supply?format=object
+- `xstocks.mult.LYFTx` [ok] 200 142ms https://api.backed.fi/api/v2/public/assets/LYFTx/multiplier?network=Solana
+- `llama.protocol.xstocks` [ok] 200 47ms https://api.llama.fi/protocol/xstocks
+- `jup.tokens.search.xStock` [ok] 200 142ms https://lite-api.jup.ag/tokens/v2/search?query=xStock
+- `jup.tokens.search.XRXx` [ok] 200 86ms https://lite-api.jup.ag/tokens/v2/search?query=XRXx
+- `jup.tokens.search.QUBTx` [ok] 200 71ms https://lite-api.jup.ag/tokens/v2/search?query=QUBTx
+- `jup.tokens.search.BETRx` [ok] 200 73ms https://lite-api.jup.ag/tokens/v2/search?query=BETRx
+- `jup.tokens.search.FLNCx` [ok] 200 60ms https://lite-api.jup.ag/tokens/v2/search?query=FLNCx
+- `jup.tokens.search.WGSx` [ok] 200 69ms https://lite-api.jup.ag/tokens/v2/search?query=WGSx
+- `jup.tokens.search.WYFIx` [ok] 200 76ms https://lite-api.jup.ag/tokens/v2/search?query=WYFIx
+- `jup.tokens.search.AIx` [ok] 200 72ms https://lite-api.jup.ag/tokens/v2/search?query=AIx
+- `jup.tokens.search.INDIx` [ok] 200 89ms https://lite-api.jup.ag/tokens/v2/search?query=INDIx
+- `jito.tip_floor` [ok] 200 133ms https://bundles.jito.wtf/api/v1/bundles/tip_floor
+- `dune.public_embed` [ok] 200 273ms https://dune.com/embeds/dashboard/cryptoonchain/solana-explorer
+- `simd.0525.raw` [ok] 200 106ms https://raw.githubusercontent.com/solana-foundation/solana-improvement-documents/main/proposals/0525-reduce-slot-times.md
+- `rpc.getAccountInfo` [ok] 200 120ms https://api.mainnet-beta.solana.com
+- `rpc.getAccountInfo` [ok] 200 93ms https://api.mainnet-beta.solana.com
+- `rpc.getAccountInfo` [ok] 200 93ms https://api.mainnet-beta.solana.com
+- `rpc.getAccountInfo` [ok] 200 98ms https://api.mainnet-beta.solana.com
+- `jito.daily_mev_rewards` [ok] 200 343ms https://kobe.mainnet.jito.network/api/v1/daily_mev_rewards
 
 ---
 
